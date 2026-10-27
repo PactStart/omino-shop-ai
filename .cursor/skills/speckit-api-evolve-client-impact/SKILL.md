@@ -1,0 +1,1 @@
+../../../.specify/extensions/api-evolve/.specify-dev/agent-commands/cursor-agent/speckit-api-evolve-client-impact/SKILL.md

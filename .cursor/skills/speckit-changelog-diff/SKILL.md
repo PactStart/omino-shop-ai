@@ -1,0 +1,1 @@
+../../../.specify/extensions/changelog/.specify-dev/agent-commands/cursor-agent/speckit-changelog-diff/SKILL.md

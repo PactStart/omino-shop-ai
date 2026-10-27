@@ -1,0 +1,179 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:698cc7089602db44622de39730555db4999cda94ab47195bcfe18f41d08b430a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:44:02.574735+00:00"
+    },
+    "bug": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:0f8ca9b828f8855be72a17cdef1f355fba81d7173b16f349d500d2ab367384fb",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.bug.assess",
+          "speckit.bug.fix",
+          "speckit.bug.test"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:44:03.323316+00:00"
+    },
+    "assess": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:a1c87d9ce8088e7865f1d352137777a693b0595ccc310957c7c051a604ca1db2",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.assess.intake",
+          "speckit.assess.research",
+          "speckit.assess.define",
+          "speckit.assess.shape",
+          "speckit.assess.decide"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:44:03.398584+00:00"
+    },
+    "gates": {
+      "version": "0.4.2",
+      "source": "local",
+      "manifest_hash": "sha256:daa4319157dc74e1214fa5c59598c91cc4a04fc7546c810e5c316ee03258ff6d",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.gates.init",
+          "speckit.gates.verify",
+          "speckit.gates.doctor",
+          "speckit.gates.ci",
+          "speckit.gates.upgrade",
+          "speckit.gates.sync",
+          "speckit.gates.propose",
+          "speckit.gates.constitution"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:44:57.548034+00:00"
+    },
+    "critique": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:0b63a1835415df730cbd487c90c1252b294980176c10c14a3fa9c31a7cb882e0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.critique.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:44:59.251642+00:00"
+    },
+    "ears": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:f8ec0c1c06615fec96e0139e06705e2345d4779e584d9d93c91859771c5ddab4",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.ears.author",
+          "speckit.ears.lint",
+          "speckit.ears.convert"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:45:01.373877+00:00"
+    },
+    "doctor": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:45150c8ac10b6b002ebea9de34a203911951fe3a89cb8635a2a149082c02eeed",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.doctor.check",
+          "speckit.doctor"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:45:03.141301+00:00"
+    },
+    "checkpoint": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:f1f8587fcfee109d13e5fd2837df498439695218b32d00083f6e98095fca64c0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.checkpoint.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:45:14.278523+00:00"
+    },
+    "api-evolve": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:72c152a5b14b9a1252321e83a0c9988cae42366957b1709d469b63dc7447bbf7",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.api-evolve.baseline",
+          "speckit.api-evolve.bump",
+          "speckit.api-evolve.changelog",
+          "speckit.api-evolve.classify",
+          "speckit.api-evolve.client-impact",
+          "speckit.api-evolve.deprecate",
+          "speckit.api-evolve.deprecation-status",
+          "speckit.api-evolve.detect",
+          "speckit.api-evolve.diff",
+          "speckit.api-evolve.gate",
+          "speckit.api-evolve.orchestrate",
+          "speckit.api-evolve.release"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:45:32.766540+00:00"
+    },
+    "changelog": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:29a15074a9b6eb4908a6256ec78fe8fb00f1af62ba6c4f72c7aafa722c93d890",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "cursor-agent": [
+          "speckit.changelog.diff",
+          "speckit.changelog.generate",
+          "speckit.changelog.notify",
+          "speckit.changelog.release"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-10-27T08:45:33.575311+00:00"
+    }
+  }
+}
