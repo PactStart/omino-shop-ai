@@ -1,0 +1,19 @@
+---
+description: 本仓库以根目录 AGENTS.md 为唯一权威规范
+alwaysApply: true
+---
+
+# omino-shop-ai
+
+动手前先读仓库根目录 `AGENTS.md` 与 §4 索引的拆出文档。与权威文档冲突的实现视为缺陷。
+
+- 先改对应权威文档（`AGENTS.md` / `docs/data-model.md` / `docs/api-*.md` / `docs/conversation.md`），再改代码。
+- `mall-guide` 只读参考，禁止复制代码。
+- 管理后台身份只走 `omino-sso`（OIDC + PKCE S256）。
+- APP 与 Admin 是同一套 Java 的两个产出物，前缀 `/api/app` 与 `/api/admin`。
+- 联盟密钥与转链只在 Java 服务端。
+- 对话：Android/iOS 原生或消费者 H5 → Java SSE → Agent；Tool 只调 app 的 `/internal/v1`。禁止 Flutter。
+- 邀请码在 `app_user`；海报由 APP/H5 贴二维码，Java 只下发模板与矩形。官网 `apps/www`，落地页 `apps/land`，消费者 H5 `apps/h5`。
+- 主库 PostgreSQL + pgvector，不用 MySQL。
+- 每次用户请求：先在 `docs/product-input.md` 主表末尾追加一行（时间、原始输入、意图/原因），再办事。
+- 不熟悉的能力先检索 GitHub 上维护活跃、许可证明确、star 较高的同类项目，不要盲目从零造轮子（见 `AGENTS.md` §7.1.6）。
