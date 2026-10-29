@@ -6,6 +6,10 @@
 
 引擎：**PostgreSQL 16 + pgvector**。主键默认 `CHAR(26)` ULID。时间 `TIMESTAMPTZ(3)`，应用层写 UTC。软删 `deleted_at` 可空。金额 `NUMERIC(12,2)`。JSON 用 `JSONB`。向量列 `vector(1536)`（与嵌入模型维度一致，换模型须改本列并重灌）。
 
+表与表之间**不建数据库外键**。关联列只保存对方主键，由应用在事务里校验存在性与一致性。允许 `CHECK`、唯一约束和索引。下文「逻辑关联」表示这一约定，不是数据库外键。
+
+实体上的枚举字段在 Java 里用 `com.omino.shopai.enums` 的枚举。库里仍存本文件写明的字符串或 `0`/`1`，不存枚举名。数量、排序、版本号、token 数、像素和超时保持数值，不是枚举。
+
 平台枚举（全表共用，仅此四者）：`taobao` `jd` `pdd` `vip`。**禁止** `meituan`。未接的四者表结构可先预留，适配器按阶段落地。
 
 商品**全量原始报文不进业务库**；`goods_snapshot` 仅为对外 `goodsId` 与列表/详情瘦字段，热路径以 Redis 为准。
@@ -22,7 +26,7 @@
 | status      | TINYINT        | NOT NULL，`1` 正常 `0` 禁用 | 账号状态                    |
 | locale      | VARCHAR(16)    | NOT NULL，默认 `zh-CN`    | 界面与对话语言                 |
 | invite_code | CHAR(8)        | NOT NULL，UNIQUE        | 邀请码，注册时生成，不可改；字母表见 [`api-app.md`](./api-app.md) §4.7 |
-| inviter_id  | CHAR(26)       | 可空，FK → app_user.id   | 邀请人（上级）。注册绑定邀请码时写入，之后不可改；无邀请则为空；禁止等于自身。与 `app_invite.inviter_id` 同时写入、必须一致 |
+| inviter_id  | CHAR(26)       | 可空，逻辑关联 → app_user.id   | 邀请人（上级）。注册绑定邀请码时写入，之后不可改；无邀请则为空；禁止等于自身。与 `app_invite.inviter_id` 同时写入、必须一致 |
 | push_enabled | TINYINT       | NOT NULL，默认 `1`        | 站内/系统推送总开关；`1` 开 `0` 关     |
 | created_at  | TIMESTAMPTZ(3) | NOT NULL               | 创建时间（UTC）；「我何时注册」读此列    |
 | updated_at  | TIMESTAMPTZ(3) | NOT NULL               | 最后更新时间（UTC）             |
@@ -35,7 +39,7 @@
 | 字段                             | 类型             | 约束                        | 注释                |
 | ------------------------------ | -------------- | ------------------------- | ----------------- |
 | id                             | CHAR(26)       | PK                        | 绑定记录主键            |
-| user_id                        | CHAR(26)       | NOT NULL，FK → app_user.id | 所属用户              |
+| user_id                        | CHAR(26)       | NOT NULL，逻辑关联 → app_user.id | 所属用户              |
 | provider                       | VARCHAR(16)    | NOT NULL，`wechat`         | `phone`           |
 | provider_uid                   | VARCHAR(128)   | NOT NULL                  | 渠道侧用户唯一 ID        |
 | union_id                       | VARCHAR(128)   | 可空                        | 微信 UnionID，其它渠道为空 |
@@ -226,13 +230,13 @@
 | goods_title                         | VARCHAR(512)   | NOT NULL | 同步时标题快照                   |
 | goods_image_url                     | VARCHAR(1024)  | 可空       | 同步时主图；列表/详情展示用，禁止存平台原始大图包 |
 | pay_amount                          | NUMERIC(12,2)  | 可空       | 实付（元）                     |
-| parent_user_id                      | CHAR(26)       | 可空，FK → app_user.id | 下单用户的上级，首次归因写入 `user_id` 时从 `app_user.inviter_id` 拷贝，之后不改。不是平台父订单号。可空（用户无邀请人） |
+| parent_user_id                      | CHAR(26)       | 可空，逻辑关联 → app_user.id | 下单用户的上级，首次归因写入 `user_id` 时从 `app_user.inviter_id` 拷贝，之后不改。不是平台父订单号。可空（用户无邀请人） |
 | media_commission                    | NUMERIC(12,2)  | 可空       | 电商平台付给本媒体的返佣（元），同步时覆盖为平台当前值。未回传为空。已结算后冻结 |
 | user_commission                     | NUMERIC(12,2)  | 可空       | 本平台分给**下单用户**的返佣（元）= `round(media_commission × 分成比例, 2)`。已结算后冻结。消费者只看这一列 |
 | click_id                            | CHAR(26)       | 可空       | 转链点击，见 `click_event`      |
 | order_status                        | VARCHAR(32)    | NOT NULL | 订单状态，仅此六值：`pending_pay` 待支付、`pending_ship` 待发货、`shipped` 已发货、`completed` 已完成、`cancelled` 已取消、`unknown` 未知。平台原码由适配器映射，映射不上写 `unknown` |
 | settle_status                       | VARCHAR(16)    | NOT NULL | 结算状态，仅此三值：`none` 不结算、`pending` 待结算、`settled` 已结算。与订单状态分开 |
-| wallet_ledger_id                    | CHAR(26)       | 可空，UNIQUE，FK → wallet_ledger.id | 结算入账后的钱包流水。空=尚未入账。一单至多一条 |
+| wallet_ledger_id                    | CHAR(26)       | 可空，UNIQUE，逻辑关联 → wallet_ledger.id | 结算入账后的钱包流水。空=尚未入账。一单至多一条 |
 | ordered_at                          | TIMESTAMPTZ(3) | 可空       | 平台下单时间                    |
 | shipped_at                          | TIMESTAMPTZ(3) | 可空       | 有则用于「发货了吗」；无则如实说未知        |
 | settled_at                          | TIMESTAMPTZ(3) | 可空       | 写入钱包流水的时间；未结算为空         |
@@ -334,7 +338,7 @@
 | 字段                           | 类型             | 约束                      | 注释                                                                                         |
 | ---------------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
 | id                           | CHAR(26)       | PK                      |                                                                                            |
-| ticket_id                    | CHAR(26)       | NOT NULL，FK → ticket.id | 所属工单                                                                                       |
+| ticket_id                    | CHAR(26)       | NOT NULL，逻辑关联 → ticket.id | 所属工单                                                                                       |
 | kind                         | VARCHAR(32)    | NOT NULL                | `created` | `status_change` | `priority_change` | `evidence` | `reply` | `assignee_change` |
 | actor_type                   | VARCHAR(16)    | NOT NULL                | `user` | `admin` | `system`                                                                |
 | actor_user_id                | CHAR(26)       | 可空                      | 终端用户操作时（建单、证据）                                                                             |
@@ -354,14 +358,14 @@
 
 | 字段               | 类型             | 约束               | 注释      |
 | ---------------- | -------------- | ---------------- | ------- |
-| user_id          | CHAR(26)       | PK，FK → app_user | 一用户一行   |
+| user_id          | CHAR(26)       | PK，逻辑关联 → app_user | 一用户一行   |
 | available_amount | NUMERIC(12,2)  | NOT NULL，默认 0    | 可提现     |
 | frozen_amount    | NUMERIC(12,2)  | NOT NULL，默认 0    | 提现处理中   |
 | total_earned     | NUMERIC(12,2)  | NOT NULL，默认 0    | 累计已入账返佣 |
 | updated_at       | TIMESTAMPTZ(3) | NOT NULL         |         |
 
 
-余额变更必须同时写 `wallet_ledger`，禁止只改钱包行。
+余额合计（`available_amount + frozen_amount`）变化时必须写 `wallet_ledger`。申请提现与拒绝只在可用余额和冻结额之间搬移，合计不变，不写流水。打款成功才减少冻结额并写 `type=withdraw`。
 
 `**wallet_ledger` 流水（不可改历史）**
 
@@ -390,17 +394,19 @@
 | id                         | CHAR(26)       | PK          |                                                    |
 | user_id                    | CHAR(26)       | NOT NULL，FK |                                                    |
 | amount                     | NUMERIC(12,2)  | NOT NULL    | 申请金额，必须为正                                          |
-| status                     | VARCHAR(16)    | NOT NULL    | `pending`                                          |
-| channel                    | VARCHAR(16)    | NOT NULL    | 如 `alipay`（具体渠道上线前再锁）                              |
+| status                     | VARCHAR(16)    | NOT NULL    | 只允许 `pending`、`paid`、`rejected`。`pending` 已冻结；`paid` 打款成功并已扣冻结额；`rejected` 已解冻 |
+| channel                    | VARCHAR(16)    | NOT NULL    | 本功能只允许 `alipay` |
 | payee_account              | VARCHAR(128)   | NOT NULL    | 收款账号（支付宝账号/手机号/邮箱等）；仅服务端与打款使用，日志与 Agent **禁止**完整回显 |
 | account_mask               | VARCHAR(64)    | NOT NULL    | 脱敏展示，由 `payee_account` 生成，如 `138****8000`          |
 | reject_reason              | VARCHAR(256)   | 可空          |                                                    |
+| provider_transfer_id       | VARCHAR(64)    | 可空          | 只在打款成功后保存通道单号。发给通道的幂等号永远是本行 `id`，不从本列读取。失败不写 |
+| paid_at                    | TIMESTAMPTZ(3) | 可空          | 打款成功时刻 |
 | created_at                 | TIMESTAMPTZ(3) | NOT NULL    |                                                    |
 | updated_at                 | TIMESTAMPTZ(3) | NOT NULL    |                                                    |
 | INDEX(user_id, created_at) |                |             |                                                    |
 
 
-提现申请走 App 已登录接口；对话若要提现，先 HITL 确认再调 Java（P1，P0 可用「我的」页）。Admin 审核。
+提现申请走 App 已登录接口。Admin 审核打款或拒绝。申请与拒绝不写 `wallet_ledger`。打款或拒绝前先锁定该用户钱包行，再在同一事务里重读本行；只有仍为 `pending` 才继续。打款成功才写 `wallet_ledger.type=withdraw`。失败保持 `pending` 与冻结额，不写通道单号。已 `paid` 不再打款。已 `rejected` 再次拒绝不重复解冻。
 
 ### 6.15 `app_invite` 邀请关系
 
@@ -480,7 +486,7 @@
 
 | 字段         | 类型             | 约束               | 注释                        |
 | ---------- | -------------- | ---------------- | ------------------------- |
-| user_id    | CHAR(26)       | PK，FK → app_user | 一用户一行；注册时插入 `available=0` |
+| user_id    | CHAR(26)       | PK，逻辑关联 → app_user | 一用户一行；注册时插入 `available=0` |
 | available  | NUMERIC(12,2)  | NOT NULL，默认 0    | 可用积分，两位小数；**禁止为负**        |
 | updated_at | TIMESTAMPTZ(3) | NOT NULL         |                           |
 
@@ -562,7 +568,7 @@
 | user_id                    | CHAR(26)       | NOT NULL，FK   |                                   |
 | conversation_id            | CHAR(26)       | NOT NULL      |                                   |
 | run_id                     | CHAR(26)       | NOT NULL      |                                   |
-| llm_model_id               | CHAR(26)       | 可空，FK → llm_model.id | 本轮命中的模型配置。`local` 走环境变量兜底时为空 |
+| llm_model_id               | CHAR(26)       | 可空，逻辑关联 → llm_model.id | 本轮命中的模型配置。`local` 走环境变量兜底时为空 |
 | model                      | VARCHAR(64)    | NOT NULL      | 厂商模型名，如 `deepseek-chat`；与 `llm_model.model_name` 一致 |
 | prompt_tokens              | INT            | NOT NULL，默认 0 |                                   |
 | completion_tokens          | INT            | NOT NULL，默认 0 |                                   |

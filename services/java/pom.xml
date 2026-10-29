@@ -31,6 +31,11 @@
     <flyway.version>11.3.1</flyway.version>
     <postgresql.version>42.7.5</postgresql.version>
     <druid.version>1.2.24</druid.version>
+    <mybatis-plus.version>3.5.9</mybatis-plus.version>
+    <wechatpay.version>0.2.17</wechatpay.version>
+    <alipay-sdk.version>4.40.1044.ALL</alipay-sdk.version>
+    <lombok.version>1.18.48</lombok.version>
+    <springdoc.version>2.8.5</springdoc.version>
   </properties>
 
   <dependencyManagement>
@@ -54,11 +59,59 @@
         <artifactId>shop-api-common</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        <version>${mybatis-plus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-generator</artifactId>
+        <version>${mybatis-plus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.wechatpay-apiv3</groupId>
+        <artifactId>wechatpay-java</artifactId>
+        <version>${wechatpay.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.alipay.sdk</groupId>
+        <artifactId>alipay-sdk-java</artifactId>
+        <version>${alipay-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.nimbusds</groupId>
+        <artifactId>nimbus-jose-jwt</artifactId>
+        <version>9.47</version>
+      </dependency>
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>

@@ -2,7 +2,17 @@
 
 > 本文件是管理后台 HTTP 契约的权威正文。浏览器 Cookie 会话；Java 作 RP 对接 omino-sso（Authorization Code + PKCE S256）。禁止自建管理员密码表。信封见 `AGENTS.md` §5。页面见 [`admin-ui.md`](./admin-ui.md)。表见 [`data-model.md`](./data-model.md)。
 
-SSO 登录/回调/登出路径实现前须先写入本文（尚未锁路径）。
+## 会话
+
+浏览器只访问 Admin 进程。授权码在 Java 内交换。响应与日志不出现 access_token、refresh_token、id_token。Cookie 名 `sid_admin`，`HttpOnly`、`SameSite=Lax`，生产 `Secure`。不要用 `sid`。令牌只留在服务端会话。`SSO_REDIRECT_URI` 必须包含上下文路径，例如 `http://127.0.0.1:8082/api/admin/v1/auth/callback`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/auth/login` | 无会话时 302 到 omino-sso 授权端点。PKCE 仅 S256。已有会话则 302 到登录后的后台入口 |
+| GET | `/api/admin/v1/auth/callback` | 校验 state，用授权码换令牌，建立 `sid_admin`。失败不发会话 cookie |
+| POST | `/api/admin/v1/auth/logout` | 清本地会话，再引导浏览器到 IdP `/logout`。不把 `end_session` 当作唯一步骤 |
+
+未登录访问 `/api/admin/v1/**` 业务路径：HTTP `401`，信封 `code` 为 `40100`，`data` 为 null。`GET /api/admin/actuator/health` 不套信封，不要求会话。不建管理员密码表。
 
 ## 用户
 
@@ -62,6 +72,16 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 | GET | `/api/admin/v1/orders/{id}` | 单行全字段（运营可见列，见 [`data-model.md`](./data-model.md) §6.8） |
 
 结算只由订单同步写入钱包，本接口不提供「手动结算」。
+
+## 返佣提现
+
+金额为字符串、两位小数。列表只返回 `accountMask`。`channel` 只能是 `alipay`。未登录按会话一节返回 HTTP `401`、`code` `40100`。打款失败不是 `50010`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/withdrawals` | 分页。query：`userId`、`status`、`page`、`size` |
+| POST | `/api/admin/v1/withdrawals/{id}/payout` | 仅 `pending` 会打款。成功则 `paid` 并写一条 `wallet_ledger.type=withdraw`。失败则仍是 `pending`，冻结额不动，响应 `code` 仍为 `0`，`message` 为「打款未成功，冻结额未动」，`data.payoutResult` 为 `failed`。已 `paid` 的再次调用不再打款 |
+| POST | `/api/admin/v1/withdrawals/{id}/reject` | body：`reason`。仅 `pending` 会解冻并变为 `rejected`。已拒绝再调用保持 `rejected` |
 
 ## 新对话推荐问题
 

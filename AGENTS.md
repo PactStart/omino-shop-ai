@@ -70,16 +70,19 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | Redis                    | `org.springframework.boot:spring-boot-starter-data-redis`     | 随 Boot `3.4.11` | 商品短缓存、限流、SSE 连接锁                                                                   |
 | JSON                     | `com.fasterxml.jackson.core:jackson-databind`                 | 随 Boot          | 禁止再引入 Fastjson                                                                     |
 | 校验                       | `spring-boot-starter-validation`                              | 随 Boot          |                                                                                    |
-| OpenAPI                  | `org.springdoc:springdoc-openapi-starter-webmvc-ui`           | `2.8.5`         | `/api/app/v3/api-docs` 与 `/api/admin/v3/api-docs`                                  |
+| OpenAPI                  | `org.springdoc:springdoc-openapi-starter-webmvc-ui`           | `2.8.5`         | 两个产出物都要能打开文档：`/api/app/v3/api-docs`、`/api/app/swagger-ui.html` 与 Admin 对应路径。Controller 的每个映射方法必须有 `@Operation`，类上有 `@Tag`。文档路径不要求登录 |
 | 安全（APP）                  | `spring-boot-starter-security` + Nimbus JWT                   | 随 Boot / `9.47` | APP JWT                                                                            |
 | 安全（Admin）                | Spring Security OAuth2 Client                                 | 随 Boot          | 对接 omino-sso                                                                       |
 | 迁移                       | `org.flywaydb:flyway-core` + `flyway-database-postgresql`     | `11.3.1`        | 唯一 schema 变更方式                                                                     |
 | 定时                       | `spring-boot-starter-quartz`                                  | 随 Boot          | 订单增量同步（本阶段不用 XXL-JOB）                                                              |
 | 测试                       | `spring-boot-starter-test`                                    | 随 Boot          | JUnit 5                                                                            |
-| Lombok                   | `org.projectlombok:lombok`                                    | `1.18.36`       | 可选，禁止用在对外 DTO 的 Jackson 可见性上含糊其辞                                                   |
+| Lombok                   | `org.projectlombok:lombok`                                    | `1.18.48`       | 实体必须用 `@Getter` `@Setter`，禁止手写 getter/setter，禁止 `@Data`。对外 DTO 若使用 Lombok，Jackson 必须能通过访问器读到字段。由 `1.18.36` 升到 `1.18.48`：前者的注解处理器在 JDK 25 上初始化失败（`TypeTag :: UNKNOWN`），而本机没有 JDK 21。语言级别仍是 21。只用 Getter/Setter，不用 `@Data`、`@Builder`、`@SneakyThrows` |
 | Spring Cloud BOM         | `org.springframework.cloud:spring-cloud-dependencies`         | `2024.0.1`      | 与 Boot `3.4.11` 对齐；**仅**给 Nacos Config 用                                           |
 | Spring Cloud Alibaba BOM | `com.alibaba.cloud:spring-cloud-alibaba-dependencies`         | `2023.0.1.2`    | 官方 2025.x 绑 Boot 3.5，不用。本坐标在 Boot 3.4 + Cloud 2024.0 上可用（只开 Config）                |
 | Nacos Config             | `com.alibaba.cloud:spring-cloud-starter-alibaba-nacos-config` | 随 SCA BOM       | 运营热配置；**禁止**引入 Discovery / Sentinel / Seata / RocketMQ；**禁止**因本依赖把 Fastjson 写进业务代码 |
+| DAO XML 生成器              | `com.baomidou:mybatis-plus-generator`                         | `3.5.9`         | 只生成 Mapper 接口与 XML。不生成 Entity、Service、Controller。只放 test 范围，不进两个可运行 jar。不用它的 Service 模板。Apache-2.0 |
+| 微信支付                     | `com.github.wechatpay-apiv3:wechatpay-java`                   | `0.2.17`        | 只用 APIv3 下单与回调验签。不用于向用户打款，不带入示例商户站点。Apache-2.0。只进 `shop-api-app` |
+| 支付宝                      | `com.alipay.sdk:alipay-sdk-java`                              | `4.40.1044.ALL` | 回调验签（APP）与单笔转账（Admin）。不引第二个支付宝库。Apache-2.0。若依赖树抬高已锁定版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x` |
 
 
 Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`shop-api-admin`。两个 Spring Boot 主类打两个 fat jar。parent 的 `dependencyManagement` 导入上述两个 BOM。
@@ -610,7 +613,7 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 
 ## 7. 架构约束
 
-### 7.1 必须遵守（6）
+### 7.1 必须遵守（11）
 
 1. **一套 Java，两个产出物**：公共逻辑只放 `shop-api-common`；APP 与 Admin **不得**互相 import 对方模块。对外前缀只有 `/api/app` 与 `/api/admin`；`/internal/v1` 仅挂在 app 进程，**不是**第三产出物。
 2. **mall-guide 只读参考**：允许阅读搜品/详情/转链/订单游标；**禁止**复制源码、Mapper、表名、包名。
@@ -618,6 +621,11 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 4. **密钥与转链只在 Java**：联盟密钥、PID、relationId 只在 Java 环境变量。对话 **POST 开 run → Worker 调 Agent → 事件入 Redis → GET SSE 泵出**；Tool 只调 `/internal/v1`。点击后再转链。断开 SSE 不得打断生成。邀请海报由 **客户端** 贴码，Java 只存模板与矩形。
 5. **主库唯一 PostgreSQL+pgvector**；商品不落全量库。意图用 [`conversation.md`](docs/conversation.md) 点分枚举；导购与客服同图分流。Langfuse `traceId` 贯穿。新行为先改对应权威文档再测试再实现。
 6. **先检索再实现，禁止盲目造轮子**：遇到不熟悉的能力（SSE、OIDC、向量检索、OSS 直传、验证码、联盟 SDK 封装等），**不要**立刻从零手写协议/编解码/会话机。先在 GitHub 检索维护活跃（近 12 个月有提交或 issue 响应）、许可证明确（MIT / Apache-2.0 / BSD；**拒绝 GPL / AGPL**）、star 与生态匹配的同类项目，优先引入或对照其用法适配本仓库。引入依赖须先改本文件 §2 锁定**精确版本**并说明用哪部分、不用哪部分；不得与已锁版本冲突。本条**不**授权复制 `mall-guide` 源码。
+7. **实体用 Lombok**：`entity` 上的持久化类必须用 Lombok `@Getter` 与 `@Setter`，需要无参构造时加 `@NoArgsConstructor`。禁止手写 getter/setter，禁止 `@Data`。对外 DTO 若使用 Lombok，Jackson 必须能通过访问器读到字段。
+8. **不建数据库外键**：表与表之间不建数据库外键。关联列只保存对方主键，由应用在事务里校验存在性与一致性。允许 `CHECK`、唯一约束和索引。
+9. **枚举字段用枚举类型**：实体上的枚举字段必须定义 Java 枚举，业务代码使用枚举常量，禁止用裸数字或散落字符串表示同一取值。库存仍是约定的字符串或 `0`/`1`，用 MyBatis-Plus `@EnumValue` 映射，不把枚举名写入数据库。数量、排序、版本号、token 数、像素和超时不是枚举。
+10. **Controller 必须有 OpenAPI**：每个映射方法必须有 `@Operation`，类上有 `@Tag`。APP 与 Admin 都提供可访问的 `/v3/api-docs` 与 Swagger UI。文档路径不要求登录，也不被客户端头拦截。
+11. **注释**：除 mapper（DAO 接口与 XML）外，类和函数都要有 Javadoc，只有一两行的简单逻辑可以不写。多步事务、状态机、验签和分支在关键步骤写行注释，说明这一步在保证什么。注释写意图，不重复方法名。
 
 ### 7.2 非目标 / 本阶段不做（7）
 
