@@ -1,0 +1,10 @@
+# 本功能不连接 Nacos：NACOS_CONFIG_ENABLED=false，不写 spring.config.import
+spring:
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:127.0.0.1}:${PG_PORT:5432}/${PG_DATABASE:omino_shop_ai}
+    username: ${PG_USERNAME:omino}
+    password: ${PG_PASSWORD:omino-local}
+    driver-class-name: org.postgresql.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+  flyway:
+    enabled: true

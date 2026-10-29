@@ -132,6 +132,7 @@ Agent 对外只提供内网接口（[`docs/api-internal.md`](docs/api-internal.m
 | compileSdk / targetSdk | `35`                                                   |                                  |
 | minSdk                 | `26`                                                   |                                  |
 | UI                     | Jetpack Compose BOM `2024.12.01`                       | Material 3；页面对齐 `docs/app-ui.md` |
+| Activity               | `androidx.activity:activity-compose` `1.9.3`           | 空壳把 Compose 挂到 Activity。只用 `setContent` |
 | 网络                     | OkHttp `4.12.0` + Retrofit `2.11.0`                    | SSE 用 OkHttp 事件源；禁止再引一套 HTTP 栈   |
 | JSON                   | kotlinx-serialization-json `1.7.3`                     |                                  |
 | 安全存储                   | AndroidX Security Crypto `1.1.0-alpha06`（引入前若升稳定版须改本表） | refresh token                    |
@@ -166,6 +167,7 @@ Sign in with Apple 用 AuthenticationServices。微信为开放平台 **iOS 应�
 | --- | ------------------------- | -------- | --------------------------------------------------------------------------- |
 | 框架  | `vue`                     | `3.5.13` |                                                                             |
 | 构建  | `vite`                    | `6.3.5`  |                                                                             |
+| Vue 插件 | `@vitejs/plugin-vue`      | `5.2.4`  | 编译 `.vue`。peer 含 Vite `^6`。不用它的 SSR                              |
 | 语言  | `typescript`              | `5.7.2`  | `strict: true`                                                              |
 | 路由  | `vue-router`              | `4.5.0`  |                                                                             |
 | 状态  | `pinia`                   | `2.3.0`  |                                                                             |
@@ -192,7 +194,7 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 
 ### 2.4.2 消费者 H5（`apps/h5`，与原生 APP 同契约）
 
-与 Admin **同族** vue / vite / typescript / vue-router / pinia / axios 锁定版本。**禁止** Element Plus。样式跟 [`docs/app-ui.md`](docs/app-ui.md)：Tailwind CSS `4.1.0`（MIT）+ shadcn/ui 的 Token/组件套路（按需拷贝 Vue 实现，不引入第二套组件库）。页面、路由 ID、SSE 事件与原生一致。
+与 Admin **同族** vue / vite / typescript / vue-router / pinia / axios 锁定版本。**禁止** Element Plus。样式跟 [`docs/app-ui.md`](docs/app-ui.md)：Tailwind CSS `4.1.0`（MIT）与 Vite 插件 `@tailwindcss/vite` `4.1.0`（只把 Tailwind 接进 Vite）+ shadcn/ui 的 Token/组件套路（按需拷贝 Vue 实现，不引入第二套组件库）。页面、路由 ID、SSE 事件与原生一致。
 
 | 项 | 规定 |
 | --- | --- |

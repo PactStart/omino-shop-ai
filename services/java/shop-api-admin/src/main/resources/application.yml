@@ -1,0 +1,16 @@
+server:
+  port: ${SERVER_PORT:8082}
+  servlet:
+    context-path: /api/admin
+
+spring:
+  application:
+    name: shop-api-admin
+  profiles:
+    active: ${APP_ENV:local}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

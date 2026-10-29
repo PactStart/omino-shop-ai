@@ -25,7 +25,7 @@
 
 **Purpose**: 防止本机环境文件被提交
 
-- [ ] T001 在 `.gitignore` 增加 `deploy/env/local.env`，保留 `deploy/env/local.env.example` 可提交
+- [X] T001 在 `.gitignore` 增加 `deploy/env/local.env`，保留 `deploy/env/local.env.example` 可提交
 
 ---
 
@@ -33,7 +33,7 @@
 
 **Purpose**: 所有要读环境变量的故事共用这一份示例。完成前不要写编排和 Java 配置。
 
-- [ ] T002 编写 `deploy/env/local.env.example`，只放本机占位值：`PG_HOST`、`PG_PORT`、`PG_DATABASE`、`PG_USERNAME`、`PG_PASSWORD`、`REDIS_HOST`、`REDIS_PORT`、`NACOS_SERVER_ADDR=127.0.0.1:8848`、`NACOS_CONFIG_ENABLED=false`、`LANGFUSE_HOST=http://127.0.0.1:3100`、`NEXTAUTH_URL=http://127.0.0.1:3100`、`NEXTAUTH_SECRET`、`SALT`、`ENCRYPTION_KEY`（64 位十六进制占位）。不得写入生产密钥
+- [X] T002 编写 `deploy/env/local.env.example`，只放本机占位值：`PG_HOST`、`PG_PORT`、`PG_DATABASE`、`PG_USERNAME`、`PG_PASSWORD`、`REDIS_HOST`、`REDIS_PORT`、`NACOS_SERVER_ADDR=127.0.0.1:8848`、`NACOS_CONFIG_ENABLED=false`、`LANGFUSE_HOST=http://127.0.0.1:3100`、`NEXTAUTH_URL=http://127.0.0.1:3100`、`NEXTAUTH_SECRET`、`SALT`、`ENCRYPTION_KEY`（64 位十六进制占位）。不得写入生产密钥
 
 **Checkpoint**: 示例文件可被复制为 `deploy/env/local.env`，且该副本被 Git 忽略
 
@@ -47,9 +47,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] 在 `deploy/docker-compose.local.yml` 写 `postgres`（镜像 `pgvector/pgvector:pg16`）和 `redis`（镜像 `redis:7.4-alpine`），口令来自 `deploy/env/local.env.example` 的变量名
-- [ ] T004 [US1] 在 `deploy/docker-compose.local.yml` 增加 `nacos`：镜像 `nacos/nacos-server:v2.4.3`，`MODE=standalone`，`NACOS_AUTH_ENABLE=false`，`JVM_XMS=256m`，`JVM_XMX=256m`，发布 `8848` 与 `9848`，不设置 MySQL 数据源
-- [ ] T005 [US1] 在 `deploy/docker-compose.local.yml` 增加 `langfuse-db`（镜像 `postgres:16-alpine`，独立卷）和 `langfuse-web`（镜像 `langfuse/langfuse:2`，`3100:3000`，`NEXTAUTH_URL=http://127.0.0.1:3100`，库地址指向 `langfuse-db`）
+- [X] T003 [US1] 在 `deploy/docker-compose.local.yml` 写 `postgres`（镜像 `pgvector/pgvector:pg16`）和 `redis`（镜像 `redis:7.4-alpine`），口令来自 `deploy/env/local.env.example` 的变量名
+- [X] T004 [US1] 在 `deploy/docker-compose.local.yml` 增加 `nacos`：镜像 `nacos/nacos-server:v2.4.3`，`MODE=standalone`，`NACOS_AUTH_ENABLE=false`，`JVM_XMS=256m`，`JVM_XMX=256m`，发布 `8848` 与 `9848`，不设置 MySQL 数据源
+- [X] T005 [US1] 在 `deploy/docker-compose.local.yml` 增加 `langfuse-db`（镜像 `postgres:16-alpine`，独立卷）和 `langfuse-web`（镜像 `langfuse/langfuse:2`，`3100:3000`，`NEXTAUTH_URL=http://127.0.0.1:3100`，库地址指向 `langfuse-db`）
 
 **Checkpoint**: 编排里没有 MySQL。商品主库与 Langfuse 库不是同一个服务
 
@@ -63,15 +63,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T006 [US2] 先写失败测试 `services/java/shop-api-common/src/test/java/com/omino/shopai/api/ApiResponseTest.java`，断言成功 JSON 同时含 `code`（数字 0）、`message`、`data`、`traceId`、`ts`
+- [X] T006 [US2] 先写失败测试 `services/java/shop-api-common/src/test/java/com/omino/shopai/api/ApiResponseTest.java`，断言成功 JSON 同时含 `code`（数字 0）、`message`、`data`、`traceId`、`ts`
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] 编写 `services/java/pom.xml`：JDK 21、Spring Boot `3.4.11`，`dependencyManagement` 导入 Spring Cloud BOM `2024.0.1` 与 Spring Cloud Alibaba BOM `2023.0.1.2`，模块为 `shop-api-common`、`shop-api-app`、`shop-api-admin`。本功能不声明 Nacos starter
-- [ ] T008 [US2] 实现 `services/java/shop-api-common/src/main/java/com/omino/shopai/api/ApiResponse.java` 与 `services/java/shop-api-common/pom.xml`，使 T006 通过
-- [ ] T009 [US2] 添加 `services/java/shop-api-common/src/main/resources/db/migration/V1__enable_pgvector.sql`，内容只有 `CREATE EXTENSION IF NOT EXISTS vector`。放在 common，使两个应用都能看见脚本，又不必互相依赖
-- [ ] T010 [P] [US2] 创建 `services/java/shop-api-app/`：`pom.xml` 只依赖 `shop-api-common`（含 Web、Actuator、Flyway `11.3.1`、PostgreSQL 驱动 `42.7.5`、Druid `1.2.24`），`AppApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8081，context-path `/api/app`，`NACOS_CONFIG_ENABLED` 对应关闭，不写 `spring.config.import`）
-- [ ] T011 [P] [US2] 创建 `services/java/shop-api-admin/`：`pom.xml` 只依赖 `shop-api-common`，不得依赖 `shop-api-app`，`AdminApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8082，context-path `/api/admin`，同样不连接 Nacos）
+- [X] T007 [US2] 编写 `services/java/pom.xml`：JDK 21、Spring Boot `3.4.11`，`dependencyManagement` 导入 Spring Cloud BOM `2024.0.1` 与 Spring Cloud Alibaba BOM `2023.0.1.2`，模块为 `shop-api-common`、`shop-api-app`、`shop-api-admin`。本功能不声明 Nacos starter
+- [X] T008 [US2] 实现 `services/java/shop-api-common/src/main/java/com/omino/shopai/api/ApiResponse.java` 与 `services/java/shop-api-common/pom.xml`，使 T006 通过
+- [X] T009 [US2] 添加 `services/java/shop-api-common/src/main/resources/db/migration/V1__enable_pgvector.sql`，内容只有 `CREATE EXTENSION IF NOT EXISTS vector`。放在 common，使两个应用都能看见脚本，又不必互相依赖
+- [X] T010 [P] [US2] 创建 `services/java/shop-api-app/`：`pom.xml` 只依赖 `shop-api-common`（含 Web、Actuator、Flyway `11.3.1`、PostgreSQL 驱动 `42.7.5`、Druid `1.2.24`），`AppApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8081，context-path `/api/app`，`NACOS_CONFIG_ENABLED` 对应关闭，不写 `spring.config.import`）
+- [X] T011 [P] [US2] 创建 `services/java/shop-api-admin/`：`pom.xml` 只依赖 `shop-api-common`，不得依赖 `shop-api-app`，`AdminApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8082，context-path `/api/admin`，同样不连接 Nacos）
 
 **Checkpoint**: 两个进程健康检查不需要登录、联盟密钥或 SSO。Actuator 正文不使用业务信封
 
@@ -85,12 +85,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T012 [US3] 先写失败测试 `services/agent/tests/test_health.py`，请求 `/health` 时期望 HTTP 200 且正文为 `{"status":"ok"}`
+- [X] T012 [US3] 先写失败测试 `services/agent/tests/test_health.py`，请求 `/health` 时期望 HTTP 200 且正文为 `{"status":"ok"}`
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] 编写 `services/agent/pyproject.toml`，锁定 `fastapi` `0.115.6`、`uvicorn` `0.34.0`、`pydantic` `2.10.4`、`pytest` `8.3.4`。不要加入 `langfuse` 包
-- [ ] T014 [US3] 实现 `services/agent/app/main.py` 的 `GET /health`，使 T012 通过。启动命令绑定 `--host 127.0.0.1`，不提供对话路由
+- [X] T013 [US3] 编写 `services/agent/pyproject.toml`，锁定 `fastapi` `0.115.6`、`uvicorn` `0.34.0`、`pydantic` `2.10.4`、`pytest` `8.3.4`。不要加入 `langfuse` 包
+- [X] T014 [US3] 实现 `services/agent/app/main.py` 的 `GET /health`，使 T012 通过。启动命令绑定 `--host 127.0.0.1`，不提供对话路由
 
 **Checkpoint**: 不启动 Java 也能单独验收 Agent
 
@@ -104,10 +104,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T015 [P] [US4] 创建 `apps/admin-web/`（`package.json`、`vite.config.ts`、`index.html`、`src/main.ts`、`src/App.vue`）。Vue `3.5.13`、Vite `6.3.5`、TypeScript `5.7.2`、Vue Router `4.5.0`、Pinia `2.3.0`、Element Plus `2.9.1`、axios `1.7.9`。端口 5173。`App.vue` 只有空页面
-- [ ] T016 [P] [US4] 创建 `apps/h5/`，同样的 Vue 工具链，外加 Tailwind CSS `4.1.0`，不要 Element Plus。端口 5177。`src/App.vue` 只有空页面
-- [ ] T017 [P] [US4] 创建 `apps/www/`，使用 Vue、Vite、TypeScript、Vue Router，不要 Element Plus，不要 Pinia。端口 5175。`src/App.vue` 只有空页面
-- [ ] T018 [P] [US4] 创建 `apps/land/`，依赖范围同 `apps/www`。端口 5176。`src/App.vue` 只有空页面，不要邀请业务页
+- [X] T015 [P] [US4] 创建 `apps/admin-web/`（`package.json`、`vite.config.ts`、`index.html`、`src/main.ts`、`src/App.vue`）。Vue `3.5.13`、Vite `6.3.5`、TypeScript `5.7.2`、Vue Router `4.5.0`、Pinia `2.3.0`、Element Plus `2.9.1`、axios `1.7.9`。端口 5173。`App.vue` 只有空页面
+- [X] T016 [P] [US4] 创建 `apps/h5/`，同样的 Vue 工具链，外加 Tailwind CSS `4.1.0`，不要 Element Plus。端口 5177。`src/App.vue` 只有空页面
+- [X] T017 [P] [US4] 创建 `apps/www/`，使用 Vue、Vite、TypeScript、Vue Router，不要 Element Plus，不要 Pinia。端口 5175。`src/App.vue` 只有空页面
+- [X] T018 [P] [US4] 创建 `apps/land/`，依赖范围同 `apps/www`。端口 5176。`src/App.vue` 只有空页面，不要邀请业务页
 
 **Checkpoint**: 四个开发服务器可以同时开，端口互不冲突
 
@@ -121,8 +121,8 @@
 
 ### Implementation for User Story 5
 
-- [ ] T019 [P] [US5] 创建 `apps/android/`：Kotlin `2.1.10`、AGP `8.7.3`、compileSdk 35、minSdk 26、Compose BOM `2024.12.01`，`applicationId` 为 `com.omino.shopai`。只保留一个空 Activity，使 `:app:assembleDebug` 通过
-- [ ] T020 [P] [US5] 创建 `apps/ios/` 的 SwiftUI 工程，Swift `6.0`，最低 iOS 17，Bundle ID `com.omino.shopai`。不要 Flutter、React Native 或 KMP
+- [X] T019 [P] [US5] 创建 `apps/android/`：Kotlin `2.1.10`、AGP `8.7.3`、compileSdk 35、minSdk 26、Compose BOM `2024.12.01`，`applicationId` 为 `com.omino.shopai`。只保留一个空 Activity，使 `:app:assembleDebug` 通过
+- [X] T020 [P] [US5] 创建 `apps/ios/` 的 SwiftUI 工程，Swift `6.0`，最低 iOS 17，Bundle ID `com.omino.shopai`。不要 Flutter、React Native 或 KMP
 
 **Checkpoint**: 原生工程不调用购物或登录接口
 
@@ -132,8 +132,8 @@
 
 **Purpose**: 把已能执行的命令写进 README，并按 quickstart 做一次总验收
 
-- [ ] T021 编写 `README.md`，只复述本功能已提供的命令：复制 `deploy/env/local.env.example`、编排五个服务、两个 Java 进程、Agent、四个 `npm run dev`、Android 调试构建、打开 iOS 工程。不要写登录、对话或联盟步骤
-- [ ] T022 按 `specs/001-scaffold/quickstart.md` 做一次总验收，确认健康检查、Nacos、Langfuse、编译和空壳都符合 `specs/001-scaffold/contracts/health.md`
+- [X] T021 编写 `README.md`，只复述本功能已提供的命令：复制 `deploy/env/local.env.example`、编排五个服务、两个 Java 进程、Agent、四个 `npm run dev`、Android 调试构建、打开 iOS 工程。不要写登录、对话或联盟步骤
+- [X] T022 按 `specs/001-scaffold/quickstart.md` 做一次总验收，确认健康检查、Nacos、Langfuse、编译和空壳都符合 `specs/001-scaffold/contracts/health.md`
 
 ---
 
