@@ -2,9 +2,9 @@
 
 > **本文件不是产品规范。** 字段、路径、意图、SSE、表结构以 [`AGENTS.md`](../AGENTS.md) 与 `docs/conversation.md`、`docs/api-*.md`、`docs/data-model.md`、`docs/app-ui.md`、`docs/admin-ui.md`、`docs/agent.md` 为准。
 >
-> **一次只做下面 7 个 feat 里的一个。** 不要把整份 `AGENTS.md` 丢进 `/speckit-specify`。不要对同一功能再跑 OpenSpec（`/opsx-*`）。
+> **一次只做下面 8 个 feat 里的一个。** 不要把整份 `AGENTS.md` 丢进 `/speckit-specify`。不要对同一功能再跑 OpenSpec（`/opsx-*`）。
 >
-> 原先 F01–F24 的竖切收进这 7 个 feat。feat 里面的「切片」只是 `tasks.md` 的施工顺序，**不再各开一次 Spec Kit**。
+> 原先 F01–F24 的竖切收进这些 feat。feat 里面的「切片」只是 `tasks.md` 的施工顺序，**不再各开一次 Spec Kit**。
 
 ---
 
@@ -40,40 +40,42 @@
 
 若 `.specify/memory/constitution.md` 仍是模板，在 **feat 1 开工前**先改完，对齐 `AGENTS.md` §7。这一步不单独占一个 feat，也不跑 `/speckit-specify`。
 
-**依赖：** 未勾选「依赖」完成前，禁止开下一个 feat 的 specify。feat 7 例外，见下表。
+**依赖：** 未勾选「依赖」完成前，禁止开下一个 feat 的 specify。feat 8 例外，见下表。
 
 ---
 
-## 2. 七个 feat
+## 2. 八个 feat
 
-按端切，不按每个接口切。Java 的 HTTP 全部在 feat 2；管理后台页面在 feat 3。Agent 只消费 Java 已有的 `/internal/v1`。H5 是消费者端验收面。iOS 与 Android 同一套页面契约，放在同一个 feat，不另开第 8 个。
+按端切，不按每个接口切。Java 的 HTTP 全部在 feat 2；真实联盟出站只在 feat 3。管理后台页面在 feat 4。Agent 只消费 Java 已有的 `/internal/v1`，不直连联盟。H5 是消费者端验收面。iOS 与 Android 同一套页面契约，放在同一个 feat，不把 Android 再拆出去。
 
 | # | slug | 名称 | 依赖 | 用户能看到什么 |
 | --- | --- | --- | --- | --- |
 | 1 | `001-scaffold` | 搭建项目骨架，空跑 | constitution 已不是模板 | 本地 compose、两个 Java health、Agent health、各端空壳能启动 |
 | 2 | `002-java-api` | Java 端 | feat 1 | APP / Admin / internal 的 HTTP 与表、同步、扣费、结算可用 curl 或测试打通 |
-| 3 | `003-admin-web` | 后台管理页面 | feat 2 | 运营用 SSO 登录，按 `admin-ui.md` 操作已有接口 |
-| 4 | `004-agent` | Python Agent | feat 2 | 一句购物话得到意图、商品卡或合集卡；授权 HITL；查单与账户数字来自 Java |
-| 5 | `005-h5` | 消费者 H5 | feat 2、feat 4 | 手机号登录后走完 `app-ui.md` 的 H5 页面 |
-| 6 | `006-ios` | iOS（Android 同契约） | feat 2、feat 5 的页面契约 | iOS 与 Android 原生对话、详情、订单、我的；不验收上架 |
-| 7 | `007-www-land` | 官网与落地页 | feat 1；落地页邀请预览依赖 feat 2 的公开字段 | `apps/www` 品牌页，`apps/land` 的 `/i/{inviteCode}` 与 `/download` |
+| 3 | `003-union-sdk` | 官方联盟 SDK | feat 2 | 四个平台能真实搜品、看详情、转链、按游标拉订单 |
+| 4 | `004-admin-web` | 后台管理页面 | feat 3 | 运营用 SSO 登录，按 `admin-ui.md` 操作已有接口 |
+| 5 | `005-agent` | Python Agent | feat 3 | 一句购物话得到意图、商品卡或合集卡；授权 HITL；查单与账户数字来自 Java |
+| 6 | `006-h5` | 消费者 H5 | feat 5 | 手机号登录后走完 `app-ui.md` 的 H5 页面 |
+| 7 | `007-ios` | iOS（Android 同契约） | feat 6 的页面契约 | iOS 与 Android 原生对话、详情、订单、我的；不验收上架 |
+| 8 | `008-www-land` | 官网与落地页 | feat 1；落地页邀请预览依赖 feat 2 的公开字段 | `apps/www` 品牌页，`apps/land` 的 `/i/{inviteCode}` 与 `/download` |
 
 ```
 feat 1 骨架
   → feat 2 Java
-       → feat 3 管理页面
-       → feat 4 Agent
-            → feat 5 H5
-                 → feat 6 iOS + Android
-feat 1 完成后，feat 7 的官网可以并行；落地页若要调公开预览，等 feat 2 对应接口。
+       → feat 3 官方联盟 SDK
+            → feat 4 管理页面
+            → feat 5 Agent
+                 → feat 6 H5
+                      → feat 7 iOS + Android
+feat 1 完成后，feat 8 的官网可以并行；落地页若要调公开预览，等 feat 2 对应接口。
 ```
 
 feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到后一切片：
 
 1. 信封、`app_user` / `inviter_id`、手机号验证码登录（local 可 mock）、JWT。
-2. 对话 run：POST turns、Redis Stream、SSE 泵、cancel。Worker 在 feat 4 接上之前可以写符合事件名的假事件。
+2. 对话 run：POST turns、Redis Stream、SSE 泵、cancel。Worker 在 feat 5 接上之前可以写符合事件名的假事件。
 3. 商品详情、瘦快照（含销量、评价数、商品链接）、转链门闩、浏览 / 收藏 / 合集。
-4. 淘宝、京东、拼多多、唯品会四个适配器。密钥只在环境变量。
+4. 淘宝、京东、拼多多、唯品会四个适配器壳。密钥只在环境变量。真实出站不在本 feat，见 feat 3。
 5. 订单游标同步、`order_status` / `settle_status`、完成单给下单用户写一条钱包流水、提现。
 6. 积分账户、套餐、微信 / 支付宝 / 钱包余额支付；扣费只在 Java。
 7. 邀请关系与海报模板数据（只下发模板和矩形）。
@@ -132,12 +134,32 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 权威：AGENTS.md §2.1 §5 §7，docs/data-model.md，docs/api-app.md，docs/api-admin.md，docs/api-internal.md，docs/conversation.md。
 ```
 
-### feat 3 — 后台管理页面
+### feat 3 — 官方联盟 SDK
 
 **Specify 粘贴稿：**
 
 ```text
-功能：管理后台页面（003-admin-web）。只做 apps/admin-web，调用 feat 2 已有的 /api/admin。
+功能：四个平台的官方联盟 SDK（003-union-sdk）。feat 2 只留了适配器壳，有密钥也会返回 50010。本功能改成真实出站。页面和 Agent 图不在本功能。
+
+做：
+- 只在 adapter.platform 调用。淘宝、京东、拼多多、唯品会各自接官方 SDK，做搜品、详情、转链、订单游标增量。订单增量沿用 feat 2 的游标，与入账同一事务。未授权转链仍是 40301 NEED_AUTH。上游失败或密钥为空仍是 50010。不做美团，不新增平台码。
+- 引入任何官方包之前，先改 AGENTS.md §2，锁定精确坐标和版本，写明用哪一部分。这些 jar 不在 Maven Central。
+- 官方 jar 从 mall-guide 的 sdks 目录复制到 services/java/sdks，只复制 jar 与随包 pom，不复制 mall-guide 的源码、封装类和调用代码。五份坐标：com.taobao:taobao-sdk-java:20250925（含 sources jar）、com.jd:open-api-sdk:20250925、com.pdd:pop-sdk:1.10.16、com.vip:vop-sdk:20250214094310、com.vip:osp-sdk:20250214094310。
+- 在 services/java/sdks 提供两条命令：一条用 mvn install:install-file 装进本机 Maven 仓库；一条用 mvn deploy:deploy-file 上传到私有仓库。私有仓库的地址和口令不进 Git，从操作者自己的 settings.xml 读取。
+- 未知销量、评价数仍为空，不要写成 0。响应和日志不含密钥与 PID。
+
+不做：页面、LangGraph、新平台码、服务端合成海报、复制 mall-guide 的源码与调用代码、大淘客、把私有仓库口令写进仓库。
+
+验收：五个 jar 在 services/java/sdks。一条命令能装进本地 Maven，一条命令能传到私有仓库，仓库里没有口令。四个平台在测试密钥下，搜品、详情、转链、订单增量都能打到官方；没配密钥时仍是 50010，且不发出站请求。抽查响应无 PID、无密钥。重复同步不双写入账。
+权威：AGENTS.md §2 §7 §9，docs/api-app.md，docs/api-internal.md，docs/data-model.md。
+```
+
+### feat 4 — 后台管理页面
+
+**Specify 粘贴稿：**
+
+```text
+功能：管理后台页面（004-admin-web）。只做 apps/admin-web，调用 feat 2 已有的 /api/admin。
 
 做：
 - Vue 3 + Vite + TypeScript + Pinia + Vue Router + Element Plus，版本以 AGENTS.md §2.4 为准。
@@ -151,12 +173,12 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 权威：docs/admin-ui.md，docs/api-admin.md，AGENTS.md §2.4。
 ```
 
-### feat 4 — Python Agent
+### feat 5 — Python Agent
 
 **Specify 粘贴稿：**
 
 ```text
-功能：Python Agent（004-agent）。Java 的 run/SSE 已在 feat 2。本功能把 Worker 的假事件换成真正的图。
+功能：Python Agent（005-agent）。Java 的 run/SSE 已在 feat 2。本功能把 Worker 的假事件换成真正的图。
 
 做：
 - 一张 StateGraph，节点与边按 docs/agent.md。意图枚举与 SSE 事件名按 docs/conversation.md。Tool 只打 Java /internal/v1，白名单按 docs/api-internal.md。
@@ -172,12 +194,12 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 权威：docs/agent.md，docs/conversation.md，docs/api-internal.md。
 ```
 
-### feat 5 — 消费者 H5
+### feat 6 — 消费者 H5
 
 **Specify 粘贴稿：**
 
 ```text
-功能：消费者 H5（005-h5）。apps/h5，与原生共用 docs/app-ui.md 的页面 ID、路由和 SSE 事件。
+功能：消费者 H5（006-h5）。apps/h5，与原生共用 docs/app-ui.md 的页面 ID、路由和 SSE 事件。
 
 做：
 - Vue 3 + Vite + TypeScript + Pinia + Tailwind，禁止 Element Plus，禁止 Flutter。
@@ -194,12 +216,12 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 权威：docs/app-ui.md，docs/api-app.md，docs/conversation.md，AGENTS.md §2.4.2。
 ```
 
-### feat 6 — iOS（Android 同契约）
+### feat 7 — iOS（Android 同契约）
 
 **Specify 粘贴稿：**
 
 ```text
-功能：iOS 与 Android 原生客户端（006-ios）。页面与 H5 同一套 docs/app-ui.md，工程分开。
+功能：iOS 与 Android 原生客户端（007-ios）。页面与 H5 同一套 docs/app-ui.md，工程分开。
 
 做：
 - iOS：Swift + SwiftUI，最低 iOS 17，网络用 URLSession。Android：Kotlin + Jetpack Compose，包名 com.omino.shopai。禁止 Flutter / RN / KMP。
@@ -213,12 +235,12 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 权威：AGENTS.md §2.3，docs/app-ui.md，docs/api-app.md。
 ```
 
-### feat 7 — 官网与落地页
+### feat 8 — 官网与落地页
 
 **Specify 粘贴稿：**
 
 ```text
-功能：官网与邀请落地页（007-www-land）。
+功能：官网与邀请落地页（008-www-land）。
 
 做：
 - apps/www：品牌与下载入口，端口 5175。纯静态可以。禁止 Element Plus。
@@ -259,8 +281,8 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 
 1. 确认 constitution 已不是模板；若仍是，先改完再开 feat 1。
 2. 新对话，贴 §0 开场，加上「开始 feat 1」，再执行 §1 的命令序列。
-3. 审 spec / plan 时看范围有没有串 feat：feat 1 写登录、feat 2 写页面、feat 4 直连联盟，都是失败。
-4. feat 2 完成后再开 feat 3 和 feat 4。feat 5 等 feat 4。feat 6 等页面契约在 H5 上走过一遍。feat 7 的官网可以在 feat 1 之后就做。
+3. 审 spec / plan 时看范围有没有串 feat：feat 2 写页面、feat 4 或 feat 5 去接官方 SDK、feat 5 直连联盟，都是失败。真实出站只在 feat 3。
+4. feat 1 和 feat 2 已合并到 main。下一步开 feat 3。feat 3 完成后再开 feat 4 和 feat 5。feat 6 等 feat 5。feat 7 等页面契约在 H5 上走过一遍。feat 8 的官网可以在 feat 1 之后就做。
 5. 同一功能不要再跑 `/opsx-propose`。
 
-当前还没有业务 `specs/<feature>/`。**第一个 `/speckit-specify` 是 feat 1。**
+feat 1、feat 2 已在 main。**下一个 `/speckit-specify` 是 feat 3。**
