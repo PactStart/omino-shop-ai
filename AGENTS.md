@@ -251,6 +251,7 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 omino-shop-ai/
 ├── AGENTS.md
 ├── README.md
+├── Makefile                         # 本地启动入口，Java 进程会读 deploy/env/local.env
 ├── .cursor/rules/project.mdc          # alwaysApply，指向本文件
 ├── deploy/
 │   ├── docker-compose.local.yml
@@ -641,43 +642,44 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 
 ## 8. 启动命令
 
-工作目录均为仓库根。首次需复制 `deploy/env/local.env.example` 为 `deploy/env/local.env`。
+工作目录均为仓库根。首次执行 `make env`：没有 `deploy/env/local.env` 时从 example 复制，已有则不覆盖。
+
+本地日常用根目录 `Makefile`。`make app` 与 `make admin` 会先把 `local.env` 导入进程。Java 的 yml 默认仍是 `PG_PORT=5432`、`REDIS_PORT=6379`；本机端口被占用时只改 `local.env`，不要改 yml 默认值。未导入环境变量就直接跑 `mvn`，会连到默认端口上的别的数据库。
 
 ```bash
-# 基础设施（PostgreSQL+pgvector / Redis / Langfuse）
+make help
+make up          # PostgreSQL+pgvector / Redis / Nacos / Langfuse
+make app         # APP API，默认 :8081
+make admin       # Admin API，默认 :8082
+make agent       # Agent，默认 :8090，仅监听本机
+make test
+make admin-web   # :5173
+make h5          # :5177
+make www         # :5175
+make land        # :5176
+```
+
+Makefile 实际执行的命令：
+
+```bash
 docker compose -f deploy/docker-compose.local.yml --env-file deploy/env/local.env up -d postgres redis nacos langfuse-web langfuse-db
 
-# Java APP API（默认 :8081）
-cd services/java
-mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
+# 先 set -a && . deploy/env/local.env && set +a
+cd services/java && mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
+cd services/java && mvn -pl shop-api-admin -am spring-boot:run -Dspring-boot.run.profiles=local
 
-# Java Admin API（默认 :8082）
-cd services/java
-mvn -pl shop-api-admin -am spring-boot:run -Dspring-boot.run.profiles=local
+cd services/agent && uv sync && uv run uvicorn app.main:app --reload --port 8090 --host 127.0.0.1
 
-# Agent（默认 :8090，仅监听内网）
-cd services/agent
-uv sync
-uv run uvicorn app.main:app --reload --port 8090 --host 127.0.0.1
-
-# 管理后台（默认 :5173，代理到 :8082）
-cd apps/admin-web
-npm ci
-npm run dev
-
-# 官网 / 落地页
+cd apps/admin-web && npm ci && npm run dev
 cd apps/www && npm ci && npm run dev
 cd apps/land && npm ci && npm run dev
+cd apps/h5 && npm ci && npm run dev
 
-# Android
 cd apps/android && ./gradlew :app:assembleDebug
 # 安装后配置 API_BASE=http://10.0.2.2:8081（模拟器）
 
-# iOS（macOS + Xcode 16.2）
-open apps/ios/App.xcodeproj   # 或 xcworkspace；Scheme 配 API_BASE=http://127.0.0.1:8081
-
-# 消费者 H5（默认 :5177，代理到 :8081）
-cd apps/h5 && npm ci && npm run dev
+open apps/ios/App.xcodeproj
+# Scheme 配 API_BASE=http://127.0.0.1:8081
 ```
 
 分环境部署：
@@ -735,7 +737,9 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET` / `UNION_JD_SITE_ID`         | 京东联盟                                                    |
 | `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`                       | 拼多多                                                     |
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |
-| `PAY_WECHAT_*` / `PAY_ALIPAY_*`                                         | 积分套餐支付；密钥不出客户端。SDK 坐标锁定前进 §2                            |
+| `PAY_WECHAT_PUBLIC_KEY` / `PAY_WECHAT_PUBLIC_KEY_ID` / `PAY_WECHAT_API_V3_KEY` | 微信支付回调验签。任一为空则拒绝入账，不向微信发探测请求。SDK 坐标锁定前见 §2 |
+| `PAY_ALIPAY_PUBLIC_KEY` | 支付宝回调验签。空则拒绝入账 |
+| `PAY_ALIPAY_APP_ID` / `PAY_ALIPAY_PRIVATE_KEY` | 管理端打款。缺任一则本次打款结果为失败，冻结额不动 |
 | `INVITE_LAND_BASE_URL`                                                  | 落地页公网根，无尾斜杠，如 `https://land.example.com`；拼邀请 URL 与二维码内容 |
 | `LEGAL_AGREEMENT_URL` / `LEGAL_PRIVACY_URL`                             | 用户协议、隐私政策 HTTPS；**上线再填**，local 可占位 |
 
