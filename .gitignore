@@ -1,5 +1,9 @@
 docs/product-input.md
-deploy/env/local.env
+deploy/env/local.infra.env
+deploy/env/local.app.env
+deploy/env/local.admin.env
+deploy/env/local.agent.env
+apps/*/.env
 
 .DS_Store
 *.log

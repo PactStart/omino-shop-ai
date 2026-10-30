@@ -22,7 +22,7 @@
 
 **Testing**: JUnit 5。每个用户故事至少一条测试。资金、验签和打款用测试密钥或测试打款端口，不连真实商户。钱包余额变更至少有一条两个事务交错的测试。生成器在改表时本地跑一次，XML 入库；CI 只加载已提交的 XML，不重跑生成器。curl 步骤见 [quickstart.md](quickstart.md)。依赖树在把三个新坐标写进 POM 时执行，通过之前不算版本锁定已经完成。
 
-**Target Platform**: 本地 APP `:8081` 前缀 `/api/app`，Admin `:8082` 前缀 `/api/admin`。`/internal/v1` 只挂在 APP 进程。
+**Target Platform**: 本地 APP `:8181` 前缀 `/api/app`，Admin `:8082` 前缀 `/api/admin`。`/internal/v1` 只挂在 APP 进程。
 
 **Project Type**: 两个 HTTP 服务进程，一套代码。
 

@@ -57,7 +57,7 @@
 
 ## Phase 4: User Story 2 - 两个服务端空壳能编译并报健康 (Priority: P1)
 
-**Goal**: `shop-api-app` 与 `shop-api-admin` 能编译，分别在 8081 与 8082 报健康，并只迁移 pgvector 扩展
+**Goal**: `shop-api-app` 与 `shop-api-admin` 能编译，分别在 8181 与 8082 报健康，并只迁移 pgvector 扩展
 
 **Independent Test**: `mvn -pl shop-api-app,shop-api-admin -am test` 通过。两个健康地址返回 HTTP 200。`shop-api-app` 与 `shop-api-admin` 的 POM 互不依赖。空库启动后只有扩展 `vector`，没有业务表
 
@@ -70,7 +70,7 @@
 - [X] T007 [US2] 编写 `services/java/pom.xml`：JDK 21、Spring Boot `3.4.11`，`dependencyManagement` 导入 Spring Cloud BOM `2024.0.1` 与 Spring Cloud Alibaba BOM `2023.0.1.2`，模块为 `shop-api-common`、`shop-api-app`、`shop-api-admin`。本功能不声明 Nacos starter
 - [X] T008 [US2] 实现 `services/java/shop-api-common/src/main/java/com/omino/shopai/api/ApiResponse.java` 与 `services/java/shop-api-common/pom.xml`，使 T006 通过
 - [X] T009 [US2] 添加 `services/java/shop-api-common/src/main/resources/db/migration/V1__enable_pgvector.sql`，内容只有 `CREATE EXTENSION IF NOT EXISTS vector`。放在 common，使两个应用都能看见脚本，又不必互相依赖
-- [X] T010 [P] [US2] 创建 `services/java/shop-api-app/`：`pom.xml` 只依赖 `shop-api-common`（含 Web、Actuator、Flyway `11.3.1`、PostgreSQL 驱动 `42.7.5`、Druid `1.2.24`），`AppApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8081，context-path `/api/app`，`NACOS_CONFIG_ENABLED` 对应关闭，不写 `spring.config.import`）
+- [X] T010 [P] [US2] 创建 `services/java/shop-api-app/`：`pom.xml` 只依赖 `shop-api-common`（含 Web、Actuator、Flyway `11.3.1`、PostgreSQL 驱动 `42.7.5`、Druid `1.2.24`），`AppApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8181，context-path `/api/app`，`NACOS_CONFIG_ENABLED` 对应关闭，不写 `spring.config.import`）
 - [X] T011 [P] [US2] 创建 `services/java/shop-api-admin/`：`pom.xml` 只依赖 `shop-api-common`，不得依赖 `shop-api-app`，`AdminApiApplication.java`，`application.yml` 与 `application-local.yml`（端口 8082，context-path `/api/admin`，同样不连接 Nacos）
 
 **Checkpoint**: 两个进程健康检查不需要登录、联盟密钥或 SSO。Actuator 正文不使用业务信封
@@ -79,9 +79,9 @@
 
 ## Phase 5: User Story 3 - Agent 只在本机报健康 (Priority: P2)
 
-**Goal**: Agent 只监听 `127.0.0.1:8090`，`GET /health` 返回 `{"status":"ok"}`
+**Goal**: Agent 只监听 `127.0.0.1:8190`，`GET /health` 返回 `{"status":"ok"}`
 
-**Independent Test**: `uv run pytest` 通过，且 `curl http://127.0.0.1:8090/health` 得到上述 JSON。进程不监听 `0.0.0.0`
+**Independent Test**: `uv run pytest` 通过，且 `curl http://127.0.0.1:8190/health` 得到上述 JSON。进程不监听 `0.0.0.0`
 
 ### Tests for User Story 3
 
@@ -104,7 +104,7 @@
 
 ### Implementation for User Story 4
 
-- [X] T015 [P] [US4] 创建 `apps/admin-web/`（`package.json`、`vite.config.ts`、`index.html`、`src/main.ts`、`src/App.vue`）。Vue `3.5.13`、Vite `6.3.5`、TypeScript `5.7.2`、Vue Router `4.5.0`、Pinia `2.3.0`、Element Plus `2.9.1`、axios `1.7.9`。端口 5173。`App.vue` 只有空页面
+- [X] T015 [P] [US4] 创建 `apps/admin-web/`（`package.json`、`vite.config.ts`、`index.html`、`src/main.ts`、`src/App.vue`）。Vue `3.5.13`、Vite `6.3.5`、TypeScript `5.7.2`、Vue Router `4.5.0`、Pinia `2.3.0`、Element Plus `2.9.1`、axios `1.7.9`。端口 5183。`App.vue` 只有空页面
 - [X] T016 [P] [US4] 创建 `apps/h5/`，同样的 Vue 工具链，外加 Tailwind CSS `4.1.0`，不要 Element Plus。端口 5177。`src/App.vue` 只有空页面
 - [X] T017 [P] [US4] 创建 `apps/www/`，使用 Vue、Vite、TypeScript、Vue Router，不要 Element Plus，不要 Pinia。端口 5175。`src/App.vue` 只有空页面
 - [X] T018 [P] [US4] 创建 `apps/land/`，依赖范围同 `apps/www`。端口 5176。`src/App.vue` 只有空页面，不要邀请业务页

@@ -35,7 +35,7 @@
 
 ## Agent 本功能不上报 trace
 
-- Decision: `pyproject.toml` 只放入本功能要启动的锁定依赖：`fastapi` `0.115.6`、`uvicorn` `0.34.0`、`pydantic` `2.10.4`。不加入 `langfuse` 包。进程只监听 `127.0.0.1:8090`。
+- Decision: `pyproject.toml` 只放入本功能要启动的锁定依赖：`fastapi` `0.115.6`、`uvicorn` `0.34.0`、`pydantic` `2.10.4`。不加入 `langfuse` 包。进程只监听 `127.0.0.1:8190`。
 - Rationale: 规格禁止本功能上报 trace，也禁止对公网或 APP 提供对话。服务端镜像已按客户端 `2.57.0` 的兼容范围选定，客户端留到真正上报的功能再加入。
 - Alternatives considered: 先把 `langfuse==2.57.0` 写入依赖但不调用。这是未使用的依赖，不能当作观测已完成。
 

@@ -22,7 +22,7 @@ public class HttpAgentGateway implements AgentGateway {
     private final String token;
 
     public HttpAgentGateway(
-            @Value("${AGENT_BASE_URL:http://127.0.0.1:8090}") String baseUrl,
+            @Value("${AGENT_BASE_URL:http://127.0.0.1:8190}") String baseUrl,
             @Value("${AGENT_INTERNAL_TOKEN:}") String token) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.token = token;

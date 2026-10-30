@@ -96,7 +96,7 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | `shop-api-admin` | `/api/admin`                        | `/api/admin/v1/**` |
 
 
-禁止两个产出物监听同一端口；本地默认 APP `8081`、Admin `8082`。
+禁止两个产出物监听同一端口。本地默认 APP `8181`、Admin `8082`。Agent `8190`，管理后台 `5183`，Redis 宿主机 `6381`。这些值避开同机的 omino-sso：IdP `8080`、管理 API `8081`、门户 `5173`、后台 `5174`、一体化后台容器 `8090`、Redis 宿主机 `6380`。
 
 ### 2.2 Agent（Python）
 
@@ -251,14 +251,17 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 omino-shop-ai/
 ├── AGENTS.md
 ├── README.md
-├── Makefile                         # 本地启动入口，Java 进程会读 deploy/env/local.env
+├── Makefile                         # 本地启动入口。app/admin/agent 先读 local.infra.env，再读自己的 env
 ├── .cursor/rules/project.mdc          # alwaysApply，指向本文件
 ├── deploy/
 │   ├── docker-compose.local.yml
 │   ├── docker-compose.test.yml
 │   ├── docker-compose.prod.yml
 │   ├── env/
-│   │   ├── local.env.example
+│   │   ├── local.infra.env.example    # Compose，以及 app/admin/agent 先加载的共享项
+│   │   ├── local.app.env.example
+│   │   ├── local.admin.env.example
+│   │   ├── local.agent.env.example
 │   │   ├── test.env.example
 │   │   └── prod.env.example
 │   └── nginx/
@@ -267,28 +270,34 @@ omino-shop-ai/
 │       ├── land.conf
 │       └── h5.conf
 ├── apps/
-│   ├── www/                           # 官网
+│   ├── www/                           # 官网。Vite 读本目录 .env，不读 deploy/env
+│   │   ├── .env.example
 │   │   ├── package.json
 │   │   ├── vite.config.ts
 │   │   ├── index.html
 │   │   └── src/
-│   ├── h5/                            # 消费者 H5 APP（同 app-ui）
+│   ├── h5/                            # 消费者 H5 APP（同 app-ui）。Vite 读本目录 .env
+│   │   ├── .env.example
 │   │   ├── package.json
 │   │   ├── vite.config.ts
 │   │   ├── index.html
 │   │   └── src/
-│   ├── land/                          # 邀请落地 H5
+│   ├── land/                          # 邀请落地 H5。Vite 读本目录 .env
+│   │   ├── .env.example
 │   │   ├── package.json
 │   │   ├── vite.config.ts
 │   │   ├── index.html
 │   │   └── src/
 │   │       └── views/InviteLand.vue   # /i/:inviteCode
 │   ├── android/                       # Kotlin + Compose，包名 com.omino.shopai
+│   │   ├── .env.example               # API_BASE。当前 Gradle 不读取
 │   │   ├── settings.gradle.kts
 │   │   └── app/src/main/java/com/omino/shopai/
 │   ├── ios/                           # SwiftUI，Bundle ID com.omino.shopai
+│   │   ├── .env.example               # API_BASE。当前 Xcode 工程不读取
 │   │   └── App/
-│   ├── admin-web/
+│   ├── admin-web/                     # Vite 读本目录 .env
+│   │   ├── .env.example
 │   │   ├── package.json
 │   │   ├── vite.config.ts
 │   │   ├── index.html
@@ -642,18 +651,20 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 
 ## 8. 启动命令
 
-工作目录均为仓库根。首次执行 `make env`：没有 `deploy/env/local.env` 时从 example 复制，已有则不覆盖。
+工作目录均为仓库根。首次执行 `make env`：四份 `deploy/env/local.*.env` 缺哪份就从对应 example 复制，已有则不覆盖。
 
-本地日常用根目录 `Makefile`。`make app` 与 `make admin` 会先把 `local.env` 导入进程。Java 的 yml 默认仍是 `PG_PORT=5432`、`REDIS_PORT=6379`；本机端口被占用时只改 `local.env`，不要改 yml 默认值。未导入环境变量就直接跑 `mvn`，会连到默认端口上的别的数据库。
+本地日常用根目录 `Makefile`。`make up` 只读 `local.infra.env`。`make app`、`make admin`、`make agent` 先加载 `local.infra.env`，再加载自己那份。Java 的 yml 默认仍是 `PG_PORT=5432`、`REDIS_PORT=6381`；本机端口被占用时只改 `local.infra.env`，不要改 yml 默认值，也不要在 app/admin/agent 三份里再写一遍库口令。未导入环境变量就直接跑 `mvn`，会连到默认端口上的别的数据库。
+
+必须相同、只写在 `local.infra.env` 的项：`PG_PASSWORD`、`LLM_CONFIG_KEY`、`JWT_ACCESS_SECRET`、`AGENT_INTERNAL_TOKEN`。前端不读 `deploy/env`。Vite 读各应用目录的 `.env`（没有时 `make admin-web` / `h5` / `www` / `land` 从 `.env.example` 复制）。`API_BASE` 放在 `apps/android/.env` 与 `apps/ios/.env`。
 
 ```bash
 make help
 make up          # PostgreSQL+pgvector / Redis / Nacos / Langfuse
-make app         # APP API，默认 :8081
+make app         # APP API，默认 :8181
 make admin       # Admin API，默认 :8082
-make agent       # Agent，默认 :8090，仅监听本机
+make agent       # Agent，默认 :8190，仅监听本机
 make test
-make admin-web   # :5173
+make admin-web   # :5183
 make h5          # :5177
 make www         # :5175
 make land        # :5176
@@ -662,24 +673,27 @@ make land        # :5176
 Makefile 实际执行的命令：
 
 ```bash
-docker compose -f deploy/docker-compose.local.yml --env-file deploy/env/local.env up -d postgres redis nacos langfuse-web langfuse-db
+docker compose -f deploy/docker-compose.local.yml --env-file deploy/env/local.infra.env up -d postgres redis nacos langfuse-web langfuse-db
 
-# 先 set -a && . deploy/env/local.env && set +a
+# 先 set -a && . deploy/env/local.infra.env && . deploy/env/local.app.env && set +a
 cd services/java && mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
+# Admin 把第二份换成 local.admin.env
 cd services/java && mvn -pl shop-api-admin -am spring-boot:run -Dspring-boot.run.profiles=local
 
-cd services/agent && uv sync && uv run uvicorn app.main:app --reload --port 8090 --host 127.0.0.1
+# 先 set -a && . deploy/env/local.infra.env && . deploy/env/local.agent.env && set +a
+cd services/agent && uv sync && uv run uvicorn app.main:app --reload --port 8190 --host 127.0.0.1
 
+# 各应用目录没有 .env 时，从该目录的 .env.example 复制后再 npm run dev
 cd apps/admin-web && npm ci && npm run dev
 cd apps/www && npm ci && npm run dev
 cd apps/land && npm ci && npm run dev
 cd apps/h5 && npm ci && npm run dev
 
 cd apps/android && ./gradlew :app:assembleDebug
-# 安装后配置 API_BASE=http://10.0.2.2:8081（模拟器）
+# API_BASE 在 apps/android/.env。模拟器示例 http://10.0.2.2:8181/api/app。当前 Gradle 不读取
 
 open apps/ios/App.xcodeproj
-# Scheme 配 API_BASE=http://127.0.0.1:8081
+# API_BASE 在 apps/ios/.env。示例 http://127.0.0.1:8181/api/app。当前 Xcode 工程不读取
 ```
 
 分环境部署：
@@ -689,13 +703,25 @@ docker compose -f deploy/docker-compose.test.yml --env-file deploy/env/test.env 
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env up -d --build
 ```
 
-健康检查：`GET /api/app/actuator/health`、`GET /api/admin/actuator/health`、`GET http://127.0.0.1:8090/health`。
+健康检查：`GET /api/app/actuator/health`、`GET /api/admin/actuator/health`、`GET http://127.0.0.1:8190/health`。
 
 ---
 
 ## 9. 环境变量清单
 
 未标默认值的均为必填（对应环境）。密钥类禁止写入 Git。
+
+本地文件（example 可提交，复制出的 `local.*.env` 与各应用 `.env` 不入库）：
+
+| 文件 | 谁读 | 放什么 |
+| --- | --- | --- |
+| `deploy/env/local.infra.env` | Compose；`make app` / `admin` / `agent` 先加载 | `PG_*`、`REDIS_*`、`NACOS_*`、`APP_ENV`、`TZ`、Langfuse 容器变量，以及必须相同的 `LLM_CONFIG_KEY`、`JWT_ACCESS_SECRET`、`AGENT_INTERNAL_TOKEN` |
+| `deploy/env/local.app.env` | `make app` 在 infra 之后加载 | 联盟、短信、支付回调验签、邀请与协议 URL、JWT 有效期、`AGENT_BASE_URL` |
+| `deploy/env/local.admin.env` | `make admin` 在 infra 之后加载 | SSO、会话密钥、上帝视角、支付宝打款 |
+| `deploy/env/local.agent.env` | `make agent` 在 infra 之后加载 | `OPENAI_*`、`JAVA_APP_INTERNAL_URL`。Langfuse 与内网令牌用 infra 里的值 |
+| `apps/<应用>/.env` | 该 Vite / 原生工程 | §9.5。不进 `deploy/env` |
+
+不要在四份里设置 `SERVER_PORT`。APP 默认 `8181`，Admin 默认 `8082`。
 
 ### 9.1 公共 / 数据
 
@@ -709,13 +735,13 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `PG_USERNAME`          | Java / Agent |                                     |
 | `PG_PASSWORD`          | Java / Agent | 密钥                                  |
 | `REDIS_HOST`           | Java / Agent |                                     |
-| `REDIS_PORT`           | Java / Agent | 默认 `6379`                           |
+| `REDIS_PORT`           | Java / Agent | 默认 `6381`。避开 omino-sso 宿主机 `6380` |
 | `REDIS_PASSWORD`       | Java / Agent | 可空                                  |
 | `TZ`                   | 全部           | 默认 `Asia/Shanghai`                  |
 | `NACOS_SERVER_ADDR`    | Java         | 如 `127.0.0.1:8848`；`test`/`prod` 必填 |
 | `NACOS_NAMESPACE`      | Java         | 可空；分环境隔离                            |
 | `NACOS_CONFIG_ENABLED` | Java         | 默认 `true`；仅 `local` 可 `false`       |
-| `LLM_CONFIG_KEY`       | Java APP / Admin | AES-GCM 密钥，≥32 字节。加密 `llm_model.api_key_enc`。两产出物必须相同。禁止进 Git 与 Nacos |
+| `LLM_CONFIG_KEY`       | Java APP / Admin | AES-GCM 密钥，≥32 字节。加密 `llm_model.api_key_enc`。两产出物必须相同，本地只写在 `local.infra.env`。禁止进 Git 与 Nacos |
 
 
 ### 9.2 APP API（`shop-api-app`）
@@ -723,12 +749,12 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 
 | 变量                                                                      | 说明                                                      |
 | ----------------------------------------------------------------------- | ------------------------------------------------------- |
-| `SERVER_PORT`                                                           | 默认 `8081`                                               |
-| `JWT_ACCESS_SECRET`                                                     | HS256 密钥，≥32 字节                                         |
+| `SERVER_PORT`                                                           | 默认 `8181`                                               |
+| `JWT_ACCESS_SECRET`                                                     | HS256 密钥，≥32 字节。APP 签发，Admin 上帝视角校验。本地只写在 `local.infra.env` |
 | `JWT_ACCESS_TTL_SECONDS`                                                | 默认 `1800`                                               |
 | `JWT_REFRESH_TTL_SECONDS`                                               | 默认 `1209600`                                            |
-| `AGENT_BASE_URL`                                                        | 如 `http://127.0.0.1:8090`                               |
-| `AGENT_INTERNAL_TOKEN`                                                  | 与 Agent 共享                                              |
+| `AGENT_BASE_URL`                                                        | 如 `http://127.0.0.1:8190`                               |
+| `AGENT_INTERNAL_TOKEN`                                                  | 与 Agent 共享。本地只写在 `local.infra.env`                     |
 | `WECHAT_APP_ID` / `WECHAT_APP_SECRET`                                   | 微信**开放平台移动应用**（不是小程序）；登录与分享                             |
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_P8`       | Sign in with Apple                                      |
 | `GOOGLE_CLIENT_ID`                                                      | Google 登录                                               |
@@ -739,7 +765,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |
 | `PAY_WECHAT_PUBLIC_KEY` / `PAY_WECHAT_PUBLIC_KEY_ID` / `PAY_WECHAT_API_V3_KEY` | 微信支付回调验签。任一为空则拒绝入账，不向微信发探测请求。SDK 坐标锁定前见 §2 |
 | `PAY_ALIPAY_PUBLIC_KEY` | 支付宝回调验签。空则拒绝入账 |
-| `PAY_ALIPAY_APP_ID` / `PAY_ALIPAY_PRIVATE_KEY` | 管理端打款。缺任一则本次打款结果为失败，冻结额不动 |
+| `PAY_ALIPAY_APP_ID` / `PAY_ALIPAY_PRIVATE_KEY` | 管理端打款，放在 `local.admin.env`。缺任一则本次打款结果为失败，冻结额不动 |
 | `INVITE_LAND_BASE_URL`                                                  | 落地页公网根，无尾斜杠，如 `https://land.example.com`；拼邀请 URL 与二维码内容 |
 | `LEGAL_AGREEMENT_URL` / `LEGAL_PRIVACY_URL`                             | 用户协议、隐私政策 HTTPS；**上线再填**，local 可占位 |
 
@@ -760,11 +786,13 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 
 ### 9.4 Agent
 
+`LANGFUSE_*` 本地写在 `local.infra.env`，`local.agent.env` 不重复。
+
 
 | 变量                      | 说明                                                                  |
 | ----------------------- | ------------------------------------------------------------------- |
 | `AGENT_INTERNAL_TOKEN`  | 与 Java 相同                                                           |
-| `JAVA_APP_INTERNAL_URL` | `shop-api-app` 根，如 `http://127.0.0.1:8081`，Tool 打 `/internal/v1/**` |
+| `JAVA_APP_INTERNAL_URL` | `shop-api-app` 根，如 `http://127.0.0.1:8181`，Tool 打 `/internal/v1/**` |
 | `OPENAI_API_BASE`       | 仅 `local` 且 `llm_model` 没有任何可分流行时的兜底基址，默认 `https://api.deepseek.com` |
 | `OPENAI_API_KEY`        | 同上，兜底 Key。有可分流模型后由 Java 按次注入，本变量不参与分流                         |
 | `OPENAI_MODEL`          | 兜底模型名，默认 `deepseek-chat`                                           |
@@ -777,14 +805,16 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 ### 9.5 前端 / APP
 
 
+这些变量不进 `deploy/env`。Vite 应用读本目录 `.env`（模板是 `.env.example`）。Android / iOS 的 `API_BASE` 放在 `apps/android/.env`、`apps/ios/.env`；当前 Gradle 与 Xcode 工程尚未读取。
+
 | 变量                                              | 端                  | 说明                             |
 | ----------------------------------------------- | ------------------ | ------------------------------ |
 | `VITE_ADMIN_API_BASE`                           | admin-web          | 如 `/api/admin`                 |
-| `API_BASE`                                      | Android / iOS 构建配置 | APP API 根，含 `/api/app`         |
+| `API_BASE`                                      | Android / iOS      | APP API 根，含 `/api/app`         |
 | `VITE_WWW_STORE_IOS` / `VITE_WWW_STORE_ANDROID` | www                | 商店地址                           |
 | `VITE_LAND_API_BASE`                            | land               | 可选，公开邀请预览；可空则落地页不调 API         |
 | `VITE_APP_SCHEME`                               | land               | 如 `ominoshop://invite` ，拉起 APP |
-| `VITE_APP_API_BASE`                             | h5                 | APP API 根，如 `/api/app`            |
+| `VITE_APP_API_BASE`                             | h5                 | APP API 根，如 `/api/app`         |
 
 
 ---

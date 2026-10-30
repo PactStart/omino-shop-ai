@@ -5,10 +5,10 @@
 ## APP
 
 - Method: `GET`
-- URL: `http://127.0.0.1:8081/api/app/actuator/health`
+- URL: `http://127.0.0.1:8181/api/app/actuator/health`
 - Auth: 无
 - Success: HTTP 200，正文表明进程为 UP
-- Failure: 未启动或端口不是 8081，视为未通过
+- Failure: 未启动或端口不是 8181，视为未通过
 
 ## Admin
 
@@ -21,7 +21,7 @@
 ## Agent
 
 - Method: `GET`
-- URL: `http://127.0.0.1:8090/health`
+- URL: `http://127.0.0.1:8190/health`
 - Bind: 只允许 `127.0.0.1`
 - Auth: 无
 - Success: HTTP 200，正文为 `{"status":"ok"}`
