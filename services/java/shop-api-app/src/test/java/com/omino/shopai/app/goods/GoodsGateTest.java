@@ -8,6 +8,9 @@ import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
+import com.omino.shopai.app.adapter.platform.PromotionLink;
+import com.omino.shopai.dto.order.IncomingOrder;
+import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
 import com.omino.shopai.app.service.goods.ServerLinkIssuer;
@@ -47,8 +50,9 @@ class GoodsGateTest {
         goods = new MemoryGoods();
         goods.relation(USER, "jd", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
-        GoodsQueryService query = new GoodsQueryService(goods, List.of(new JdCatalog()), goods, goods, json);
-        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer());
+        JdCatalog catalog = new JdCatalog();
+        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json);
+        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(List.of(catalog)));
         mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, convert, new com.omino.shopai.app.service.goods.GoodsLibraryService(goods, goods)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -166,6 +170,16 @@ class GoodsGateTest {
 
         @Override
         public List<GoodsSnapshot> search(String keyword) {
+            return List.of();
+        }
+
+        @Override
+        public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+            return new PromotionLink(goods.getGoodsUrl(), null, goods.getGoodsUrl(), goods.getGoodsUrl());
+        }
+
+        @Override
+        public List<IncomingOrder> pullOrders(OrderSyncCursor cursor) {
             return List.of();
         }
     }

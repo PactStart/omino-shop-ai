@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pdd.service</groupId>
+    <artifactId>pop-sdk</artifactId>
+    <version>1.10.16</version>
+    <packaging>jar</packaging>
+    <name>pop-sdk</name>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>http://maven.pdd.net/repository/maven-central/</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <url>http://maven.pdd.net/repository/maven-snapshots/</url>
+        </repository>
+        <repository>
+            <id>releases</id>
+            <url>http://maven.pdd.net/repository/maven-releases/</url>
+        </repository>
+        <repository>
+            <id>maven-releases</id>
+            <url>http://maven.pdd.net/repository/releases/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-client-api</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus.bundles</groupId>
+            <artifactId>tyrus-standalone-client</artifactId>
+            <version>1.13.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.9.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.codahale.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>3.0.2</version>
+            <exclusions>
+                   <exclusion>
+                     <groupId>org.slf4j</groupId>
+                     <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.8</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpmime</artifactId>
+            <version>4.5.8</version>
+        </dependency>
+        <dependency>
+              <groupId>junit</groupId>
+              <artifactId>junit</artifactId>
+              <version>4.11</version>
+              <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.3</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.1.2</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                              <shadedArtifactAttached>true</shadedArtifactAttached>
+                              <createDependencyReducedPom>false</createDependencyReducedPom>
+                              <shadedClassifierName>all</shadedClassifierName>
+                              <createSourcesJar>true</createSourcesJar>
+                              <shadeSourcesContent>true</shadeSourcesContent>
+
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.fasterxml.jackson</pattern>
+                                    <shadedPattern>com.pdd.pop.ext.fasterxml.jackson</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.apache</pattern>
+                                    <shadedPattern>com.pdd.pop.ext.apache</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.codahale</pattern>
+                                    <shadedPattern>com.pdd.pop.ext.codahale</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.glassfish</pattern>
+                                    <shadedPattern>com.pdd.pop.ext.glassfish</shadedPattern>
+                                </relocation>
+
+                            </relocations>
+
+
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.0.2</version>
+                <executions>
+                    <execution>
+                        <id>copy-files-on-build</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/jar</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/target</directory>
+                                    <includes>
+                                        <include>*-all.jar</include>
+                                        <include>*-all-sources.jar</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>

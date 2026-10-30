@@ -1,5 +1,6 @@
 package com.omino.shopai.app.service.goods;
 
+import com.omino.shopai.app.adapter.platform.PlatformCallException;
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.api.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
@@ -48,7 +49,12 @@ public class GoodsConvertLinkService {
         GoodsSnapshot goods = resolve(goodsId, resolved, platformGoodsId);
         String platformCode = goods.getPlatform() == null ? null : goods.getPlatform().code();
         boolean openInApp = !Boolean.FALSE.equals(preferApp) && gate.installed(userId, platformCode);
-        ConvertedLink link = issuer.issue(goods, openInApp);
+        ConvertedLink link;
+        try {
+            link = issuer.issue(goods, openInApp, userId);
+        } catch (PlatformCallException ex) {
+            throw new ApiBusinessException(ErrorCodes.UPSTREAM_PLATFORM, "平台查询失败");
+        }
         gate.click(userId, platformCode, goods.getId(), goods.getPlatformGoodsId());
         return link;
     }

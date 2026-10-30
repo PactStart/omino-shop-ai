@@ -83,6 +83,11 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | DAO XML 生成器              | `com.baomidou:mybatis-plus-generator`                         | `3.5.9`         | 只生成 Mapper 接口与 XML。不生成 Entity、Service、Controller。只放 test 范围，不进两个可运行 jar。不用它的 Service 模板。Apache-2.0 |
 | 微信支付                     | `com.github.wechatpay-apiv3:wechatpay-java`                   | `0.2.17`        | 只用 APIv3 下单与回调验签。不用于向用户打款，不带入示例商户站点。Apache-2.0。只进 `shop-api-app` |
 | 支付宝                      | `com.alipay.sdk:alipay-sdk-java`                              | `4.40.1044.ALL` | 回调验签（APP）与单笔转账（Admin）。不引第二个支付宝库。Apache-2.0。若依赖树抬高已锁定版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x` |
+| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细。另装同版本 `sources`。不用推荐、退款、处罚、活动、口令。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
+| 京东联盟 SDK                 | `com.jd:open-api-sdk`                                         | `20250925`      | 只用商品查询、子联盟转链、订单行查询。不用京粉、大字段、物料、榜单、活动。许可例外同上。只进 `shop-api-app` |
+| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单。不用推荐、PID 生成、授权、招商。许可例外同上。只进 `shop-api-app` |
+| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表。不用相似推荐、猜你喜欢、退款、PID 生成、渠道链接。许可例外同上。只进 `shop-api-app` |
+| 唯品会传输                   | `com.vip:osp-sdk`                                             | `20250214094310` | 只作为 `vop-sdk` 的调用运行时，不单独发起业务接口。许可例外同上。只进 `shop-api-app` |
 
 
 Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`shop-api-admin`。两个 Spring Boot 主类打两个 fat jar。parent 的 `dependencyManagement` 导入上述两个 BOM。
@@ -243,6 +248,8 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 
 `test`/`prod` 启动必须连上 Nacos，连不上则失败退出。`local` 允许 `NACOS_CONFIG_ENABLED=false`，热配置回落到 yml 默认值（Demo）。业务代码读配置经 `@ConfigurationProperties` + `@RefreshScope`（仅 Nacos 项），禁止散落 `System.getenv` 解析运营数字。
 
+APP 与 Admin 对每次 HTTP 请求打一行访问日志：方法、路径、HTTP 状态、信封 `code` 与 `message`、耗时。HTTP 状态 ≥ 400，或信封 `code` 非 0 时，同一行再带查询字符串和请求体。不记录请求头。口令、令牌、验证码字段打成 `***`。`/actuator/` 不打。
+
 ---
 
 ## 3. 目录结构（精确到核心文件）
@@ -327,6 +334,7 @@ omino-shop-ai/
 │   │   │   └── src/main/
 │   │   │       ├── java/com/omino/shopai/
 │   │   │       │   ├── api/ApiResponse.java
+│   │   │       │   ├── api/HttpAccessLogFilter.java
 │   │   │       │   ├── api/ErrorCodes.java
 │   │   │       │   ├── enums/Platform.java
 │   │   │       │   ├── enums/Intent.java
@@ -759,8 +767,8 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_P8`       | Sign in with Apple                                      |
 | `GOOGLE_CLIENT_ID`                                                      | Google 登录                                               |
 | `SMS_PROVIDER`                                                          | `mock` / `chuanglan`；`prod` 禁止 mock。创蓝对齐 omino-sso：`SMS_CHUANGLAN_URL` / `ACCOUNT` / `PASSWORD` / `TEMPLATE_ID`（模板变量 key 硬编码 `param1`） |
-| `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET` / `UNION_TAOBAO_PID` | 淘宝客                                                     |
-| `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET` / `UNION_JD_SITE_ID`         | 京东联盟                                                    |
+| `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET`                       | 淘宝客。不读取推广位 PID                                           |
+| `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`                              | 京东联盟。不读取站点号                                             |
 | `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`                       | 拼多多                                                     |
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |
 | `PAY_WECHAT_PUBLIC_KEY` / `PAY_WECHAT_PUBLIC_KEY_ID` / `PAY_WECHAT_API_V3_KEY` | 微信支付回调验签。任一为空则拒绝入账，不向微信发探测请求。SDK 坐标锁定前见 §2 |

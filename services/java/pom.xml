@@ -34,6 +34,10 @@
     <mybatis-plus.version>3.5.9</mybatis-plus.version>
     <wechatpay.version>0.2.17</wechatpay.version>
     <alipay-sdk.version>4.40.1044.ALL</alipay-sdk.version>
+    <taobao-sdk.version>20250925</taobao-sdk.version>
+    <jd-sdk.version>20250925</jd-sdk.version>
+    <pdd-sdk.version>1.10.16</pdd-sdk.version>
+    <vip-sdk.version>20250214094310</vip-sdk.version>
     <lombok.version>1.18.48</lombok.version>
     <springdoc.version>2.8.5</springdoc.version>
   </properties>
@@ -78,6 +82,31 @@
         <groupId>com.alipay.sdk</groupId>
         <artifactId>alipay-sdk-java</artifactId>
         <version>${alipay-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.taobao</groupId>
+        <artifactId>taobao-sdk-java</artifactId>
+        <version>${taobao-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.jd</groupId>
+        <artifactId>open-api-sdk</artifactId>
+        <version>${jd-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.pdd</groupId>
+        <artifactId>pop-sdk</artifactId>
+        <version>${pdd-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.vip</groupId>
+        <artifactId>vop-sdk</artifactId>
+        <version>${vip-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.vip</groupId>
+        <artifactId>osp-sdk</artifactId>
+        <version>${vip-sdk.version}</version>
       </dependency>
       <dependency>
         <groupId>com.nimbusds</groupId>

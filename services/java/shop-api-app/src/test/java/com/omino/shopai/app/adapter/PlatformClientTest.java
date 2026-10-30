@@ -3,6 +3,7 @@ package com.omino.shopai.app.adapter;
 import com.omino.shopai.api.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.app.adapter.platform.JdGoodsClient;
+import com.omino.shopai.app.adapter.platform.SdkSessions;
 import com.omino.shopai.app.adapter.platform.PddGoodsClient;
 import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
 import com.omino.shopai.app.adapter.platform.TaobaoGoodsClient;
@@ -35,28 +36,24 @@ class PlatformClientTest {
     }
 
     @Test
-    void missingKeysAndPresentKeysBothFailAs50010WithoutLeakingSecrets() {
+    void missingKeysFailAs50010WithoutOpeningOfficialClients() {
+        SdkSessions.opened.set(0);
         GoodsQueryService missing = query(List.of(
-                new TaobaoGoodsClient("", "", ""),
-                new JdGoodsClient("", "", ""),
+                new TaobaoGoodsClient("", ""),
+                new JdGoodsClient("", ""),
                 new PddGoodsClient("", ""),
                 new VipGoodsClient("", "")));
-        GoodsQueryService present = query(List.of(
-                new TaobaoGoodsClient(SECRET, SECRET, SECRET),
-                new JdGoodsClient(SECRET, SECRET, SECRET),
-                new PddGoodsClient(SECRET, SECRET),
-                new VipGoodsClient(SECRET, SECRET)));
         for (String platform : List.of("taobao", "jd", "pdd", "vip")) {
             assertUpstream(missing, platform);
-            assertUpstream(present, platform);
         }
+        assertEquals(0, SdkSessions.opened.get());
     }
 
     @Test
     void meituanIsRejected() {
         GoodsQueryService query = query(List.of(
-                new TaobaoGoodsClient("", "", ""),
-                new JdGoodsClient("", "", ""),
+                new TaobaoGoodsClient("", ""),
+                new JdGoodsClient("", ""),
                 new PddGoodsClient("", ""),
                 new VipGoodsClient("", "")));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,

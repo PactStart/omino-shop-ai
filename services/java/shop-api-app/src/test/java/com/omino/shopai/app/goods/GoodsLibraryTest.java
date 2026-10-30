@@ -48,7 +48,7 @@ class GoodsLibraryTest {
         collectionId = collection.getId();
         library = new GoodsLibraryService(goods, goods);
         GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper());
-        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer()), library))
+        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(java.util.List.of())), library))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

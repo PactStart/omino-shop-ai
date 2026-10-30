@@ -65,7 +65,17 @@ public class MybatisGoodsLibraryStore implements GoodsLibraryStore {
         event.setTitle(title);
         event.setPayload("{}");
         event.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        events.insert(event);
+        // payload 是 jsonb。直接 insert 会按字符串绑定，详情记浏览就会变成 50000。
+        events.insertEvent(
+                event.getId(),
+                event.getUserId(),
+                event.getKind(),
+                platform,
+                event.getGoodsId(),
+                event.getPlatformGoodsId(),
+                event.getTitle(),
+                event.getPayload(),
+                event.getCreatedAt());
     }
 /**
  * 按时间倒序列出浏览，供回看。

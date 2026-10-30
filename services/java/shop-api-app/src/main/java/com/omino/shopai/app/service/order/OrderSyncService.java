@@ -1,5 +1,7 @@
 package com.omino.shopai.app.service.order;
 
+import com.omino.shopai.app.adapter.platform.PlatformOrderSource;
+import com.omino.shopai.dto.order.IncomingOrder;
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.OrderStatus;
 import com.omino.shopai.enums.SettleStatus;
@@ -68,6 +70,13 @@ public class OrderSyncService {
             }
             store.advance(platform, OffsetDateTime.now(clock));
         });
+    }
+
+    /**
+     * 这一平台失败时只记固定文案。两列水位都不改。
+     */
+    public void noteFailure(String platform) {
+        store.fail(platform, "上游失败");
     }
 /**
  * 已入账的订单只更新快照。未入账且已完成的才记返佣。

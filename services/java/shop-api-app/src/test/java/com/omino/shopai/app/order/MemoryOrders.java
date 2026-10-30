@@ -104,6 +104,17 @@ final class MemoryOrders implements OrderStore, TransactionOperations {
     }
 
     @Override
+    public void fail(String platform, String message) {
+        OrderSyncCursor cursor = copy(cursor(platform));
+        if (cursor.getPlatform() == null) {
+            cursor.setPlatform(Platform.fromCode(platform));
+        }
+        cursor.setLastError(message);
+        cursor.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        cursors().put(platform, cursor);
+    }
+
+    @Override
     public AppOrder findByPlatformOrder(String platform, String platformOrderId) {
         for (AppOrder order : orders().values()) {
             if (platform.equals(order.getPlatform() == null ? null : order.getPlatform().code()) && platformOrderId.equals(order.getPlatformOrderId())) {

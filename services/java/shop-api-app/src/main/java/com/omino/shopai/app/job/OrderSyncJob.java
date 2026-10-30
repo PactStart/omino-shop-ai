@@ -24,7 +24,12 @@ public class OrderSyncJob {
 
     public void run() {
         for (String platform : PLATFORMS) {
-            sync.sync(platform);
+            try {
+                sync.sync(platform);
+            } catch (RuntimeException ex) {
+                // 失败只记固定文案。水位留在失败前的位置，后面的平台继续拉。
+                sync.noteFailure(platform);
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.omino.shopai.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,7 @@ import java.util.UUID;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
     private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
 /**
  * 字段错误收成 40001，指出字段和原因，不带堆栈。
@@ -41,6 +44,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> unknown(Exception ex) {
+        // 堆栈只留在服务端。响应仍是固定文案，不带官方原文和密钥。
+        log.error("未分类异常", ex);
         return ResponseEntity.ok(fail(ErrorCodes.INTERNAL, "内部错误"));
     }
 

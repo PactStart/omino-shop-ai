@@ -7,5 +7,5 @@ import com.omino.shopai.entity.GoodsSnapshot;
 
 public interface LinkIssuer {
 
-    ConvertedLink issue(GoodsSnapshot goods, boolean openInApp);
+    ConvertedLink issue(GoodsSnapshot goods, boolean openInApp, String userId);
 }

@@ -17,6 +17,9 @@ public interface OrderStore {
 
     void advance(String platform, OffsetDateTime now);
 
+    /** 只写失败文案，不改两列水位。 */
+    void fail(String platform, String message);
+
     AppOrder findByPlatformOrder(String platform, String platformOrderId);
 
     void save(AppOrder order);

@@ -1,22 +1,24 @@
 package com.omino.shopai.app.adapter.platform;
-/**
- * 联盟出站的统一入口。
- */
 
-final class Upstream {
+/**
+ * 出站前的密钥闸门。缺任何一个必需密钥就停，不创建官方客户端。
+ */
+public final class Upstream {
 
     private Upstream() {
     }
-/**
- * 调用联盟前确认适配器已启用。失败收成平台错误，不带密钥。
- */
 
-    static void call(String... secrets) {
+    /**
+     * 密钥都非空白才返回。空白或 null 视为未配置。
+     */
+    public static void call(String... secrets) {
+        if (secrets == null) {
+            throw new PlatformCallException();
+        }
         for (String secret : secrets) {
             if (secret == null || secret.isBlank()) {
                 throw new PlatformCallException();
             }
         }
-        throw new PlatformCallException();
     }
 }

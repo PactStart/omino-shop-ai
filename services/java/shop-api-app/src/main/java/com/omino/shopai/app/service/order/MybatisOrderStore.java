@@ -74,6 +74,18 @@ public class MybatisOrderStore implements OrderStore {
     }
 
     @Override
+    public void fail(String platform, String message) {
+        jdbc.update("""
+                INSERT INTO order_sync_cursor
+                    (platform, last_sync_create_time, last_sync_update_time, last_error, updated_at)
+                VALUES (?, NULL, NULL, ?, ?)
+                ON CONFLICT (platform) DO UPDATE SET
+                    last_error = EXCLUDED.last_error,
+                    updated_at = EXCLUDED.updated_at
+                """, platform, message, OffsetDateTime.now());
+    }
+
+    @Override
     public AppOrder findByPlatformOrder(String platform, String platformOrderId) {
         return orders.selectOne(new LambdaQueryWrapper<AppOrder>()
                 .eq(AppOrder::getPlatform, platform)
