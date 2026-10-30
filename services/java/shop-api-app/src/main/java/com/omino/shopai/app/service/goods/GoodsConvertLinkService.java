@@ -16,14 +16,20 @@ public class GoodsConvertLinkService {
     private final GoodsSnapshotStore snapshots;
     private final GoodsGateStore gate;
     private final LinkIssuer issuer;
+    private final UnionRelation relations;
 /**
  * 点击后才转链。未授权或未安装则拒绝。
  */
 
-    public GoodsConvertLinkService(GoodsSnapshotStore snapshots, GoodsGateStore gate, LinkIssuer issuer) {
+    public GoodsConvertLinkService(
+            GoodsSnapshotStore snapshots,
+            GoodsGateStore gate,
+            LinkIssuer issuer,
+            UnionRelation relations) {
         this.snapshots = snapshots;
         this.gate = gate;
         this.issuer = issuer;
+        this.relations = relations;
     }
 /**
  * 转换链接。
@@ -46,12 +52,15 @@ public class GoodsConvertLinkService {
         if (!gate.authorized(userId, resolved)) {
             throw new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH");
         }
+        String promotionId = relations.find(userId, UnionIds.source(resolved))
+                .filter(id -> !id.isBlank())
+                .orElseThrow(() -> new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH"));
         GoodsSnapshot goods = resolve(goodsId, resolved, platformGoodsId);
         String platformCode = goods.getPlatform() == null ? null : goods.getPlatform().code();
         boolean openInApp = !Boolean.FALSE.equals(preferApp) && gate.installed(userId, platformCode);
         ConvertedLink link;
         try {
-            link = issuer.issue(goods, openInApp, userId);
+            link = issuer.issue(goods, openInApp, userId, promotionId);
         } catch (PlatformCallException ex) {
             throw new ApiBusinessException(ErrorCodes.UPSTREAM_PLATFORM, "平台查询失败");
         }

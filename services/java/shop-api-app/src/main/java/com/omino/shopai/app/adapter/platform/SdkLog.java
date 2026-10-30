@@ -23,6 +23,9 @@ public final class SdkLog {
     private static final Pattern SECRET_QUERY = Pattern.compile(
             "((?:app_secret|client_secret|secret|sign|session|access_token)=)[^&\\s,\"}]*",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern PROMOTION = Pattern.compile(
+            "(\"(?:pid|pId|relationId|relation_id|chanTag|openId)\"\\s*:\\s*\")([^\"]*)(\")",
+            Pattern.CASE_INSENSITIVE);
 
     private SdkLog() {
     }
@@ -53,6 +56,7 @@ public final class SdkLog {
         }
         raw = SECRET.matcher(raw).replaceAll("$1***$3");
         raw = SECRET_QUERY.matcher(raw).replaceAll("$1***");
+        raw = PROMOTION.matcher(raw).replaceAll("$1***$3");
         if (raw.length() <= LIMIT) {
             return raw;
         }

@@ -93,6 +93,15 @@ public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, 
     }
 
     @Override
+    public Optional<String> relationId(String userId, String platform) {
+        String value = relations.get(userId + "\0" + platform);
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(value);
+    }
+
+    @Override
     public boolean installed(String userId, String platform) {
         return Boolean.TRUE.equals(installs.get(userId + "\0" + platform));
     }

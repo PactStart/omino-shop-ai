@@ -16,5 +16,8 @@ class SdkLogTest {
         assertTrue(text.contains("耳机"));
         assertTrue(text.contains("***"));
         assertFalse(text.contains("super-secret-value"));
+        String promotion = SdkLog.text(Map.of("pid", "501", "keyword", "耳机"));
+        assertTrue(promotion.contains("耳机"));
+        assertFalse(promotion.contains("501"));
     }
 }

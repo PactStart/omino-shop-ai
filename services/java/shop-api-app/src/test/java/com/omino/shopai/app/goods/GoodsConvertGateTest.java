@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,10 +33,10 @@ class GoodsConvertGateTest {
     void unauthorizedDoesNotConvertEvenWhenKeysExist() {
         MemoryGoods goods = new MemoryGoods();
         AtomicInteger calls = new AtomicInteger();
-        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, (snapshot, openInApp, userId) -> {
+        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, (snapshot, openInApp, userId, promotionId) -> {
             calls.incrementAndGet();
             return new ConvertedLink(snapshot.getId(), "taobao", "https://example.test/buy", null, null, "https://example.test/buy", "2026-10-30T18:00:00+08:00");
-        });
+        }, (userId, platform) -> Optional.empty());
         ApiBusinessException ex = assertThrows(ApiBusinessException.class,
                 () -> service.convert(USER, null, "taobao", "100", true));
         assertEquals(ErrorCodes.NEED_AUTH, ex.code());
@@ -53,7 +54,7 @@ class GoodsConvertGateTest {
                 new TaobaoGoodsClient("", ""),
                 new JdGoodsClient("", ""),
                 new PddGoodsClient("", ""),
-                new VipGoodsClient("", ""))));
+                new VipGoodsClient("", ""))), (userId, platform) -> Optional.of("2552715009"));
         ApiBusinessException ex = assertThrows(ApiBusinessException.class,
                 () -> service.convert(USER, "g1", "taobao", "100", true));
         assertEquals(ErrorCodes.UPSTREAM_PLATFORM, ex.code());
@@ -68,9 +69,10 @@ class GoodsConvertGateTest {
     void successfulIssueWritesTheClick() {
         MemoryGoods goods = seeded();
         goods.relation(USER, "taobao", "authorized", null);
-        LinkIssuer issuer = (snapshot, openInApp, userId) -> new ConvertedLink(
+        LinkIssuer issuer = (snapshot, openInApp, userId, promotionId) -> new ConvertedLink(
                 snapshot.getId(), "taobao", "https://example.test/buy", null, null, "https://example.test/buy", "2026-10-30T18:00:00+08:00");
-        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, issuer);
+        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, issuer,
+                (userId, platform) -> Optional.of("2552715009"));
         service.convert(USER, "g1", "taobao", "100", false);
         assertEquals(1, goods.clicks(USER));
     }

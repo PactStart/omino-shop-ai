@@ -51,8 +51,9 @@ class GoodsGateTest {
         goods.relation(USER, "jd", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
         JdCatalog catalog = new JdCatalog();
-        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json);
-        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(List.of(catalog)));
+        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods::relationId);
+        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(List.of(catalog)),
+                goods::relationId);
         mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, convert, new com.omino.shopai.app.service.goods.GoodsLibraryService(goods, goods)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -157,7 +158,7 @@ class GoodsGateTest {
         }
 
         @Override
-        public GoodsSnapshot detail(String platformGoodsId) {
+        public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
             GoodsSnapshot snapshot = new GoodsSnapshot();
             snapshot.setPlatform(Platform.JD);
             snapshot.setPlatformGoodsId(platformGoodsId);
@@ -169,12 +170,12 @@ class GoodsGateTest {
         }
 
         @Override
-        public List<GoodsSnapshot> search(String keyword) {
+        public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
             return List.of();
         }
 
         @Override
-        public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+        public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
             return new PromotionLink(goods.getGoodsUrl(), null, goods.getGoodsUrl(), goods.getGoodsUrl());
         }
 

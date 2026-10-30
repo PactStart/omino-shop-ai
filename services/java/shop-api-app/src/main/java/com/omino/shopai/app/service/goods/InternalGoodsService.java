@@ -45,7 +45,7 @@ public class InternalGoodsService {
                 : platforms;
         List<GoodsCard> cards = new ArrayList<>();
         for (String target : targets) {
-            cards.addAll(goods.search(target, query));
+            cards.addAll(goods.search(userId, target, query));
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("total", cards.size());

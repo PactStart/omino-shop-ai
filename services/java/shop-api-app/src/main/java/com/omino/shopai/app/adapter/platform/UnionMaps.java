@@ -78,6 +78,14 @@ public final class UnionMaps {
         return null;
     }
 
+    /** 推广身份必须非空白，否则不出站。 */
+    public static String promotion(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new PlatformCallException();
+        }
+        return raw;
+    }
+
     /**
      * 只接受本系统用户号，或拼多多那种只含用户号的 JSON。其它字符串不写入订单。
      */

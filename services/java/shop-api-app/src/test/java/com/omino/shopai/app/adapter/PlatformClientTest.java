@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -59,7 +60,7 @@ class PlatformClientTest {
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
                 () -> query.detail("01USER0000000000000000000A", null, "meituan", "1"));
         ApiBusinessException search = assertThrows(ApiBusinessException.class,
-                () -> query.search("meituan", "耳机"));
+                () -> query.search("01USER0000000000000000000A", "meituan", "耳机"));
         assertEquals(ErrorCodes.VALIDATION, detail.code());
         assertEquals(ErrorCodes.VALIDATION, search.code());
         assertFalse(detail.getMessage().contains(SECRET));
@@ -75,7 +76,8 @@ class PlatformClientTest {
     }
 
     private static void assertUpstream(GoodsQueryService query, String platform) {
-        ApiBusinessException search = assertThrows(ApiBusinessException.class, () -> query.search(platform, "耳机"));
+        ApiBusinessException search = assertThrows(ApiBusinessException.class,
+                () -> query.search("01USER0000000000000000000A", platform, "耳机"));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
                 () -> query.detail("01USER0000000000000000000A", null, platform, "100"));
         assertEquals(ErrorCodes.UPSTREAM_PLATFORM, search.code());
@@ -86,6 +88,7 @@ class PlatformClientTest {
 
     private static GoodsQueryService query(List<PlatformGoodsClient> clients) {
         MemoryGoods goods = new MemoryGoods();
-        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper());
+        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper(),
+                (userId, platform) -> Optional.of("1"));
     }
 }

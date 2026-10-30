@@ -49,7 +49,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public GoodsSnapshot detail(String platformGoodsId) {
+    public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (platformGoodsId == null || platformGoodsId.isBlank()) {
             throw new PlatformCallException();
@@ -57,6 +57,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
         try {
             TbkItemInfoUpgradeGetRequest request = new TbkItemInfoUpgradeGetRequest();
             request.setItemId(platformGoodsId);
+            request.setRelationId(UnionMaps.promotion(promotionId));
             TbkItemInfoUpgradeGetResponse response = SdkLog.exchange(
                     "taobao", "item.info", request, () -> client().execute(request));
             if (response == null || !response.isSuccess()) {
@@ -75,7 +76,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public List<GoodsSnapshot> search(String keyword) {
+    public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (keyword == null || keyword.isBlank()) {
             return List.of();
@@ -84,6 +85,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
             TbkDgMaterialOptionalUpgradeRequest request = new TbkDgMaterialOptionalUpgradeRequest();
             request.setQ(keyword);
             request.setAdzoneId(ADZONE_ID);
+            request.setRelationId(UnionMaps.promotion(promotionId));
             request.setMaterialId(MATERIAL_ID);
             request.setPageNo(1L);
             request.setPageSize(20L);
@@ -112,7 +114,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         String itemId = goods == null ? null : goods.getPlatformGoodsId();
         if (itemId == null || itemId.isBlank()) {
@@ -121,6 +123,7 @@ public class TaobaoGoodsClient implements PlatformGoodsClient {
         try {
             TbkDgGeneralLinkConvertRequest request = new TbkDgGeneralLinkConvertRequest();
             request.setAdzoneId(ADZONE_ID);
+            request.setRelationId(UnionMaps.promotion(promotionId));
             request.setItemIdList(itemId);
             TbkDgGeneralLinkConvertResponse response = SdkLog.exchange(
                     "taobao", "general.link.convert", request, () -> client().execute(request));

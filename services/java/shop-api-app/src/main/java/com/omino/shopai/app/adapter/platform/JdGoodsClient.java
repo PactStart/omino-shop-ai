@@ -50,13 +50,14 @@ public class JdGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public GoodsSnapshot detail(String platformGoodsId) {
+    public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (platformGoodsId == null || platformGoodsId.isBlank()) {
             throw new PlatformCallException();
         }
         try {
             GoodsReq req = new GoodsReq();
+            req.setPid(UnionMaps.promotion(promotionId));
             req.setSceneId(1);
             req.setPageIndex(1);
             req.setPageSize(1);
@@ -78,13 +79,14 @@ public class JdGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public List<GoodsSnapshot> search(String keyword) {
+    public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (keyword == null || keyword.isBlank()) {
             return List.of();
         }
         try {
             GoodsReq req = new GoodsReq();
+            req.setPid(UnionMaps.promotion(promotionId));
             req.setSceneId(1);
             req.setKeyword(keyword);
             req.setPageIndex(1);
@@ -106,7 +108,7 @@ public class JdGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         String itemId = goods == null ? null : goods.getPlatformGoodsId();
         if (itemId == null || itemId.isBlank()) {
@@ -120,6 +122,7 @@ public class JdGoodsClient implements PlatformGoodsClient {
             }
             req.setMaterialId(material);
             req.setSceneId(1);
+            req.setPid(UnionMaps.promotion(promotionId));
             String buyer = UnionMaps.userId(userId);
             if (buyer != null) {
                 req.setSubUnionId(buyer);

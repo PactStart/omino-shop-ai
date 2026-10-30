@@ -43,7 +43,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public GoodsSnapshot detail(String platformGoodsId) {
+    public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
         Upstream.call(clientId, clientSecret);
         if (platformGoodsId == null || platformGoodsId.isBlank()) {
             throw new PlatformCallException();
@@ -51,6 +51,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
         try {
             PddDdkGoodsDetailRequest request = new PddDdkGoodsDetailRequest();
             request.setGoodsSign(platformGoodsId);
+            bind(request, promotionId, userId);
             PddDdkGoodsDetailResponse response = SdkLog.exchange(
                     "pdd", "goods.detail", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null) {
@@ -69,7 +70,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public List<GoodsSnapshot> search(String keyword) {
+    public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
         Upstream.call(clientId, clientSecret);
         if (keyword == null || keyword.isBlank()) {
             return List.of();
@@ -79,6 +80,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
             request.setKeyword(keyword);
             request.setPage(1);
             request.setPageSize(20);
+            bind(request, promotionId, userId);
             PddDdkGoodsSearchResponse response = SdkLog.exchange(
                     "pdd", "goods.search", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null) {
@@ -103,7 +105,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
         Upstream.call(clientId, clientSecret);
         String sign = goods == null ? null : goods.getPlatformGoodsId();
         if (sign == null || sign.isBlank()) {
@@ -113,10 +115,7 @@ public class PddGoodsClient implements PlatformGoodsClient {
             PddDdkGoodsPromotionUrlGenerateRequest request = new PddDdkGoodsPromotionUrlGenerateRequest();
             request.setGoodsSignList(List.of(sign));
             request.setGenerateSchemaUrl(openInApp);
-            String buyer = UnionMaps.userId(userId);
-            if (buyer != null) {
-                request.setCustomParameters("{\"uid\":\"" + buyer + "\"}");
-            }
+            bind(request, promotionId, userId);
             PddDdkGoodsPromotionUrlGenerateResponse response = SdkLog.exchange(
                     "pdd", "promotion.url", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null || response.getGoodsPromotionUrlGenerateResponse() == null) {
@@ -181,6 +180,32 @@ public class PddGoodsClient implements PlatformGoodsClient {
         } catch (Exception ex) {
             throw new PlatformCallException();
         }
+    }
+
+    /** 拼多多搜品、详情、转链都要带上已备案的 pid 和用户号。 */
+    public static void bind(PddDdkGoodsSearchRequest request, String pid, String userId) {
+        request.setPid(UnionMaps.promotion(pid));
+        request.setCustomParameters(custom(userId));
+    }
+
+    /** 详情与搜品使用同一对备案参数。 */
+    public static void bind(PddDdkGoodsDetailRequest request, String pid, String userId) {
+        request.setPid(UnionMaps.promotion(pid));
+        request.setCustomParameters(custom(userId));
+    }
+
+    /** 转链请求的推广位方法名是 setPId。 */
+    public static void bind(PddDdkGoodsPromotionUrlGenerateRequest request, String pid, String userId) {
+        request.setPId(UnionMaps.promotion(pid));
+        request.setCustomParameters(custom(userId));
+    }
+
+    private static String custom(String userId) {
+        String buyer = UnionMaps.userId(userId);
+        if (buyer == null) {
+            throw new PlatformCallException();
+        }
+        return "{\"uid\":\"" + buyer + "\"}";
     }
 
     private PopHttpClient client() {

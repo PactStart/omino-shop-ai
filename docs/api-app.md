@@ -61,7 +61,7 @@
 
 详情页「去购买」按钮调用。**禁止**列表/对话卡片批量转链。不实现 `/goods/buy`、`/goods/promotion-link`。
 
-顺序（全部在 Java）：① 该用户该 `platform` 是否已联盟授权，未授权返回 `40301` 且 `error.reason=NEED_AUTH`（APP 可跳对话发 `auth.grant` 或打开授权页）；② `preferApp=true` 时看已上报 `app_user_installed_app`，未安装则只给 H5/`universalLink`；③ 用服务端 PID/relationId 转链；④ 写入 `click_event`（归因）。**禁止**把联盟 PID 下发客户端。
+顺序（全部在 Java）：① 该用户该 `platform` 是否已联盟授权，未授权返回 `40301` 且 `error.reason=NEED_AUTH`（APP 可跳对话发 `auth.grant` 或打开授权页）；② 读取该用户的推广身份 `platform_authorization.relation_id`（拼多多转链的 pid 读京东那条），先 Redis 后数据库，没有则同样 `40301`，不出站；③ `preferApp=true` 时看已上报 `app_user_installed_app`，未安装则只给 H5/`universalLink`；④ 用该身份转链；⑤ 写入 `click_event`（归因）。**禁止**把联盟 PID 下发客户端。
 
 **Request**
 

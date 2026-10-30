@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 /**
  * 持久化边界。事务和状态判断由调用方负责。
  */
@@ -46,6 +47,26 @@ public class MybatisGoodsGateStore implements GoodsGateStore {
                 .eq(PlatformAuthorization::getUserId, userId)
                 .eq(PlatformAuthorization::getPlatform, platform));
         return row != null && AuthStatus.AUTHORIZED == row.getStatus();
+    }
+
+    @Override
+    public Optional<String> relationId(String userId, String platform) {
+        Platform parsed;
+        try {
+            parsed = Platform.fromCode(platform);
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+        if (parsed == null || userId == null || userId.isBlank()) {
+            return Optional.empty();
+        }
+        PlatformAuthorization row = authorizations.selectOne(new LambdaQueryWrapper<PlatformAuthorization>()
+                .eq(PlatformAuthorization::getUserId, userId)
+                .eq(PlatformAuthorization::getPlatform, parsed));
+        if (row == null || row.getRelationId() == null || row.getRelationId().isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(row.getRelationId());
     }
 /**
  * 端上是否报过已安装对应 APP。

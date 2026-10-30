@@ -13,12 +13,12 @@ public interface PlatformGoodsClient {
 
     String platform();
 
-    GoodsSnapshot detail(String platformGoodsId);
+    GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId);
 
-    List<GoodsSnapshot> search(String keyword);
+    List<GoodsSnapshot> search(String keyword, String userId, String promotionId);
 
     /** 已授权之后才由签发器调用。响应里不放推广位。 */
-    PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId);
+    PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId);
 
     /** 按游标拉增量。官方空列表是成功的空批次，失败则抛出且不前进游标。 */
     List<IncomingOrder> pullOrders(OrderSyncCursor cursor);

@@ -8,10 +8,11 @@
 | --- | --- | --- |
 | 平台码不是 `taobao` / `jd` / `pdd` / `vip` | 拒绝 | 无 |
 | 转链时该用户未授权该平台 | `40301`，`error.reason=NEED_AUTH` | 无。先于密钥检查 |
-| 搜品、详情、订单增量，或已授权后的转链，任一必需密钥为空 | `50010` | 无 |
-| 密钥齐全 | 调用 research.md 中该平台的那一个官方请求 | 有 |
+| 搜品、按商品号拉详情或转链时，当前用户没有可用的 `relation_id` | `40301`，`error.reason=NEED_AUTH` | 无。先于密钥检查。拼多多读该用户京东那条，其余平台读本平台那条 |
+| 搜品、详情、订单增量，或已授权且已有推广身份后的转链，任一必需密钥为空 | `50010` | 无 |
+| 密钥齐全且推广身份齐全 | 调用 research.md 中该平台的那一个官方请求 | 有 |
 
-必需密钥：淘宝 `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET`，京东 `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`。不读取 `UNION_TAOBAO_PID` 和 `UNION_JD_SITE_ID`。淘宝搜品和转链使用固定广告位，京东转链不带站点号。拼多多 `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`。唯品会 `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`。唯品会推广位标识用 `default_pid`。
+必需密钥：淘宝 `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET`，京东 `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`。不读取 `UNION_TAOBAO_PID` 和 `UNION_JD_SITE_ID`。淘宝搜品和转链仍用固定广告位，并带上该用户淘宝 `relation_id`。京东转链不带站点号，`pid` 用该用户京东 `relation_id`。拼多多 `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`；`pid` 用该用户京东 `relation_id`，`custom_parameters` 为 `{"uid":"<用户号>"}`。唯品会 `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`。有当前用户时 `openId` 用该用户唯品会 `relation_id`，`chanTag` 仍是 `default_pid`。订单增量没有当前用户，唯品会订单列表仍只用 `default_pid`。推广身份先读 Redis（10 分钟），没有再查 `platform_authorization` 并写入 Redis。
 
 ## 调用后
 

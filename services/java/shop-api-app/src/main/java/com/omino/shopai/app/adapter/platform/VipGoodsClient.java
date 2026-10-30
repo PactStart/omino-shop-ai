@@ -47,7 +47,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public GoodsSnapshot detail(String platformGoodsId) {
+    public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (platformGoodsId == null || platformGoodsId.isBlank()) {
             throw new PlatformCallException();
@@ -56,7 +56,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
             GetByGoodsIdsRequest request = new GetByGoodsIdsRequest();
             request.setGoodsIds(List.of(platformGoodsId));
             request.setQueryDetail(true);
-            request.setChanTag("default_pid");
+            bind(request, promotionId);
             var rows = SdkLog.exchange("vip", "goods.byIds", request, () -> goodsClient().getByGoodsIdsV2(request));
             if (rows == null || rows.isEmpty()) {
                 return null;
@@ -70,7 +70,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public List<GoodsSnapshot> search(String keyword) {
+    public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         if (keyword == null || keyword.isBlank()) {
             return List.of();
@@ -80,7 +80,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
             request.setKeyword(keyword);
             request.setPage(1);
             request.setPageSize(20);
-            request.setChanTag("default_pid");
+            bind(request, promotionId);
             var response = SdkLog.exchange("vip", "goods.query", request, () -> goodsClient().query(request));
             if (response == null) {
                 throw new PlatformCallException();
@@ -104,7 +104,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
     }
 
     @Override
-    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId) {
+    public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
         String goodsId = goods == null ? null : goods.getPlatformGoodsId();
         if (goodsId == null || goodsId.isBlank()) {
@@ -112,6 +112,8 @@ public class VipGoodsClient implements PlatformGoodsClient {
         }
         try {
             String buyer = UnionMaps.userId(userId);
+            UrlGenByGoodsIdRequest request = new UrlGenByGoodsIdRequest();
+            bind(request, promotionId);
             var response = SdkLog.exchange("vip", "url.byGoodsId", goodsId, () -> urlClient().genByGoodsId(
                     List.of(goodsId),
                     "default_pid",
@@ -120,7 +122,7 @@ public class VipGoodsClient implements PlatformGoodsClient {
                     Boolean.FALSE,
                     Boolean.FALSE,
                     Boolean.TRUE,
-                    new UrlGenByGoodsIdRequest()));
+                    request));
             if (response == null || response.getUrlInfoList() == null || response.getUrlInfoList().isEmpty()) {
                 throw new PlatformCallException();
             }
@@ -152,6 +154,23 @@ public class VipGoodsClient implements PlatformGoodsClient {
         } catch (Exception ex) {
             throw new PlatformCallException();
         }
+    }
+
+    /** 推广身份写 openId。chanTag 仍是固定推广位。 */
+    public static void bind(QueryGoodsRequest request, String openId) {
+        request.setChanTag("default_pid");
+        request.setOpenId(UnionMaps.promotion(openId));
+    }
+
+    /** 详情与搜品使用同一对身份。 */
+    public static void bind(GetByGoodsIdsRequest request, String openId) {
+        request.setChanTag("default_pid");
+        request.setOpenId(UnionMaps.promotion(openId));
+    }
+
+    /** 转链的 chanTag 在方法参数里，这里只写 openId。 */
+    public static void bind(UrlGenByGoodsIdRequest request, String openId) {
+        request.setOpenId(UnionMaps.promotion(openId));
     }
 
     private void pullAxis(

@@ -47,8 +47,9 @@ class GoodsLibraryTest {
         goodsId = snapshot.getId();
         collectionId = collection.getId();
         library = new GoodsLibraryService(goods, goods);
-        GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper());
-        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(java.util.List.of())), library))
+        GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper(),
+                (userId, platform) -> java.util.Optional.of("1"));
+        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(java.util.List.of()), (userId, platform) -> java.util.Optional.of("1")), library))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

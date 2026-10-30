@@ -23,7 +23,7 @@ public class ServerLinkIssuer implements LinkIssuer {
     }
 
     @Override
-    public ConvertedLink issue(GoodsSnapshot goods, boolean openInApp, String userId) {
+    public ConvertedLink issue(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
         String platform = goods.getPlatform() == null ? null : goods.getPlatform().code();
         PlatformGoodsClient client = null;
         for (PlatformGoodsClient candidate : clients) {
@@ -35,7 +35,7 @@ public class ServerLinkIssuer implements LinkIssuer {
         if (client == null) {
             throw new PlatformCallException();
         }
-        PromotionLink link = client.convert(goods, openInApp, userId);
+        PromotionLink link = client.convert(goods, openInApp, userId, promotionId);
         String deeplink = openInApp ? link.deeplink() : null;
         String expiresAt = OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).plusHours(1).toString();
         return new ConvertedLink(

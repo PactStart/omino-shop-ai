@@ -30,6 +30,7 @@ public class GoodsQueryService {
     private final GoodsDetailCache cache;
     private final GoodsLibraryStore library;
     private final ObjectMapper json;
+    private final UnionRelation relations;
 /**
  * 详情先读短缓存，未命中再调联盟并记浏览。
  */
@@ -39,12 +40,14 @@ public class GoodsQueryService {
             List<PlatformGoodsClient> clients,
             GoodsDetailCache cache,
             GoodsLibraryStore library,
-            ObjectMapper json) {
+            ObjectMapper json,
+            UnionRelation relations) {
         this.snapshots = snapshots;
         this.clients = clients;
         this.cache = cache;
         this.library = library;
         this.json = json;
+        this.relations = relations;
     }
 /**
  * 读取详情。
@@ -69,21 +72,22 @@ public class GoodsQueryService {
             }
         }
         GoodsSnapshot snapshot = snapshots.findByPlatform(platform, platformGoodsId)
-                .orElseGet(() -> load(platform, platformGoodsId));
+                .orElseGet(() -> load(userId, platform, platformGoodsId));
         return publish(userId, snapshot);
     }
 /**
  * 按条件检索。
  */
 
-    public List<GoodsCard> search(String platform, String keyword) {
+    public List<GoodsCard> search(String userId, String platform, String keyword) {
         if (keyword == null || keyword.isBlank()) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "关键词不能为空");
         }
         requirePlatform(platform);
+        String promotionId = requireRelation(userId, platform);
         try {
             List<GoodsCard> cards = new ArrayList<>();
-            for (GoodsSnapshot found : client(platform).search(keyword.trim())) {
+            for (GoodsSnapshot found : client(platform).search(keyword.trim(), userId, promotionId)) {
                 if (found.getPlatform() == null) {
                     found.setPlatform(Platform.fromCode(platform));
                 }
@@ -98,9 +102,10 @@ public class GoodsQueryService {
  * 装载调用所需的数据。
  */
 
-    private GoodsSnapshot load(String platform, String platformGoodsId) {
+    private GoodsSnapshot load(String userId, String platform, String platformGoodsId) {
+        String promotionId = requireRelation(userId, platform);
         try {
-            GoodsSnapshot fetched = client(platform).detail(platformGoodsId);
+            GoodsSnapshot fetched = client(platform).detail(platformGoodsId, userId, promotionId);
             if (fetched == null) {
                 throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "商品不存在");
             }
@@ -128,6 +133,13 @@ public class GoodsQueryService {
 
     private static ApiBusinessException upstream() {
         return new ApiBusinessException(ErrorCodes.UPSTREAM_PLATFORM, "平台查询失败");
+    }
+
+    /** 没有推广身份就停在这里，不创建官方客户端。拼多多读京东那条。 */
+    private String requireRelation(String userId, String platform) {
+        return relations.find(userId, UnionIds.source(platform))
+                .filter(id -> !id.isBlank())
+                .orElseThrow(() -> new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH"));
     }
 /**
  * 发布。
