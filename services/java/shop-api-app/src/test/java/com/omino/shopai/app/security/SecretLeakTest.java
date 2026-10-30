@@ -30,7 +30,7 @@ class SecretLeakTest {
         assertFalse(goods.contains("convert-link"));
         String credits = Files.readString(Path.of("src/main/java/com/omino/shopai/app/web/internal/InternalAccountController.java"));
         assertFalse(credits.contains("debit"));
-        assertFalse(credits.contains("AgentGateway"));
+        assertFalse(credits.contains("IAgentGateway"));
         for (String path : new String[] {
                 "/internal/v1/goods/search",
                 "/internal/v1/me",

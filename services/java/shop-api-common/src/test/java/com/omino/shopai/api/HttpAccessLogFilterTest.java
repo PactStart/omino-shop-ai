@@ -42,6 +42,8 @@ class HttpAccessLogFilterTest {
             assertEquals(1, appender.list.size());
             String line = appender.list.get(0).getFormattedMessage();
             assertTrue(line.contains("POST /api/app/internal/v1/goods/detail"));
+            assertTrue(line.contains("traceId="));
+            assertTrue(line.matches(".*ts=\\d{8} \\d{2}:\\d{2}:\\d{2}.*"));
             assertTrue(line.contains("status=200"));
             assertTrue(line.contains("code=40400"));
             assertTrue(line.contains("message=商品不存在"));
@@ -165,6 +167,29 @@ class HttpAccessLogFilterTest {
 
             assertTrue(appender.list.isEmpty());
             assertEquals("{\"status\":\"UP\"}", response.getContentAsString());
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previous);
+        }
+    }
+
+    @Test
+    void printsEnvelopeTimeAsCompactShanghaiClock() throws Exception {
+        Logger logger = (Logger) LoggerFactory.getLogger(HttpAccessLogFilter.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        Level previous = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        try {
+            HttpAccessLogFilter filter = new HttpAccessLogFilter();
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/app/v1/orders");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            String body = "{\"code\":0,\"message\":\"ok\",\"ts\":\"2026-10-31T01:03:05+08:00\"}";
+            filter.doFilter(request, response, (req, res) -> res.getWriter().write(body));
+
+            String line = appender.list.get(0).getFormattedMessage();
+            assertTrue(line.contains("ts=20261031 01:03:05"));
         } finally {
             logger.detachAppender(appender);
             logger.setLevel(previous);

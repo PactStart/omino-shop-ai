@@ -1,5 +1,9 @@
 package com.omino.shopai.api;
 
+import com.omino.shopai.exception.UnauthenticatedException;
+
+import com.omino.shopai.exception.ApiBusinessException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -7,9 +11,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * 把异常收成信封。未知异常不泄漏堆栈。
  */
@@ -18,7 +19,6 @@ import java.util.UUID;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
-    private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
 /**
  * 字段错误收成 40001，指出字段和原因，不带堆栈。
  */
@@ -56,10 +56,17 @@ public class ApiExceptionHandler {
  * 未分类异常收成 50000，文案固定为内部错误。
  */
 
+    /**
+     * 失败信封。追踪号和时间先空着，写出前和成功响应用同一次请求的号。
+     *
+     * @param code 业务码
+     * @param message 给人看的说明
+     * @param field 出错字段，可空
+     * @param reason 字段错误原因，可空
+     * @return 失败信封
+     */
     private static ApiResponse<Void> fail(int code, String message, String field, String reason) {
-        String traceId = UUID.randomUUID().toString().replace("-", "");
-        String ts = OffsetDateTime.now(SHANGHAI).toString();
         ApiError error = field == null && reason == null ? null : new ApiError(field, reason);
-        return new ApiResponse<>(code, message, null, traceId, ts, error);
+        return new ApiResponse<>(code, message, null, null, null, error);
     }
 }

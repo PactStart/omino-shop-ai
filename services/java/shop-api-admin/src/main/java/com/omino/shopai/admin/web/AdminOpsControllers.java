@@ -3,6 +3,9 @@ package com.omino.shopai.admin.web;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
+import com.omino.shopai.admin.web.dto.InboxRequestDto;
+import com.omino.shopai.admin.web.dto.RejectRequestDto;
+import com.omino.shopai.admin.web.dto.SuggestionRequestDto;
 import com.omino.shopai.admin.service.ops.AdminDirectory;
 import com.omino.shopai.admin.service.wallet.AdminWithdrawalService;
 import com.omino.shopai.entity.Announcement;
@@ -13,7 +16,7 @@ import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.entity.CreditPackage;
 import com.omino.shopai.entity.InboxMessage;
 import com.omino.shopai.entity.InvitePosterTemplate;
-import com.omino.shopai.support.withdrawal.PayoutView;
+import com.omino.shopai.support.withdrawal.PayoutViewDto;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,27 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-/**
- * 后台控制器共用的信封和当前操作者。
- */
-
-final class WebSupport {
-    private WebSupport() {
-    }
-
-    static String trace() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
-    static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
-}
 /**
  * AdminUserController 提供 HTTP 接口。
  */
@@ -60,13 +44,13 @@ class AdminUserController {
     @Operation(summary = "查询")
     @GetMapping
     ApiResponse<List<Map<String, Object>>> list(@RequestParam(value = "keyword", required = false) String keyword) {
-        return ApiResponse.ok(directory.users(keyword), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.users(keyword));
     }
 
     @Operation(summary = "查询 /{id}")
     @GetMapping("/{id}")
     ApiResponse<Map<String, Object>> detail(@PathVariable String id) {
-        return ApiResponse.ok(directory.user(id), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.user(id));
     }
 }
 /**
@@ -86,7 +70,7 @@ class AdminOrderController {
     @Operation(summary = "查询")
     @GetMapping
     ApiResponse<List<AppOrder>> list() {
-        return ApiResponse.ok(directory.orders(), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.orders());
     }
 }
 /**
@@ -111,18 +95,18 @@ class AdminWithdrawalController {
     @Operation(summary = "查询")
     @GetMapping
     ApiResponse<List<Map<String, Object>>> list(@RequestParam(value = "status", required = false) String status) {
-        return ApiResponse.ok(directory.withdrawals(status), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.withdrawals(status));
     }
 
     @Operation(summary = "提交 /{id}/payout")
     @PostMapping("/{id}/payout")
     ApiResponse<Map<String, String>> payout(@PathVariable String id) {
-        PayoutView view = withdrawals.payout(id);
+        PayoutViewDto view = withdrawals.payout(id);
         Map<String, String> data = Map.of("payoutResult", view.payoutResult(), "status", view.status() == null ? "" : view.status());
         if ("failed".equals(view.payoutResult())) {
-            return new ApiResponse<>(0, view.message(), Map.of("payoutResult", "failed"), WebSupport.trace(), WebSupport.now());
+            return new ApiResponse<>(0, view.message(), Map.of("payoutResult", "failed"));
         }
-        return ApiResponse.ok(data, WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(data);
     }
 /**
  * 拒绝并解开冻结。
@@ -130,15 +114,9 @@ class AdminWithdrawalController {
 
     @Operation(summary = "提交 /{id}/reject")
     @PostMapping("/{id}/reject")
-    ApiResponse<Void> reject(@PathVariable String id, @RequestBody RejectRequest request) {
+    ApiResponse<Void> reject(@PathVariable String id, @RequestBody RejectRequestDto request) {
         withdrawals.reject(id, request.reason());
-        return ApiResponse.ok(null, WebSupport.trace(), WebSupport.now());
-    }
-/**
- * 拒绝提现时的原因。
- */
-
-    record RejectRequest(String reason) {
+        return ApiResponse.ok(null);
     }
 }
 /**
@@ -158,13 +136,13 @@ class AdminCreditController {
     @Operation(summary = "查询")
     @GetMapping
     ApiResponse<List<CreditPackage>> list() {
-        return ApiResponse.ok(directory.packages(), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.packages());
     }
 
     @Operation(summary = "提交")
     @PostMapping
     ApiResponse<CreditPackage> save(@RequestBody CreditPackage pack) {
-        return ApiResponse.ok(directory.savePackage(pack), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.savePackage(pack));
     }
 }
 /**
@@ -184,13 +162,13 @@ class AdminInvitePosterController {
     @Operation(summary = "查询")
     @GetMapping
     ApiResponse<List<InvitePosterTemplate>> list() {
-        return ApiResponse.ok(directory.posters(), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.posters());
     }
 
     @Operation(summary = "提交")
     @PostMapping
     ApiResponse<InvitePosterTemplate> save(@RequestBody InvitePosterTemplate poster) {
-        return ApiResponse.ok(directory.savePoster(poster), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.savePoster(poster));
     }
 }
 /**
@@ -210,7 +188,7 @@ class AdminReleaseController {
     @Operation(summary = "提交")
     @PostMapping
     ApiResponse<AppRelease> save(@RequestBody AppRelease release) {
-        return ApiResponse.ok(directory.saveRelease(release), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.saveRelease(release));
     }
 }
 /**
@@ -230,7 +208,7 @@ class AdminRuntimeConfigController {
     @Operation(summary = "提交")
     @PostMapping
     ApiResponse<AppRuntimeConfig> save(@RequestBody AppRuntimeConfig config) {
-        return ApiResponse.ok(directory.saveConfig(config), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.saveConfig(config));
     }
 }
 /**
@@ -250,7 +228,7 @@ class AdminAnnouncementController {
     @Operation(summary = "提交")
     @PostMapping
     ApiResponse<Announcement> save(@RequestBody Announcement announcement) {
-        return ApiResponse.ok(directory.saveAnnouncement(announcement), WebSupport.trace(), WebSupport.now());
+        return ApiResponse.ok(directory.saveAnnouncement(announcement));
     }
 }
 /**
@@ -269,14 +247,8 @@ class AdminInboxController {
 
     @Operation(summary = "提交")
     @PostMapping
-    ApiResponse<InboxMessage> send(@RequestBody InboxRequest request) {
-        return ApiResponse.ok(directory.sendInbox(request.userId(), request.title(), request.body()), WebSupport.trace(), WebSupport.now());
-    }
-/**
- * 代发站内信的接收人和正文。
- */
-
-    record InboxRequest(String userId, String title, String body) {
+    ApiResponse<InboxMessage> send(@RequestBody InboxRequestDto request) {
+        return ApiResponse.ok(directory.sendInbox(request.userId(), request.title(), request.body()));
     }
 }
 /**
@@ -295,13 +267,7 @@ class AdminChatSuggestionController {
 
     @Operation(summary = "提交")
     @PostMapping
-    ApiResponse<ChatSuggestion> add(@RequestBody SuggestionRequest request) {
-        return ApiResponse.ok(directory.addSuggestion(request.text()), WebSupport.trace(), WebSupport.now());
-    }
-/**
- * 开场建议的文案和是否生效。
- */
-
-    record SuggestionRequest(String text) {
+    ApiResponse<ChatSuggestion> add(@RequestBody SuggestionRequestDto request) {
+        return ApiResponse.ok(directory.addSuggestion(request.text()));
     }
 }

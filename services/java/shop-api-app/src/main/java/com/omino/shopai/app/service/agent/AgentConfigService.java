@@ -1,7 +1,7 @@
 package com.omino.shopai.app.service.agent;
 
 import com.omino.shopai.enums.ActiveStatus;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.support.Ids;
@@ -17,13 +17,13 @@ import java.time.ZoneOffset;
 @Service
 public class AgentConfigService {
 
-    private final AgentCatalog catalog;
+    private final IAgentCatalog catalog;
     private final Clock clock;
 /**
  * 注入提示词目录。生效条数上限在添加时检查。
  */
 
-    public AgentConfigService(AgentCatalog catalog, Clock clock) {
+    public AgentConfigService(IAgentCatalog catalog, Clock clock) {
         this.catalog = catalog;
         this.clock = clock;
     }

@@ -11,9 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * 要求渠道和端类型。文档路径放行。
  */
@@ -53,12 +50,10 @@ public class ClientHeaderFilter extends OncePerRequestFilter {
                 || blank(request.getHeader("X-App-Version-Code"))) {
             response.setStatus(HttpServletResponse.SC_OK);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            objectMapper.writeValue(response.getWriter(), new ApiResponse<>(
+            objectMapper.writeValue(response.getWriter(), ApiResponse.reject(
                     ErrorCodes.VALIDATION,
                     "缺少客户端头",
-                    null,
-                    UUID.randomUUID().toString().replace("-", ""),
-                    OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString()));
+                    request.getAttribute(ApiResponse.TRACE_ATTRIBUTE)));
             return;
         }
         filterChain.doFilter(request, response);

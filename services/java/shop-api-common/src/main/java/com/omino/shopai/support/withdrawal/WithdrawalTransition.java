@@ -2,7 +2,7 @@ package com.omino.shopai.support.withdrawal;
 
 import com.omino.shopai.enums.WithdrawalStatus;
 import com.omino.shopai.enums.PayoutChannel;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 /**
  * 提现状态机。失败停在待打款，冻结额不动。

@@ -1,7 +1,7 @@
 package com.omino.shopai.admin.agent;
 
 import com.omino.shopai.admin.service.agent.AdminModelService;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.support.AgentPrompts;

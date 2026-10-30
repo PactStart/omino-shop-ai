@@ -1,8 +1,17 @@
 package com.omino.shopai.app.service.order;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.app.dto.OrderDetailDto;
+
+import com.omino.shopai.app.dto.PageDto;
+
+import com.omino.shopai.app.dto.OrderViewDto;
+
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AppOrder;
+import com.omino.shopai.enums.OrderStatus;
+import com.omino.shopai.enums.Platform;
+import com.omino.shopai.enums.SettleStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,7 +20,6 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 /**
  * OrderQueryService 编排用例，事务和校验放在这里。
  */
@@ -19,31 +27,26 @@ import java.util.Set;
 @Service
 public class OrderQueryService {
 
-    private static final Set<String> PLATFORMS = Set.of("taobao", "jd", "pdd", "vip");
-    private static final Set<String> ORDER_STATUSES = Set.of(
-            "pending_pay", "pending_ship", "shipped", "completed", "cancelled", "unknown");
-    private static final Set<String> SETTLE_STATUSES = Set.of("none", "pending", "settled");
+    private final IOrder store;
 
-    private final OrderStore store;
-
-    public OrderQueryService(OrderStore store) {
+    public OrderQueryService(IOrder store) {
         this.store = store;
     }
 /**
  * 按条件返回列表。
  */
 
-    public OrderPage list(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
-        String platformFilter = filter(platform, PLATFORMS, "平台不正确");
-        String statusFilter = filter(orderStatus, ORDER_STATUSES, "订单状态不正确");
-        String settleFilter = filter(settleStatus, SETTLE_STATUSES, "结算状态不正确");
+    public PageDto<OrderViewDto> list(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
+        String platformFilter = platformFilter(platform);
+        String statusFilter = orderStatusFilter(orderStatus);
+        String settleFilter = settleFilter(settleStatus);
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 50);
-        List<OrderView> rows = store.list(userId, platformFilter, statusFilter, settleFilter, safePage, safeSize)
+        List<OrderViewDto> rows = store.list(userId, platformFilter, statusFilter, settleFilter, safePage, safeSize)
                 .stream()
                 .map(OrderQueryService::view)
                 .toList();
-        return new OrderPage(rows, safePage, safeSize, store.count(userId, platformFilter, statusFilter, settleFilter));
+        return new PageDto<OrderViewDto>(rows, safePage, safeSize, store.count(userId, platformFilter, statusFilter, settleFilter));
     }
 
     public Map<String, Object> stats(String userId, OffsetDateTime from, OffsetDateTime to) {
@@ -71,12 +74,12 @@ public class OrderQueryService {
  * 读取详情。
  */
 
-    public OrderDetail detail(String userId, String id) {
+    public OrderDetailDto detail(String userId, String id) {
         AppOrder order = store.findById(id);
         if (order == null || order.getUserId() == null || !order.getUserId().equals(userId)) {
             throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "订单不存在");
         }
-        return new OrderDetail(
+        return new OrderDetailDto(
                 order.getId(),
                 order.getPlatform() == null ? null : order.getPlatform().code(),
                 order.getGoodsId(),
@@ -91,8 +94,8 @@ public class OrderQueryService {
                 null);
     }
 
-    private static OrderView view(AppOrder order) {
-        return new OrderView(
+    private static OrderViewDto view(AppOrder order) {
+        return new OrderViewDto(
                 order.getId(),
                 order.getPlatform() == null ? null : order.getPlatform().code(),
                 order.getGoodsId(),
@@ -109,14 +112,64 @@ public class OrderQueryService {
  * 按平台和状态筛订单。对外仍用枚举码字符串。
  */
 
-    private static String filter(String value, Set<String> allowed, String message) {
+    /**
+     * 空串表示不筛选。认不出的平台码拒绝。
+     *
+     * @param value 请求里的平台码
+     * @return 库存用的平台码；不筛选则为空
+     */
+    private static String platformFilter(String value) {
+        return code(value, "平台不正确", Platform::fromCode);
+    }
+
+    /**
+     * 空串表示不筛选。认不出的订单状态拒绝。
+     *
+     * @param value 请求里的订单状态
+     * @return 库存用的状态码；不筛选则为空
+     */
+    private static String orderStatusFilter(String value) {
+        return code(value, "订单状态不正确", OrderStatus::fromCode);
+    }
+
+    /**
+     * 空串表示不筛选。认不出的结算状态拒绝。
+     *
+     * @param value 请求里的结算状态
+     * @return 库存用的状态码；不筛选则为空
+     */
+    private static String settleFilter(String value) {
+        return code(value, "结算状态不正确", SettleStatus::fromCode);
+    }
+
+    /**
+     * 用枚举校验请求里的码，再交回库存用的字符串。
+     *
+     * @param value 请求值
+     * @param message 认不出时的错误说明
+     * @param parser 枚举还原
+     * @return 库存码；不筛选则为空
+     */
+    private static String code(String value, String message, java.util.function.Function<String, ?> parser) {
         if (value == null || value.isBlank()) {
             return null;
         }
-        if (!allowed.contains(value)) {
+        Object parsed;
+        try {
+            parsed = parser.apply(value);
+        } catch (IllegalArgumentException ex) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, message);
         }
-        return value;
+        if (parsed instanceof Platform platform) {
+            return platform.code();
+        }
+        if (parsed instanceof OrderStatus status) {
+            return status.code();
+        }
+        if (parsed instanceof SettleStatus status) {
+            return status.code();
+        }
+        throw new ApiBusinessException(ErrorCodes.VALIDATION, message);
     }
 
     private static String money(BigDecimal value) {

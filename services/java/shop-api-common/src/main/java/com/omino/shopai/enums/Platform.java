@@ -19,12 +19,30 @@ public enum Platform {
         this.code = code;
     }
 
-    /** 写入数据库和 JSON 的取值。 */
+    /**
+     * 写入数据库和 JSON 的取值。
+     *
+     * @return 平台码
+     */
     public String code() {
         return code;
     }
 
-    /** 把库存或请求里的取值还原成枚举。空串视为未填。无法识别时抛出，避免悄悄落成 null。 */
+    /**
+     * 出站时该读哪一条授权。拼多多的 pid 用该用户的京东授权，其它平台用自己的授权。
+     *
+     * @return 要查询的授权平台
+     */
+    public Platform relationPlatform() {
+        return this == PDD ? JD : this;
+    }
+
+    /**
+     * 把库存或请求里的取值还原成枚举。空串视为未填。无法识别时抛出，避免悄悄落成 null。
+     *
+     * @param code 平台码
+     * @return 对应枚举；空串为 null
+     */
     @JsonCreator
     public static Platform fromCode(String code) {
         if (code == null || code.isBlank()) {

@@ -15,10 +15,13 @@ class ApiResponseTest {
 
     @Test
     void successEnvelopeHasRequiredFields() throws Exception {
-        ApiResponse<Map<String, String>> body = ApiResponse.ok(
+        ApiResponse<Map<String, String>> body = new ApiResponse<>(
+                0,
+                "ok",
                 Map.of("goodsId", "g_jd_100012345678"),
                 "01J8TRACEEXAMPLE0000000000",
-                "2026-10-29T18:21:00+08:00");
+                "2026-10-29T18:21:00+08:00",
+                null);
 
         JsonNode node = mapper.readTree(mapper.writeValueAsString(body));
 

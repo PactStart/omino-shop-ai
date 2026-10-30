@@ -3,19 +3,19 @@ package com.omino.shopai.app.chat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.service.chat.AgentGateway;
-import com.omino.shopai.app.service.chat.AgentUnavailableException;
+import com.omino.shopai.app.service.chat.IAgentGateway;
+import com.omino.shopai.exception.AgentUnavailableException;
 import com.omino.shopai.app.service.chat.ChatCancelService;
 import com.omino.shopai.app.service.chat.ChatEventPump;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatRun;
-import com.omino.shopai.app.service.chat.ChatRunWorker;
+import com.omino.shopai.app.service.chat.ChatWorkerImpl;
 import com.omino.shopai.app.service.chat.ChatTurnService;
-import com.omino.shopai.app.service.chat.ConversationStore;
-import com.omino.shopai.app.service.chat.FixtureChatWorker;
-import com.omino.shopai.app.service.chat.HttpAgentGateway;
-import com.omino.shopai.app.service.chat.RunEventLog;
-import com.omino.shopai.app.service.chat.TurnAccepted;
+import com.omino.shopai.app.service.chat.IConversation;
+import com.omino.shopai.app.service.chat.FixtureChatWorkerImpl;
+import com.omino.shopai.app.service.chat.AgentGatewayImpl;
+import com.omino.shopai.app.service.chat.IRunEventLog;
+import com.omino.shopai.app.dto.TurnAcceptedDto;
 import com.omino.shopai.app.web.app.ChatController;
 import com.omino.shopai.entity.Conversation;
 import com.omino.shopai.support.Ids;
@@ -62,7 +62,7 @@ class ChatRunTest {
     private ChatCancelService cancels;
     private ChatTurnService turns;
     private ChatEventPump pump;
-    private ChatRunWorker worker;
+    private ChatWorkerImpl worker;
 
     @BeforeEach
     void setUp() {
@@ -72,7 +72,7 @@ class ChatRunTest {
         executor = new QueuedExecutor();
         clock = new MutableClock(Instant.parse("2026-10-29T14:00:00Z"));
         cancels = new ChatCancelService(events);
-        worker = new ChatRunWorker(events, gateway, clock, 30);
+        worker = new ChatWorkerImpl(events, gateway, clock, 30);
         turns = new ChatTurnService(conversations, cancels, worker, executor, clock, Duration.ofSeconds(30));
         pump = new ChatEventPump(events);
     }
@@ -98,8 +98,8 @@ class ChatRunTest {
 
     @Test
     void sameClientMessageReturnsTheSameRun() {
-        TurnAccepted first = turns.open(USER, null, "c1", "找耳机");
-        TurnAccepted second = turns.open(USER, first.conversationId(), "c1", "找耳机");
+        TurnAcceptedDto first = turns.open(USER, null, "c1", "找耳机");
+        TurnAcceptedDto second = turns.open(USER, first.conversationId(), "c1", "找耳机");
         assertEquals(first.runId(), second.runId());
         assertEquals(1, executor.pending());
     }
@@ -110,7 +110,7 @@ class ChatRunTest {
             sink.event("text_delta", "{\"text\":\"你好\"}");
             sink.event("done", "{\"conversationId\":\"c\",\"serverMsgId\":\"m\",\"intent\":\"shop.recommend\"}");
         };
-        TurnAccepted accepted = turns.open(USER, null, "c1", "找耳机");
+        TurnAcceptedDto accepted = turns.open(USER, null, "c1", "找耳机");
         executor.drain();
         List<ChatEvents.Event> written = pump.read(accepted.runId(), null);
         assertFalse(written.isEmpty());
@@ -129,7 +129,7 @@ class ChatRunTest {
             cancels.cancel(USER, runId[0]);
             sink.event("done", "{}");
         };
-        TurnAccepted accepted = turns.open(USER, null, "c1", "找耳机");
+        TurnAcceptedDto accepted = turns.open(USER, null, "c1", "找耳机");
         runId[0] = accepted.runId();
         executor.drain();
         List<ChatEvents.Event> written = events.after(accepted.runId(), null);
@@ -148,7 +148,7 @@ class ChatRunTest {
         gateway.script = sink -> {
             throw new AgentUnavailableException();
         };
-        TurnAccepted accepted = turns.open(USER, null, "c1", "找耳机");
+        TurnAcceptedDto accepted = turns.open(USER, null, "c1", "找耳机");
         executor.drain();
         List<ChatEvents.Event> written = events.after(accepted.runId(), null);
         assertEquals(List.of("error"), written.stream().map(ChatEvents.Event::event).toList());
@@ -159,7 +159,7 @@ class ChatRunTest {
 
     @Test
     void expiredRunWritesTimeoutWithoutCallingAgent() {
-        TurnAccepted accepted = turns.open(USER, null, "c1", "找耳机");
+        TurnAcceptedDto accepted = turns.open(USER, null, "c1", "找耳机");
         clock.set(Instant.parse("2026-10-29T14:00:31Z"));
         executor.drain();
         assertEquals(0, gateway.calls);
@@ -172,10 +172,10 @@ class ChatRunTest {
 
     @Test
     void fixtureWorkerIsLocalOnly() {
-        assertEquals(List.of("local"), List.of(FixtureChatWorker.class.getAnnotation(Profile.class).value()));
-        assertFalse(List.of(ChatRunWorker.class.getAnnotation(Profile.class).value()).contains("local"));
-        assertTrue(List.of(ChatRunWorker.class.getAnnotation(Profile.class).value()).containsAll(List.of("test", "prod")));
-        assertFalse(List.of(HttpAgentGateway.class.getAnnotation(Profile.class).value()).contains("local"));
+        assertEquals(List.of("local"), List.of(FixtureChatWorkerImpl.class.getAnnotation(Profile.class).value()));
+        assertFalse(List.of(ChatWorkerImpl.class.getAnnotation(Profile.class).value()).contains("local"));
+        assertTrue(List.of(ChatWorkerImpl.class.getAnnotation(Profile.class).value()).containsAll(List.of("test", "prod")));
+        assertFalse(List.of(AgentGatewayImpl.class.getAnnotation(Profile.class).value()).contains("local"));
     }
 
     @Test
@@ -183,7 +183,7 @@ class ChatRunTest {
         assertThrows(IllegalArgumentException.class, () -> events.append("run", "sample_done", "{}"));
     }
 
-    private static final class ScriptedGateway implements AgentGateway {
+    private static final class ScriptedGateway implements IAgentGateway {
         int calls;
         Consumer<AgentSink> script = sink -> {
         };
@@ -242,7 +242,7 @@ class ChatRunTest {
         }
     }
 
-    private static final class MemoryEventLog implements RunEventLog {
+    private static final class MemoryEventLog implements IRunEventLog {
         private final Map<String, List<ChatEvents.Event>> streams = new HashMap<>();
         private final Map<String, Integer> sequences = new HashMap<>();
         private final Set<String> cancels = new HashSet<>();
@@ -302,7 +302,7 @@ class ChatRunTest {
         }
     }
 
-    private static final class MemoryConversations implements ConversationStore {
+    private static final class MemoryConversations implements IConversation {
         private final Map<String, Conversation> conversations = new HashMap<>();
         private final Map<String, String> runs = new HashMap<>();
 

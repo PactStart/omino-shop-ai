@@ -2,8 +2,9 @@ package com.omino.shopai.app.service.auth;
 
 import com.omino.shopai.enums.AuthStatus;
 import com.omino.shopai.enums.InviteStatus;
+import com.omino.shopai.enums.Platform;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AppInvite;
 import com.omino.shopai.entity.AppUser;
@@ -20,15 +21,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 /**
  * InternalAccountService 编排用例，事务和校验放在这里。
  */
 
 @Service
 public class InternalAccountService {
-
-    private static final Set<String> PLATFORMS = Set.of("taobao", "jd", "pdd", "vip");
 
     private final AppUserMapper users;
     private final PlatformAuthorizationMapper authorizations;
@@ -99,12 +97,17 @@ public class InternalAccountService {
         body.put("contribution", new BigDecimal("0.00").toPlainString());
         return body;
     }
-/**
- * 只接受四个平台。其它字符串直接拒绝。
- */
-
+    /**
+     * 只接受四个平台。其它字符串直接拒绝。
+     *
+     * @param platform 平台码
+     */
     private static void requirePlatform(String platform) {
-        if (!PLATFORMS.contains(platform)) {
+        try {
+            if (Platform.fromCode(platform) == null) {
+                throw new ApiBusinessException(ErrorCodes.VALIDATION, "平台不正确");
+            }
+        } catch (IllegalArgumentException ex) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "平台不正确");
         }
     }

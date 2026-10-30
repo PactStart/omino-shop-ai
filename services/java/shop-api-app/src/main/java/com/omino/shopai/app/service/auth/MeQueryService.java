@@ -1,6 +1,6 @@
 package com.omino.shopai.app.service.auth;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AppUser;
 import com.omino.shopai.mapper.AppUserMapper;

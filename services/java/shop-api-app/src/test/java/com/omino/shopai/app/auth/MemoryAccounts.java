@@ -1,7 +1,7 @@
 package com.omino.shopai.app.auth;
 
-import com.omino.shopai.app.service.auth.InviteStore;
-import com.omino.shopai.app.service.auth.UserAccountStore;
+import com.omino.shopai.app.service.auth.IInvite;
+import com.omino.shopai.app.service.auth.IUserAccount;
 import com.omino.shopai.entity.AppInvite;
 import com.omino.shopai.entity.AppUser;
 import org.springframework.transaction.TransactionStatus;
@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-final class MemoryAccounts implements UserAccountStore, InviteStore, TransactionOperations {
+final class MemoryAccounts implements IUserAccount, IInvite, TransactionOperations {
 
     private final List<AppUser> committedUsers = new ArrayList<>();
     private final List<AppInvite> committedInvites = new ArrayList<>();

@@ -1,6 +1,6 @@
 package com.omino.shopai.app.adapter;
 
-import com.omino.shopai.app.adapter.platform.CountMaps;
+import com.omino.shopai.app.util.CountMaps;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

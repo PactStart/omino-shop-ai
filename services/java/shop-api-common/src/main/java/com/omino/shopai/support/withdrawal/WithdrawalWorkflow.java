@@ -1,7 +1,7 @@
 package com.omino.shopai.support.withdrawal;
 
 import com.omino.shopai.enums.WithdrawalStatus;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.Withdrawal;
@@ -30,32 +30,32 @@ public final class WithdrawalWorkflow {
         WithdrawalTransition.Decision apply(WithdrawalStatus status);
     }
 
-    private final WithdrawalAccounts accounts;
-    private final PayoutPort port;
+    private final IWithdrawalAccount accounts;
+    private final IPayout port;
     private final Clock clock;
 /**
  * 打款和拒绝都在用户锁里改冻结额。
  */
 
-    public WithdrawalWorkflow(WithdrawalAccounts accounts, PayoutPort port, Clock clock) {
+    public WithdrawalWorkflow(IWithdrawalAccount accounts, IPayout port, Clock clock) {
         this.accounts = accounts;
         this.port = port;
         this.clock = clock;
     }
 
-    public PayoutView payout(String id) {
+    public PayoutViewDto payout(String id) {
         return payout(id, port, WithdrawalTransition::afterPayout);
     }
 /**
  * 按打款结果推进提现状态。
  */
 
-    public PayoutView payout(String id, PayoutPort payouts, PayoutDecision decide) {
+    public PayoutViewDto payout(String id, IPayout payouts, PayoutDecision decide) {
         Withdrawal loaded = accounts.find(id);
         if (loaded == null) {
             throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "提现不存在");
         }
-        PayoutView[] box = new PayoutView[1];
+        PayoutViewDto[] box = new PayoutViewDto[1];
         accounts.lock(loaded.getUserId(), () -> box[0] = payoutLocked(id, payouts, decide));
         return box[0];
     }
@@ -78,18 +78,18 @@ public final class WithdrawalWorkflow {
  * 按打款结果推进提现状态。
  */
 
-    private PayoutView payoutLocked(String id, PayoutPort payouts, PayoutDecision decide) {
+    private PayoutViewDto payoutLocked(String id, IPayout payouts, PayoutDecision decide) {
         // 锁内重读。已经不是待打款就不再调渠道，避免冻结被扣两次。
         Withdrawal current = accounts.find(id);
         if (current == null || !WithdrawalTransition.shouldCallPort(current.getStatus())) {
             String status = current == null ? WithdrawalStatus.PENDING.code() : current.getStatus().code();
-            return new PayoutView("ok", status, status);
+            return new PayoutViewDto("ok", status, status);
         }
-        PayoutPort.Result result = payouts.transfer(current.getId(), current.getAmount(), current.getPayeeAccount());
+        IPayout.Result result = payouts.transfer(current.getId(), current.getAmount(), current.getPayeeAccount());
         WithdrawalTransition.Decision decision = decide.apply(current.getStatus(), result.success(), result.transferId());
         // 渠道失败时不扣冻结，冻结额保持不动。
         if (!decision.deductFrozen()) {
-            return new PayoutView(decision.message(), decision.payoutResult(), decision.status().code());
+            return new PayoutViewDto(decision.message(), decision.payoutResult(), decision.status().code());
         }
         OffsetDateTime now = OffsetDateTime.now(clock);
         Wallet wallet = accounts.wallet(current.getUserId());
@@ -103,7 +103,7 @@ public final class WithdrawalWorkflow {
         if (decision.writeLedger()) {
             accounts.addWithdrawLedger(current);
         }
-        return new PayoutView(decision.message(), decision.payoutResult(), decision.status().code());
+        return new PayoutViewDto(decision.message(), decision.payoutResult(), decision.status().code());
     }
 /**
  * 拒绝并解开冻结。

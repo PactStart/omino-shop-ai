@@ -6,7 +6,7 @@ import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.service.goods.GoodsLibraryService;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.ServerLinkIssuer;
+import com.omino.shopai.app.service.goods.LinkIssuerImpl;
 import com.omino.shopai.app.web.app.GoodsController;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -47,9 +47,8 @@ class GoodsLibraryTest {
         goodsId = snapshot.getId();
         collectionId = collection.getId();
         library = new GoodsLibraryService(goods, goods);
-        GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper(),
-                (userId, platform) -> java.util.Optional.of("1"));
-        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(java.util.List.of()), (userId, platform) -> java.util.Optional.of("1")), library))
+        GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper(), goods);
+        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(java.util.List.of())), library))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

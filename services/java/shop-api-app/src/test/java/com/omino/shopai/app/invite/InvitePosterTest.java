@@ -4,7 +4,7 @@ import com.omino.shopai.enums.UserStatus;
 import com.omino.shopai.enums.ActiveStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.service.invite.InviteCatalog;
+import com.omino.shopai.app.service.invite.IInviteCatalog;
 import com.omino.shopai.app.service.invite.InvitePosterService;
 import com.omino.shopai.app.web.app.InviteController;
 import com.omino.shopai.entity.AppUser;
@@ -40,7 +40,7 @@ class InvitePosterTest {
                 catalog,
                 Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneOffset.UTC),
                 "https://land.example");
-        List<InvitePosterService.PosterView> posters = service.posters();
+        List<InvitePosterService.PosterViewDto> posters = service.posters();
         assertEquals(1, posters.size());
         assertEquals(12, posters.get(0).qrWidth());
         String json = new ObjectMapper().writeValueAsString(posters);
@@ -84,7 +84,7 @@ class InvitePosterTest {
         return row;
     }
 
-    private static final class MemoryCatalog implements InviteCatalog {
+    private static final class MemoryCatalog implements IInviteCatalog {
         private final List<InvitePosterTemplate> posters = new ArrayList<>();
         private final List<AppUser> users = new ArrayList<>();
 

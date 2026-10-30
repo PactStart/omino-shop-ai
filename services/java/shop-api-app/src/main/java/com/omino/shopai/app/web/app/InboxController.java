@@ -12,11 +12,8 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 /**
  * InboxController 提供 HTTP 接口。
  */
@@ -31,34 +28,41 @@ public class InboxController {
     public InboxController(InboxService inbox) {
         this.inbox = inbox;
     }
-
-    @Operation(summary = "查询")
+    /**
+     * 列出当前用户的站内信。
+     *
+     * @param userId 当前用户
+     * @return 站内信信封
+     */
+    @Operation(summary = "列出当前用户的站内信")
     @GetMapping
     public ApiResponse<List<InboxMessage>> list(@RequestAttribute("userId") String userId) {
-        return ApiResponse.ok(inbox.list(userId), trace(), now());
+        return ApiResponse.ok(inbox.list(userId));
     }
-
-    @Operation(summary = "查询 /unread-count")
+    /**
+     * 统计当前用户未读站内信数量。
+     *
+     * @param userId 当前用户
+     * @return 未读数量信封
+     */
+    @Operation(summary = "统计未读站内信")
     @GetMapping("/unread-count")
     public ApiResponse<Map<String, Long>> unread(@RequestAttribute("userId") String userId) {
-        return ApiResponse.ok(Map.of("count", inbox.unread(userId)), trace(), now());
+        return ApiResponse.ok(Map.of("count", inbox.unread(userId)));
     }
-/**
- * 把一条站内信标成已读。
- */
-
-    @Operation(summary = "提交 /{id}/read")
+    /**
+     * 把一条站内信标为已读。
+     *
+     * @param userId 当前用户
+     * @param id 站内信编号
+     * @return 空信封
+     */
+    @Operation(summary = "把一条站内信标为已读")
     @PostMapping("/{id}/read")
     public ApiResponse<Void> read(@RequestAttribute("userId") String userId, @PathVariable String id) {
         inbox.markRead(userId, id);
-        return ApiResponse.ok(null, trace(), now());
+        return ApiResponse.ok(null);
     }
 
-    private static String trace() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
 
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
 }

@@ -2,7 +2,7 @@ package com.omino.shopai.app.service.ticket;
 
 import com.omino.shopai.enums.TicketStatus;
 import com.omino.shopai.enums.TicketLogKind;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.Ticket;
 import com.omino.shopai.entity.TicketLog;
@@ -19,13 +19,13 @@ import java.util.List;
 @Service
 public class TicketService {
 
-    private final TicketBook book;
+    private final ITicket book;
     private final Clock clock;
 /**
  * 建单和变更都追加日志，不改已经写下的历史。
  */
 
-    public TicketService(TicketBook book, Clock clock) {
+    public TicketService(ITicket book, Clock clock) {
         this.book = book;
         this.clock = clock;
     }

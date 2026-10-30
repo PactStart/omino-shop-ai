@@ -2,7 +2,7 @@ package com.omino.shopai.app.credit;
 
 import com.omino.shopai.enums.ActiveStatus;
 import com.omino.shopai.enums.CreditLedgerType;
-import com.omino.shopai.app.service.credit.CreditBook;
+import com.omino.shopai.app.service.credit.ICredit;
 import com.omino.shopai.app.wallet.MemoryBooks;
 import com.omino.shopai.entity.CreditAccount;
 import com.omino.shopai.entity.CreditLedger;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public final class MemoryCredit implements CreditBook {
+public final class MemoryCredit implements ICredit {
 
     public final MemoryBooks books = new MemoryBooks();
     private final Map<String, CreditAccount> credits = new LinkedHashMap<>();

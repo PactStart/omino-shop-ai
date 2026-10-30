@@ -1,8 +1,14 @@
 package com.omino.shopai.app.service.wallet;
 
+import com.omino.shopai.app.dto.PageDto;
+
+import com.omino.shopai.app.dto.WithdrawalViewDto;
+
+import com.omino.shopai.app.dto.WalletViewDto;
+
 import com.omino.shopai.enums.WithdrawalStatus;
 import com.omino.shopai.enums.PayoutChannel;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.Withdrawal;
@@ -23,13 +29,13 @@ import java.util.List;
 @Service
 public class WithdrawalService {
 
-    private final WithdrawalStore store;
+    private final IWithdrawal store;
     private final Clock clock;
 /**
  * 注入账户与时钟。申请时冻结，不在这里打款。
  */
 
-    public WithdrawalService(WithdrawalStore store, Clock clock) {
+    public WithdrawalService(IWithdrawal store, Clock clock) {
         this.store = store;
         this.clock = clock;
     }
@@ -37,18 +43,18 @@ public class WithdrawalService {
  * 取出用户钱包。没有则按零余额建一行，避免后续冻结空指针。
  */
 
-    public WalletView wallet(String userId) {
+    public WalletViewDto wallet(String userId) {
         Wallet wallet = store.wallet(userId);
         if (wallet == null) {
-            return new WalletView("0.00", "0.00", "0.00");
+            return new WalletViewDto("0.00", "0.00", "0.00");
         }
-        return new WalletView(money(wallet.getAvailableAmount()), money(wallet.getFrozenAmount()), money(wallet.getTotalEarned()));
+        return new WalletViewDto(money(wallet.getAvailableAmount()), money(wallet.getFrozenAmount()), money(wallet.getTotalEarned()));
     }
 /**
  * 提交申请。
  */
 
-    public WithdrawalView apply(String userId, String amountText, String payeeAccount, String channel) {
+    public WithdrawalViewDto apply(String userId, String amountText, String payeeAccount, String channel) {
         WithdrawalTransition.requireAlipay(channel);
         BigDecimal amount = amount(amountText);
         if (payeeAccount == null || payeeAccount.isBlank()) {
@@ -81,17 +87,17 @@ public class WithdrawalService {
  * 按条件返回列表。
  */
 
-    public WithdrawalPage list(String userId, int page, int size) {
+    public PageDto<WithdrawalViewDto> list(String userId, int page, int size) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 50);
-        List<WithdrawalView> rows = store.list(userId, safePage, safeSize).stream().map(WithdrawalService::view).toList();
-        return new WithdrawalPage(rows, safePage, safeSize, store.count(userId));
+        List<WithdrawalViewDto> rows = store.list(userId, safePage, safeSize).stream().map(WithdrawalService::view).toList();
+        return new PageDto<WithdrawalViewDto>(rows, safePage, safeSize, store.count(userId));
     }
 /**
  * 按标识读取。
  */
 
-    public WithdrawalView get(String userId, String id) {
+    public WithdrawalViewDto get(String userId, String id) {
         Withdrawal row = store.find(id);
         if (row == null || !userId.equals(row.getUserId())) {
             throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "提现不存在");
@@ -112,8 +118,8 @@ public class WithdrawalService {
         return account.substring(0, 2) + "****" + account.substring(account.length() - 2);
     }
 
-    private static WithdrawalView view(Withdrawal row) {
-        return new WithdrawalView(
+    private static WithdrawalViewDto view(Withdrawal row) {
+        return new WithdrawalViewDto(
                 row.getId(),
                 money(row.getAmount()),
                 row.getStatus() == null ? null : row.getStatus().code(),

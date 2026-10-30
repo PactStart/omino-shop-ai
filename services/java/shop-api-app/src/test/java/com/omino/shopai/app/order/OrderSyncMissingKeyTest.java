@@ -1,16 +1,17 @@
 package com.omino.shopai.app.order;
 
-import com.omino.shopai.app.adapter.platform.JdGoodsClient;
-import com.omino.shopai.app.adapter.platform.PddGoodsClient;
-import com.omino.shopai.app.adapter.platform.PlatformCallException;
-import com.omino.shopai.app.adapter.platform.PlatformOrderSource;
-import com.omino.shopai.app.adapter.platform.SdkPlatformOrderSource;
-import com.omino.shopai.app.adapter.platform.SdkSessions;
-import com.omino.shopai.app.adapter.platform.TaobaoGoodsClient;
-import com.omino.shopai.app.adapter.platform.VipGoodsClient;
+import com.omino.shopai.app.adapter.platform.JdGoodsImpl;
+import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
+import com.omino.shopai.exception.PlatformCallException;
+import com.omino.shopai.app.adapter.platform.IPlatformOrder;
+import com.omino.shopai.app.adapter.platform.PlatformOrderImpl;
+import com.omino.shopai.app.util.SdkSessions;
+import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
+import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.job.OrderSyncJob;
 import com.omino.shopai.app.service.order.OrderSyncService;
-import com.omino.shopai.dto.order.IncomingOrder;
+import com.omino.shopai.dto.order.IncomingOrderDto;
+import com.omino.shopai.enums.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -29,11 +30,11 @@ class OrderSyncMissingKeyTest {
         MemoryOrders orders = new MemoryOrders();
         OrderSyncService sync = new OrderSyncService(
                 orders,
-                new SdkPlatformOrderSource(List.of(
-                        new TaobaoGoodsClient("", ""),
-                        new JdGoodsClient("", ""),
-                        new PddGoodsClient("", ""),
-                        new VipGoodsClient("", ""))),
+                new PlatformOrderImpl(List.of(
+                        new TaobaoGoodsImpl("", ""),
+                        new JdGoodsImpl("", ""),
+                        new PddGoodsImpl("", ""),
+                        new VipGoodsImpl("", ""))),
                 orders,
                 Clock.systemUTC(),
                 "0.80");
@@ -55,7 +56,7 @@ class OrderSyncMissingKeyTest {
     @Test
     void onePlatformFailureDoesNotSkipTheOthers() {
         MemoryOrders orders = new MemoryOrders();
-        PlatformOrderSource source = (platform, cursor) -> {
+        IPlatformOrder source = (platform, cursor) -> {
             if ("taobao".equals(platform)) {
                 throw new PlatformCallException();
             }
@@ -73,7 +74,7 @@ class OrderSyncMissingKeyTest {
 
     @Test
     void incomingOrderLivesOutsideTheAppServiceLayer() {
-        IncomingOrder order = new IncomingOrder("1", null, null, null, null, null, null, null, "unknown", null, null);
+        IncomingOrderDto order = new IncomingOrderDto("1", null, null, null, null, null, null, null, OrderStatus.UNKNOWN, null, null);
         assertEquals("com.omino.shopai.dto.order", order.getClass().getPackageName());
     }
 }

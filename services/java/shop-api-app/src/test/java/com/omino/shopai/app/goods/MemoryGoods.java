@@ -1,9 +1,11 @@
 package com.omino.shopai.app.goods;
 
-import com.omino.shopai.app.service.goods.GoodsDetailCache;
-import com.omino.shopai.app.service.goods.GoodsGateStore;
-import com.omino.shopai.app.service.goods.GoodsLibraryStore;
-import com.omino.shopai.app.service.goods.GoodsSnapshotStore;
+import com.omino.shopai.app.dto.PageDto;
+
+import com.omino.shopai.app.service.goods.IGoodsDetailCache;
+import com.omino.shopai.app.service.goods.IGoodsGate;
+import com.omino.shopai.app.service.goods.IGoodsLibrary;
+import com.omino.shopai.app.service.goods.IGoodsSnapshot;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsCollectionItem;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -17,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, GoodsGateStore, GoodsLibraryStore {
+public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGoodsGate, IGoodsLibrary {
 
     private final Map<String, GoodsSnapshot> byId = new HashMap<>();
     private final Map<String, GoodsSnapshot> byPlatform = new HashMap<>();
@@ -31,7 +33,15 @@ public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, 
     private final Map<String, GoodsCollection> collections = new HashMap<>();
     private final List<GoodsCollectionItem> items = new ArrayList<>();
 
-    void relation(String userId, String platform, String status, String relationId) {
+    /**
+     * 给测试放一条授权和推广身份。
+     *
+     * @param userId 用户
+     * @param platform 平台码
+     * @param status 授权状态码
+     * @param relationId 推广身份，可空
+     */
+    public void relation(String userId, String platform, String status, String relationId) {
         authStatus.put(userId + "\0" + platform, status);
         relations.put(userId + "\0" + platform, relationId);
     }
@@ -122,7 +132,7 @@ public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, 
     }
 
     @Override
-    public SnapshotPage history(String userId, int page, int size) {
+    public PageDto<GoodsSnapshot> history(String userId, int page, int size) {
         List<GoodsSnapshot> matched = browses.stream()
                 .filter(row -> userId.equals(row.userId()))
                 .map(row -> byId.get(row.goodsId()))
@@ -147,7 +157,7 @@ public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, 
     }
 
     @Override
-    public SnapshotPage favorites(String userId, int page, int size) {
+    public PageDto<GoodsSnapshot> favorites(String userId, int page, int size) {
         List<GoodsSnapshot> matched = favorites.keySet().stream()
                 .filter(key -> key.startsWith(userId + "\0"))
                 .map(key -> byId.get(key.substring(userId.length() + 1)))
@@ -183,11 +193,11 @@ public final class MemoryGoods implements GoodsSnapshotStore, GoodsDetailCache, 
         return false;
     }
 
-    private static SnapshotPage slice(List<GoodsSnapshot> matched, int page, int size) {
+    private static PageDto<GoodsSnapshot> slice(List<GoodsSnapshot> matched, int page, int size) {
         int from = Math.max(0, (page - 1) * size);
         int to = Math.min(matched.size(), from + size);
         List<GoodsSnapshot> pageItems = from >= matched.size() ? List.of() : List.copyOf(matched.subList(from, to));
-        return new SnapshotPage(pageItems, page, size, matched.size());
+        return new PageDto<GoodsSnapshot>(pageItems, page, size, matched.size());
     }
 
     private record Browse(String userId, String goodsId) {

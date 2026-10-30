@@ -1,13 +1,13 @@
 package com.omino.shopai.app.adapter;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
-import com.omino.shopai.app.adapter.platform.JdGoodsClient;
-import com.omino.shopai.app.adapter.platform.SdkSessions;
-import com.omino.shopai.app.adapter.platform.PddGoodsClient;
-import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
-import com.omino.shopai.app.adapter.platform.TaobaoGoodsClient;
-import com.omino.shopai.app.adapter.platform.VipGoodsClient;
+import com.omino.shopai.app.adapter.platform.JdGoodsImpl;
+import com.omino.shopai.app.util.SdkSessions;
+import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
+import com.omino.shopai.app.adapter.platform.IPlatformGoods;
+import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
+import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.goods.MemoryGoods;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,21 +29,21 @@ class PlatformClientTest {
 
     @Test
     void clientsLiveInThePlatformAdapterPackage() {
-        assertEquals(PACKAGE, PlatformGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, TaobaoGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, JdGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, PddGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, VipGoodsClient.class.getPackageName());
+        assertEquals(PACKAGE, IPlatformGoods.class.getPackageName());
+        assertEquals(PACKAGE, TaobaoGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, JdGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, PddGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, VipGoodsImpl.class.getPackageName());
     }
 
     @Test
     void missingKeysFailAs50010WithoutOpeningOfficialClients() {
         SdkSessions.opened.set(0);
         GoodsQueryService missing = query(List.of(
-                new TaobaoGoodsClient("", ""),
-                new JdGoodsClient("", ""),
-                new PddGoodsClient("", ""),
-                new VipGoodsClient("", "")));
+                new TaobaoGoodsImpl("", ""),
+                new JdGoodsImpl("", ""),
+                new PddGoodsImpl("", ""),
+                new VipGoodsImpl("", "")));
         for (String platform : List.of("taobao", "jd", "pdd", "vip")) {
             assertUpstream(missing, platform);
         }
@@ -53,10 +53,10 @@ class PlatformClientTest {
     @Test
     void meituanIsRejected() {
         GoodsQueryService query = query(List.of(
-                new TaobaoGoodsClient("", ""),
-                new JdGoodsClient("", ""),
-                new PddGoodsClient("", ""),
-                new VipGoodsClient("", "")));
+                new TaobaoGoodsImpl("", ""),
+                new JdGoodsImpl("", ""),
+                new PddGoodsImpl("", ""),
+                new VipGoodsImpl("", "")));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
                 () -> query.detail("01USER0000000000000000000A", null, "meituan", "1"));
         ApiBusinessException search = assertThrows(ApiBusinessException.class,
@@ -86,9 +86,13 @@ class PlatformClientTest {
         assertFalse(detail.getMessage().contains(SECRET));
     }
 
-    private static GoodsQueryService query(List<PlatformGoodsClient> clients) {
+    private static GoodsQueryService query(List<IPlatformGoods> clients) {
         MemoryGoods goods = new MemoryGoods();
-        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper(),
-                (userId, platform) -> Optional.of("1"));
+        String userId = "01USER0000000000000000000A";
+        goods.relation(userId, "taobao", "authorized", "1");
+        goods.relation(userId, "jd", "authorized", "1");
+        goods.relation(userId, "pdd", "authorized", "1");
+        goods.relation(userId, "vip", "authorized", "1");
+        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper(), goods);
     }
 }

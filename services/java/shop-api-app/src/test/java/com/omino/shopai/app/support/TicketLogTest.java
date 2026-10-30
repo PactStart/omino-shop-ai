@@ -1,7 +1,7 @@
 package com.omino.shopai.app.support;
 
 import com.omino.shopai.app.service.kb.KbSearchService;
-import com.omino.shopai.app.service.ticket.TicketBook;
+import com.omino.shopai.app.service.ticket.ITicket;
 import com.omino.shopai.app.service.ticket.TicketService;
 import com.omino.shopai.entity.Ticket;
 import com.omino.shopai.entity.TicketLog;
@@ -20,7 +20,7 @@ class TicketLogTest {
     @Test
     void missIsExplicitAndStatusChangeAppendsWithoutRewritingHistory() {
         KbSearchService search = new KbSearchService(() -> List.of());
-        KbSearchService.KbHit miss = search.search("不存在的退款政策");
+        KbSearchService.KbHitDto miss = search.search("不存在的退款政策");
         assertFalse(miss.hit());
         assertEquals(0, miss.articles().size());
         MemoryTickets book = new MemoryTickets();
@@ -35,7 +35,7 @@ class TicketLogTest {
         assertEquals("processing", book.logs.get(1).getToValue());
     }
 
-    private static final class MemoryTickets implements TicketBook {
+    private static final class MemoryTickets implements ITicket {
         private final List<Ticket> tickets = new ArrayList<>();
         private final List<TicketLog> logs = new ArrayList<>();
 

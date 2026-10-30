@@ -1,9 +1,11 @@
 package com.omino.shopai.app.service.auth;
 
+import com.omino.shopai.app.dto.LoginSessionDto;
+
 import com.omino.shopai.enums.UserStatus;
 import com.omino.shopai.enums.OnOff;
 import com.omino.shopai.enums.InviteStatus;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AppInvite;
 import com.omino.shopai.entity.AppUser;
@@ -25,16 +27,16 @@ public class SmsAuthService {
     private static final Pattern PHONE = Pattern.compile("^1[3-9]\\d{9}$");
     private static final String MOCK_CODE = "888888";
 
-    private final UserAccountStore users;
-    private final InviteStore invites;
+    private final IUserAccount users;
+    private final IInvite invites;
     private final TransactionOperations transactions;
     private final AppJwtIssuer tokens;
     private final String appEnv;
     private final String smsProvider;
 
     public SmsAuthService(
-            UserAccountStore users,
-            InviteStore invites,
+            IUserAccount users,
+            IInvite invites,
             TransactionOperations transactions,
             AppJwtIssuer tokens,
             @Value("${APP_ENV:local}") String appEnv,
@@ -61,7 +63,7 @@ public class SmsAuthService {
  * 完成登录。
  */
 
-    public LoginSession login(String phone, String code, String inviteCode) {
+    public LoginSessionDto login(String phone, String code, String inviteCode) {
         rejectMockInProd();
         requirePhone(phone);
         if (!"mock".equals(smsProvider) || !MOCK_CODE.equals(code)) {
@@ -71,7 +73,7 @@ public class SmsAuthService {
             OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
             AppUser user = users.findActiveByPhone(phone).orElseGet(() -> createUser(phone, now));
             bindInvite(user, inviteCode, now);
-            return new LoginSession(tokens.issue(user.getId()), user.getId(), user.getInviteCode(), tokens.ttlSeconds());
+            return new LoginSessionDto(tokens.issue(user.getId()), user.getId(), user.getInviteCode(), tokens.ttlSeconds());
         });
     }
 /**

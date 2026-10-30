@@ -11,11 +11,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 /**
  * AppMetaController 提供 HTTP 接口。
  */
@@ -35,45 +32,63 @@ public class AppMetaController {
         this.releases = releases;
         this.configs = configs;
     }
-
-    @Operation(summary = "查询 /app/check-update")
+    /**
+     * 按端和渠道检查是否有新版本。
+     *
+     * @param clientType 客户端类型
+     * @param channel 渠道
+     * @param versionCode 当前版本号
+     * @return 更新信息信封
+     */
+    @Operation(summary = "检查是否有新版本")
     @GetMapping("/app/check-update")
     public ApiResponse<Map<String, Object>> checkUpdate(
             @RequestHeader("X-Client-Type") String clientType,
             @RequestHeader("X-App-Channel") String channel,
             @RequestHeader("X-App-Version-Code") int versionCode) {
-        return ApiResponse.ok(releases.checkUpdate(clientType, channel, versionCode), trace(), now());
+        return ApiResponse.ok(releases.checkUpdate(clientType, channel, versionCode));
     }
-
-    @Operation(summary = "查询 /app/runtime-config")
+    /**
+     * 读取当前端和渠道的运行时配置。
+     *
+     * @param clientType 客户端类型
+     * @param channel 渠道
+     * @param versionCode 当前版本号
+     * @return 配置信封
+     */
+    @Operation(summary = "读取运行时配置")
     @GetMapping("/app/runtime-config")
     public ApiResponse<Map<String, Object>> runtimeConfig(
             @RequestHeader("X-Client-Type") String clientType,
             @RequestHeader("X-App-Channel") String channel,
             @RequestHeader("X-App-Version-Code") int versionCode) {
-        return ApiResponse.ok(configs.merge(clientType, channel, versionCode), trace(), now());
+        return ApiResponse.ok(configs.merge(clientType, channel, versionCode));
     }
-
-    @Operation(summary = "查询 /announcements")
+    /**
+     * 列出当前端可见的公告。
+     *
+     * @param clientType 客户端类型
+     * @param channel 渠道
+     * @return 公告信封
+     */
+    @Operation(summary = "列出当前公告")
     @GetMapping("/announcements")
     public ApiResponse<List<Announcement>> announcements(
             @RequestHeader("X-Client-Type") String clientType,
             @RequestHeader("X-App-Channel") String channel,
             @RequestHeader("X-App-Version-Code") int versionCode) {
-        return ApiResponse.ok(releases.announcements(clientType, channel, versionCode), trace(), now());
+        return ApiResponse.ok(releases.announcements(clientType, channel, versionCode));
     }
-
-    @Operation(summary = "查询 /legal")
+    /**
+     * 读取用户协议和隐私政策地址。
+     *
+     * @return 协议地址信封
+     */
+    @Operation(summary = "读取协议地址")
     @GetMapping("/legal")
     public ApiResponse<Map<String, String>> legal() {
-        return ApiResponse.ok(releases.legal(), trace(), now());
+        return ApiResponse.ok(releases.legal());
     }
 
-    private static String trace() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
 
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
 }

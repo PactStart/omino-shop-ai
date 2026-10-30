@@ -3,13 +3,16 @@ package com.omino.shopai.app.web.app;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.goods.CollectionView;
-import com.omino.shopai.app.service.goods.ConvertedLink;
-import com.omino.shopai.app.service.goods.GoodsCard;
+import com.omino.shopai.app.dto.CollectionViewDto;
+import com.omino.shopai.app.web.app.dto.ConvertRequestDto;
+import com.omino.shopai.app.web.app.dto.DetailRequestDto;
+import com.omino.shopai.app.web.app.dto.FavoriteRequestDto;
+import com.omino.shopai.app.dto.ConvertedLinkDto;
+import com.omino.shopai.app.dto.GoodsCardDto;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
-import com.omino.shopai.app.service.goods.GoodsDetail;
+import com.omino.shopai.app.dto.GoodsDetailDto;
 import com.omino.shopai.app.service.goods.GoodsLibraryService;
-import com.omino.shopai.app.service.goods.GoodsPage;
+import com.omino.shopai.app.dto.PageDto;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,9 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * GoodsController 提供 HTTP 接口。
  */
@@ -45,107 +45,119 @@ public class GoodsController {
         this.convert = convert;
         this.library = library;
     }
-
-    @Operation(summary = "提交 /detail")
+    /**
+     * 读取商品详情。有商品号时读快照，否则按平台商品号查询。
+     *
+     * @param userId 当前用户
+     * @param request 商品号或平台商品号
+     * @return 详情信封
+     */
+    @Operation(summary = "读取商品详情")
     @PostMapping("/detail")
-    public ApiResponse<GoodsDetail> detail(@RequestAttribute("userId") String userId, @RequestBody DetailRequest request) {
+    public ApiResponse<GoodsDetailDto> detail(@RequestAttribute("userId") String userId, @RequestBody DetailRequestDto request) {
         return ApiResponse.ok(
-                query.detail(userId, request.goodsId(), request.platform(), request.platformGoodsId()),
-                traceId(),
-                now());
+                query.detail(userId, request.goodsId(), request.platform(), request.platformGoodsId()));
     }
-
-    @Operation(summary = "提交 /convert-link")
+    /**
+     * 校验授权和推广身份后生成购买链接。
+     *
+     * @param userId 当前用户
+     * @param request 商品与是否优先打开 APP
+     * @return 转链信封
+     */
+    @Operation(summary = "生成购买链接")
     @PostMapping("/convert-link")
-    public ApiResponse<ConvertedLink> convertLink(
+    public ApiResponse<ConvertedLinkDto> convertLink(
             @RequestAttribute("userId") String userId,
-            @RequestBody ConvertRequest request) {
+            @RequestBody ConvertRequestDto request) {
         return ApiResponse.ok(
-                convert.convert(userId, request.goodsId(), request.platform(), request.platformGoodsId(), request.preferApp()),
-                traceId(),
-                now());
+                convert.convert(userId, request.goodsId(), request.platform(), request.platformGoodsId(), request.preferApp()));
     }
-
-    @Operation(summary = "查询 /history")
+    /**
+     * 分页列出当前用户浏览过的商品。
+     *
+     * @param userId 当前用户
+     * @param page 页码，从 1 开始
+     * @param size 每页条数
+     * @return 商品卡分页信封
+     */
+    @Operation(summary = "列出浏览过的商品")
     @GetMapping("/history")
-    public ApiResponse<GoodsPage<GoodsCard>> history(
+    public ApiResponse<PageDto<GoodsCardDto>> history(
             @RequestAttribute("userId") String userId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(library.history(userId, page, size), traceId(), now());
+        return ApiResponse.ok(library.history(userId, page, size));
     }
-
-    @Operation(summary = "查询 /favorites")
+    /**
+     * 分页列出当前用户收藏的商品。
+     *
+     * @param userId 当前用户
+     * @param page 页码，从 1 开始
+     * @param size 每页条数
+     * @return 商品卡分页信封
+     */
+    @Operation(summary = "列出收藏的商品")
     @GetMapping("/favorites")
-    public ApiResponse<GoodsPage<GoodsCard>> favorites(
+    public ApiResponse<PageDto<GoodsCardDto>> favorites(
             @RequestAttribute("userId") String userId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(library.favorites(userId, page, size), traceId(), now());
+        return ApiResponse.ok(library.favorites(userId, page, size));
     }
-/**
- * 把当前用户的收藏写入库。重复收藏保持幂等。
- */
-
-    @Operation(summary = "提交 /favorites")
+    /**
+     * 把一件商品写入当前用户的收藏。重复收藏保持幂等。
+     *
+     * @param userId 当前用户
+     * @param request 商品号
+     * @return 空信封
+     */
+    @Operation(summary = "收藏一件商品")
     @PostMapping("/favorites")
-    public ApiResponse<Void> favorite(@RequestAttribute("userId") String userId, @RequestBody FavoriteRequest request) {
+    public ApiResponse<Void> favorite(@RequestAttribute("userId") String userId, @RequestBody FavoriteRequestDto request) {
         library.favorite(userId, request.goodsId());
-        return ApiResponse.ok(null, traceId(), now());
+        return ApiResponse.ok(null);
     }
-/**
- * 取消收藏。本来就没有也按成功返回。
- */
-
-    @Operation(summary = "删除 /favorites/{goodsId}")
+    /**
+     * 取消当前用户对一件商品的收藏。本来就没有也按成功返回。
+     *
+     * @param userId 当前用户
+     * @param goodsId 商品号
+     * @return 空信封
+     */
+    @Operation(summary = "取消收藏")
     @DeleteMapping("/favorites/{goodsId}")
     public ApiResponse<Void> unfavorite(@RequestAttribute("userId") String userId, @PathVariable String goodsId) {
         library.unfavorite(userId, goodsId);
-        return ApiResponse.ok(null, traceId(), now());
+        return ApiResponse.ok(null);
     }
-
-    @Operation(summary = "查询 /collections/{id}")
+    /**
+     * 读取当前用户的一个商品合集。
+     *
+     * @param userId 当前用户
+     * @param id 合集编号
+     * @return 合集信封
+     */
+    @Operation(summary = "读取一个商品合集")
     @GetMapping("/collections/{id}")
-    public ApiResponse<CollectionView> collection(@RequestAttribute("userId") String userId, @PathVariable String id) {
-        return ApiResponse.ok(library.collection(userId, id), traceId(), now());
+    public ApiResponse<CollectionViewDto> collection(@RequestAttribute("userId") String userId, @PathVariable String id) {
+        return ApiResponse.ok(library.collection(userId, id));
     }
-/**
- * 移除。
- */
-
-    @Operation(summary = "删除 /collections/{id}/items/{goodsId}")
+    /**
+     * 从合集里移除一件商品。
+     *
+     * @param userId 当前用户
+     * @param id 合集编号
+     * @param goodsId 商品号
+     * @return 空信封
+     */
+    @Operation(summary = "从合集移除一件商品")
     @DeleteMapping("/collections/{id}/items/{goodsId}")
     public ApiResponse<Void> removeCollectionItem(
             @RequestAttribute("userId") String userId,
             @PathVariable String id,
             @PathVariable String goodsId) {
         library.removeCollectionItem(userId, id, goodsId);
-        return ApiResponse.ok(null, traceId(), now());
-    }
-
-    private static String traceId() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
-/**
- * 要看的商品。平台由商品号或字段决定。
- */
-
-    public record DetailRequest(String goodsId, String platform, String platformGoodsId) {
-    }
-/**
- * 转链目标。未授权时由服务返回 40301。
- */
-
-    public record ConvertRequest(String goodsId, String platform, String platformGoodsId, Boolean preferApp) {
-    }
-/**
- * 要收藏的商品。
- */
-
-    public record FavoriteRequest(String goodsId) {
+        return ApiResponse.ok(null);
     }
 }

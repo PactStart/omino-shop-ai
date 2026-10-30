@@ -7,13 +7,13 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
-import com.omino.shopai.app.adapter.platform.PromotionLink;
-import com.omino.shopai.dto.order.IncomingOrder;
+import com.omino.shopai.app.adapter.platform.IPlatformGoods;
+import com.omino.shopai.app.dto.PromotionLinkDto;
+import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.ServerLinkIssuer;
+import com.omino.shopai.app.service.goods.LinkIssuerImpl;
 import com.omino.shopai.app.web.app.GoodsController;
 import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.support.Ids;
@@ -51,9 +51,8 @@ class GoodsGateTest {
         goods.relation(USER, "jd", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
         JdCatalog catalog = new JdCatalog();
-        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods::relationId);
-        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer(List.of(catalog)),
-                goods::relationId);
+        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods);
+        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(List.of(catalog)));
         mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, convert, new com.omino.shopai.app.service.goods.GoodsLibraryService(goods, goods)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -151,10 +150,15 @@ class GoodsGateTest {
         assertFalse(text.contains("\"PID\""));
     }
 
-    private static final class JdCatalog implements PlatformGoodsClient {
+    private static final class JdCatalog implements IPlatformGoods {
         @Override
-        public String platform() {
-            return "jd";
+        /**
+         * 这个假目录只回答京东。
+         *
+         * @return 京东
+         */
+        public Platform platform() {
+            return Platform.JD;
         }
 
         @Override
@@ -175,12 +179,12 @@ class GoodsGateTest {
         }
 
         @Override
-        public PromotionLink convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
-            return new PromotionLink(goods.getGoodsUrl(), null, goods.getGoodsUrl(), goods.getGoodsUrl());
+        public PromotionLinkDto convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
+            return new PromotionLinkDto(goods.getGoodsUrl(), null, goods.getGoodsUrl(), goods.getGoodsUrl());
         }
 
         @Override
-        public List<IncomingOrder> pullOrders(OrderSyncCursor cursor) {
+        public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
             return List.of();
         }
     }

@@ -1,7 +1,12 @@
 package com.omino.shopai.app.service.goods;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.app.dto.GoodsCardDto;
+
+import com.omino.shopai.app.dto.GoodsDetailDto;
+
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
+import com.omino.shopai.enums.Platform;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsCollectionItem;
 import com.omino.shopai.mapper.GoodsCollectionItemMapper;
@@ -12,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,9 +47,11 @@ public class InternalGoodsService {
             query = keywords.get(0);
         }
         List<String> targets = platforms == null || platforms.isEmpty()
-                ? (platform == null || platform.isBlank() ? List.of("taobao", "jd", "pdd", "vip") : List.of(platform))
+                ? (platform == null || platform.isBlank()
+                        ? Arrays.stream(Platform.values()).map(Platform::code).toList()
+                        : List.of(platform))
                 : platforms;
-        List<GoodsCard> cards = new ArrayList<>();
+        List<GoodsCardDto> cards = new ArrayList<>();
         for (String target : targets) {
             cards.addAll(goods.search(userId, target, query));
         }
@@ -57,31 +65,34 @@ public class InternalGoodsService {
         }
         return body;
     }
-/**
- * 解析输入。
- */
-
-    public GoodsDetail parseLink(String userId, String sourceUrl) {
-        String platform = platformOf(sourceUrl);
+    /**
+     * 从链接里认出平台和商品号，再走详情。
+     *
+     * @param userId 当前用户
+     * @param sourceUrl 商品链接
+     * @return 商品详情
+     */
+    public GoodsDetailDto parseLink(String userId, String sourceUrl) {
+        Platform platform = platformOf(sourceUrl);
         String goodsId = digits(sourceUrl);
         if (platform == null || goodsId == null) {
             throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "未能识别商品");
         }
-        return goods.detail(userId, null, platform, goodsId);
+        return goods.detail(userId, null, platform.code(), goodsId);
     }
 
-    public GoodsDetail parseImage(String imageObjectKey) {
+    public GoodsDetailDto parseImage(String imageObjectKey) {
         throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "未能识别商品");
     }
 
-    public GoodsDetail detail(String userId, String goodsId, String platform, String platformGoodsId) {
+    public GoodsDetailDto detail(String userId, String goodsId, String platform, String platformGoodsId) {
         return goods.detail(userId, goodsId, platform, platformGoodsId);
     }
 /**
  * 条数超过一屏时落成合集，对话里只推合集卡。
  */
 
-    private String persist(String userId, String title, List<GoodsCard> cards) {
+    private String persist(String userId, String title, List<GoodsCardDto> cards) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         GoodsCollection collection = new GoodsCollection();
         collection.setId(Ids.ulid());
@@ -91,7 +102,7 @@ public class InternalGoodsService {
         collection.setCreatedAt(now);
         collections.insert(collection);
         int sort = 0;
-        for (GoodsCard card : cards) {
+        for (GoodsCardDto card : cards) {
             GoodsCollectionItem item = new GoodsCollectionItem();
             item.setId(Ids.ulid());
             item.setCollectionId(collection.getId());
@@ -102,26 +113,28 @@ public class InternalGoodsService {
         }
         return collection.getId();
     }
-/**
- * 从商品号前缀认出平台。认不出则拒绝，避免打错联盟。
- */
-
-    private static String platformOf(String url) {
+    /**
+     * 从商品号前缀认出平台。认不出则空，避免打错联盟。
+     *
+     * @param url 商品链接
+     * @return 平台；认不出则为空
+     */
+    private static Platform platformOf(String url) {
         if (url == null) {
             return null;
         }
         String lower = url.toLowerCase();
         if (lower.contains("taobao.") || lower.contains("tmall.")) {
-            return "taobao";
+            return Platform.TAOBAO;
         }
         if (lower.contains("jd.com") || lower.contains("jd.hk")) {
-            return "jd";
+            return Platform.JD;
         }
         if (lower.contains("yangkeduo.") || lower.contains("pinduoduo.")) {
-            return "pdd";
+            return Platform.PDD;
         }
         if (lower.contains("vip.com")) {
-            return "vip";
+            return Platform.VIP;
         }
         return null;
     }

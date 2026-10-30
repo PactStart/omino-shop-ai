@@ -1,7 +1,7 @@
 package com.omino.shopai.app.service.order;
 
-import com.omino.shopai.app.adapter.platform.PlatformOrderSource;
-import com.omino.shopai.dto.order.IncomingOrder;
+import com.omino.shopai.app.adapter.platform.IPlatformOrder;
+import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.OrderStatus;
 import com.omino.shopai.enums.SettleStatus;
@@ -21,7 +21,6 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Set;
 /**
  * OrderSyncService 编排用例，事务和校验放在这里。
  */
@@ -29,11 +28,8 @@ import java.util.Set;
 @Service
 public class OrderSyncService {
 
-    private static final Set<String> ORDER_STATUSES = Set.of(
-            "pending_pay", "pending_ship", "shipped", "completed", "cancelled", "unknown");
-
-    private final OrderStore store;
-    private final PlatformOrderSource source;
+    private final IOrder store;
+    private final IPlatformOrder source;
     private final TransactionOperations tx;
     private final Clock clock;
     private final BigDecimal rate;
@@ -42,8 +38,8 @@ public class OrderSyncService {
  */
 
     public OrderSyncService(
-            OrderStore store,
-            PlatformOrderSource source,
+            IOrder store,
+            IPlatformOrder source,
             TransactionOperations tx,
             Clock clock,
             @Value("${commission.user-share-rate:0.80}") String shareRate) {
@@ -62,10 +58,10 @@ public class OrderSyncService {
 
     public void sync(String platform) {
         OrderSyncCursor cursor = store.cursor(platform);
-        List<IncomingOrder> batch = source.pull(platform, cursor);
+        List<IncomingOrderDto> batch = source.pull(platform, cursor);
         tx.executeWithoutResult(status -> {
             // 本批写库和游标前进同一事务。中途失败则游标不动，下次重拉。
-            for (IncomingOrder incoming : batch) {
+            for (IncomingOrderDto incoming : batch) {
                 upsert(platform, incoming);
             }
             store.advance(platform, OffsetDateTime.now(clock));
@@ -82,7 +78,7 @@ public class OrderSyncService {
  * 已入账的订单只更新快照。未入账且已完成的才记返佣。
  */
 
-    private void upsert(String platform, IncomingOrder incoming) {
+    private void upsert(String platform, IncomingOrderDto incoming) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         AppOrder existing = store.findByPlatformOrder(platform, incoming.platformOrderId());
         AppOrder order = existing == null ? newOrder(platform, incoming.platformOrderId(), now) : existing;
@@ -99,7 +95,7 @@ public class OrderSyncService {
         order.setGoodsImageUrl(incoming.goodsImageUrl());
         order.setPayAmount(incoming.payAmount());
         order.setMediaCommission(incoming.mediaCommission());
-        order.setOrderStatus(orderStatus(incoming.orderStatus()));
+        order.setOrderStatus(incoming.orderStatus() == null ? OrderStatus.UNKNOWN : incoming.orderStatus());
         order.setOrderedAt(incoming.orderedAt());
         order.setShippedAt(incoming.shippedAt());
         order.setUpdatedFromPlatformAt(now);
@@ -195,10 +191,12 @@ public class OrderSyncService {
         return SettleStatus.NONE;
     }
 
-    private static OrderStatus orderStatus(String raw) {
-        return raw != null && ORDER_STATUSES.contains(raw) ? OrderStatus.fromCode(raw) : OrderStatus.UNKNOWN;
-    }
-
+    /**
+     * 空白字符串当成没有值。
+     *
+     * @param value 原始字符串
+     * @return 去掉空白后的值；空白则为空
+     */
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }

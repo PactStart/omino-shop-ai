@@ -15,6 +15,10 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,10 +30,13 @@ import java.util.regex.Pattern;
 public class HttpAccessLogFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(HttpAccessLogFilter.class);
+    private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter LOG_TS = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm:ss");
     private static final int PEEK_BYTES = 8192;
     private static final int BODY_CHARS = 2048;
     private static final Pattern CODE = Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)");
     private static final Pattern MESSAGE = Pattern.compile("\"message\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern TS = Pattern.compile("\"ts\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern SECRET_JSON = Pattern.compile(
             "(\"(?:password|secret|token|authorization|captcha|code)\"\\s*:\\s*\")([^\"]*)(\")",
             Pattern.CASE_INSENSITIVE);
@@ -53,6 +60,8 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         long started = System.nanoTime();
+        String traceId = ApiResponse.trace();
+        request.setAttribute(ApiResponse.TRACE_ATTRIBUTE, traceId);
         ContentCachingRequestWrapper cached = new ContentCachingRequestWrapper(request, PEEK_BYTES);
         if (stream(request)) {
             try {
@@ -78,6 +87,14 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
                 || (accept != null && accept.contains("text/event-stream"));
     }
 
+    /**
+     * 打一行访问日志。追踪号用进 Controller 之前放上的那个，时间打成 yyyyMMdd HH:mm:ss。
+     *
+     * @param request 已缓存正文的请求
+     * @param response 当前响应
+     * @param body 响应正文，流式响应为空
+     * @param started 请求开始的纳秒时间
+     */
     private static void write(ContentCachingRequestWrapper request, HttpServletResponse response, byte[] body, long started) {
         String code = "-";
         String message = "-";
@@ -93,10 +110,14 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
             }
         }
         long millis = (System.nanoTime() - started) / 1_000_000L;
+        String traceId = traceOf(request);
+        String ts = tsOf(body);
         if (failed(response.getStatus(), code)) {
-            log.info("http {} {} status={} code={} message={} {}ms query={} body={}",
+            log.info("http {} {} traceId={} ts={} status={} code={} message={} {}ms query={} body={}",
                     request.getMethod(),
                     request.getRequestURI(),
+                    traceId,
+                    ts,
                     response.getStatus(),
                     code,
                     message,
@@ -105,13 +126,59 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
                     requestBody(request));
             return;
         }
-        log.info("http {} {} status={} code={} message={} {}ms",
+        log.info("http {} {} traceId={} ts={} status={} code={} message={} {}ms",
                 request.getMethod(),
                 request.getRequestURI(),
+                traceId,
+                ts,
                 response.getStatus(),
                 code,
                 message,
                 millis);
+    }
+
+    /**
+     * 响应正文里已有信封时间就换算成日志格式，否则用打日志这一刻的上海时间。
+     *
+     * @param body 响应正文，可空
+     * @return `yyyyMMdd HH:mm:ss`
+     */
+    private static String tsOf(byte[] body) {
+        if (body != null && body.length > 0) {
+            Matcher match = TS.matcher(text(body));
+            if (match.find() && !match.group(1).isBlank()) {
+                return formatTs(match.group(1));
+            }
+        }
+        return OffsetDateTime.now(SHANGHAI).format(LOG_TS);
+    }
+
+    /**
+     * 把信封里的时间换成上海时间的日志格式。解析不了就原样留下。
+     *
+     * @param raw 信封里的 ts
+     * @return `yyyyMMdd HH:mm:ss`，或原来的字符串
+     */
+    private static String formatTs(String raw) {
+        try {
+            return OffsetDateTime.parse(raw).atZoneSameInstant(SHANGHAI).format(LOG_TS);
+        } catch (DateTimeParseException ex) {
+            return raw;
+        }
+    }
+
+    /**
+     * 读进 Controller 之前放上的追踪号。
+     *
+     * @param request 当前请求
+     * @return 追踪号，没有时用横线
+     */
+    private static String traceOf(HttpServletRequest request) {
+        Object value = request.getAttribute(ApiResponse.TRACE_ATTRIBUTE);
+        if (value instanceof String text && !text.isBlank()) {
+            return text;
+        }
+        return "-";
     }
 
     /** HTTP 4xx/5xx，或信封 code 不是 0，都算这次请求失败。 */

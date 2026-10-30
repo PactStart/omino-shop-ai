@@ -1,6 +1,6 @@
 package com.omino.shopai.app.adapter;
 
-import com.omino.shopai.app.adapter.platform.SdkLog;
+import com.omino.shopai.app.util.SdkLog;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
