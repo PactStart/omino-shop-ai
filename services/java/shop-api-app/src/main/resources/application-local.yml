@@ -6,5 +6,9 @@ spring:
     password: ${PG_PASSWORD:omino-local}
     driver-class-name: org.postgresql.Driver
     type: com.alibaba.druid.pool.DruidDataSource
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6381}
   flyway:
     enabled: true

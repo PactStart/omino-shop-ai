@@ -30,7 +30,7 @@ mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
 另开终端启动 Admin，端口 `8082`。期望：
 
 - 测试通过，其中包含信封字段测试
-- `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8081/api/app/actuator/health` 为 `200`
+- `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8181/api/app/actuator/health` 为 `200`
 - Admin 的 `http://127.0.0.1:8082/api/admin/actuator/health` 为 `200`
 - 两个模块的依赖里没有彼此
 
@@ -39,14 +39,14 @@ mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
 ```bash
 cd services/agent
 uv sync
-uv run uvicorn app.main:app --port 8090 --host 127.0.0.1
+uv run uvicorn app.main:app --port 8190 --host 127.0.0.1
 ```
 
-期望：`curl -s http://127.0.0.1:8090/health` 返回 `{"status":"ok"}`。
+期望：`curl -s http://127.0.0.1:8190/health` 返回 `{"status":"ok"}`。
 
 ## 4. Web 空壳
 
-分别在 `apps/admin-web`、`apps/h5`、`apps/www`、`apps/land` 执行 `npm ci` 与 `npm run dev`。页面为空，没有登录、对话或运营流程。端口为 5173、5177、5175、5176。
+分别在 `apps/admin-web`、`apps/h5`、`apps/www`、`apps/land` 执行 `npm ci` 与 `npm run dev`。页面为空，没有登录、对话或运营流程。端口为 5183、5177、5175、5176。
 
 ## 5. 原生工程
 

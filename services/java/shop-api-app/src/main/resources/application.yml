@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${SERVER_PORT:8181}
   servlet:
     context-path: /api/app
 
@@ -14,3 +14,7 @@ management:
     web:
       exposure:
         include: health
+
+mybatis-plus:
+  configuration:
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler

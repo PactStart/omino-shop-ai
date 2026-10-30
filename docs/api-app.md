@@ -221,6 +221,21 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 
 列表与详情给消费者的字段：`id` `platform` `goodsId` `goodsTitle` `goodsImageUrl` `payAmount` `userCommission` `orderStatus` `settleStatus` `orderedAt` `shippedAt`。金额为字符串两位或 `null`。**不下发** `mediaCommission`、`parentUserId`、`walletLedgerId`。`userCommission` 在待结算时是当前分成预估，已结算后是入账金额。
 
+### 4.11 返佣钱包与提现
+
+金额为字符串、两位小数。`channel` 只能是 `alipay`。列表和详情只返回 `accountMask`，不返回完整收款账号。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/app/v1/wallet` | 本人 `availableAmount`、`frozenAmount`、`totalEarned` |
+| POST | `/api/app/v1/withdrawals` | body：`amount`、`payeeAccount`。`amount` 必须大于 0 且不超过可用余额，否则 `40001`。成功后状态 `pending`，可用余额减少，冻结额增加。不写 `wallet_ledger` |
+| GET | `/api/app/v1/withdrawals` | 本人分页 |
+| GET | `/api/app/v1/withdrawals/{id}` | 本人一笔。别人的返回 `40400` |
+
+无 JWT：HTTP `401`，`code` 为 `40100`。积分不能走这些路径。
+
+---
+
 列表行若有 `goodsId`，客户端展示「再次购买」，进入商品详情（`POST /goods/detail`）。**禁止**在订单行直接 `convert-link`。无 `goodsId` 则不显示该按钮。
 
 ---
