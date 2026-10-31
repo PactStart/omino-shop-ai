@@ -1,6 +1,6 @@
 package com.omino.shopai.app.service.wallet;
 
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 
 import com.omino.shopai.app.dto.WithdrawalViewDto;
 

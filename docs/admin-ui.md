@@ -2,7 +2,7 @@
 
 契约以 [`api-admin.md`](./api-admin.md)、[`AGENTS.md`](../AGENTS.md) 为准。本文只描述 **运营后台 UI**：信息架构与组件，不含消费者 H5 / 官网 / 落地页。
 
-登录必须 omino-sso OIDC + PKCE S256（推荐 BFF，浏览器不持 token）。禁止账号密码表。
+登录必须 omino-sso OIDC + PKCE S256（推荐 BFF，浏览器不持 token）。禁止账号密码表。菜单、按钮和数据按 [`admin-access.md`](./admin-access.md) 的权限点显示。
 
 ---
 
@@ -12,7 +12,7 @@
 | --- | --- |
 | 产品类型 | 内部运营后台：表格、表单、筛选、观测。不是营销站。 |
 | 技术 | Vue 3 + Element Plus `2.9.1` + 与 `omino-sso` admin 同族版本（见 `AGENTS.md` §2.4）。 |
-| 壳 | 左栏菜单 + 顶栏（运营名、登出）+ 主区。深链可刷新。 |
+| 壳 | 左栏 + 顶栏（运营名、主题、登出）+ 主区。深链可刷新。分组可折叠。左栏可收起：收起后只留一级图标，悬停显示该项文字。菜单超出视口时在品牌行下方上下滚动，品牌行保持可见。图标用已锁定的 `@element-plus/icons-vue`。顶栏在浅色与深色之间切换，选择记在本机 `admin.theme`（`light` / `dark`），刷新后保持；深色使用 Element Plus 自带的 dark 变量。登出后进入门户「我的应用」，统一身份会话保持；本应用会话已作废，旧 Cookie 不能再打开业务页。门户未登录时由其自己进入登录页。 |
 | 密度 | 表格舒适；筛选一行；主按钮 Primary，危险操作 `el-button type="danger"`。 |
 | 禁 | 不把联盟 PID / 密钥 / 完整收款账号画进表格；金额字符串两位；时间 ISO 展示为本地。 |
 | 用户 | 列表进详情；详情用 **用户视角菜单** 看该账号在 App 侧的全部运营可见数据。上帝视角（H5）是其中一项，不是唯一入口。 |
@@ -27,6 +27,9 @@
 | 分组 | 菜单 | 路由 ID | Path |
 | --- | --- | --- | --- |
 | 概览 | 工作台 | `dashboard` | `/` |
+| 概览 | 漏斗 | `statsFunnel` | `/stats/funnel` |
+| 概览 | 三本账 | `statsLedger` | `/stats/ledger` |
+| 概览 | 风险 | `statsRisk` | `/stats/risk` |
 | 交易 | 电商订单 | `orders` | `/orders` |
 | 交易 | 同步游标 | `orderSync` | `/orders/sync` |
 | 用户 | 用户列表 | `users` | `/users` |
@@ -61,7 +64,10 @@
 | ID | 名称 | Path | 目标 | 布局 | 约束 |
 | --- | --- | --- | --- | --- | --- |
 | `loginCallback` | SSO 回调 | `/login/callback` | 换 Cookie | 空白+转圈 | 失败去离线/重登 |
-| `dashboard` | 工作台 | `/` | 同步失败、开单量、待审提现 | 卡片+短表 | 只读；不编造数 |
+| `dashboard` | 工作台 | `/` | 同步失败、开单量、待审提现，以及每日指标 | 卡片+折线 | 只读；不编造数。指标布局与口径见 [`ops-metrics.md`](./ops-metrics.md) |
+| `statsFunnel` | 漏斗 | `/stats/funnel` | 分平台看转链到入账 | 四列条形 | 见 [`ops-metrics.md`](./ops-metrics.md) |
+| `statsLedger` | 三本账 | `/stats/ledger` | 佣金、钱包、积分 | 三列 | 见 [`ops-metrics.md`](./ops-metrics.md) |
+| `statsRisk` | 风险 | `/stats/risk` | 看还没处理的异常单和账 | 表 | 见 [`ops-metrics.md`](./ops-metrics.md) |
 | `users` | 用户列表 | `/users` | 找人、进详情 | 筛选+表 | 点行进 `userDetail`；手机列表脱敏 |
 | `userDetail` | 用户详情 | `/users/:id` | 看该用户全部运营可见信息 | 左用户视角菜单+右内容 | 见 §3.4；无 JWT/密钥/PID |
 | `orders` | 电商订单 | `/orders` | 按平台/订单状态/结算状态/用户查 | 筛选+表 | 无联盟原始 JSON；表上同时能看媒体返佣与用户分成 |
@@ -78,10 +84,10 @@
 | `creditRate` | Token 比例 | 套餐页只读条 | 看 Nacos 当前值 | 文案 | 改去 Nacos |
 | `invitePosters` | 海报模板 | `/invite-posters` | 上传模板、框二维码区、生效期 | 左表右预览 | **预览在浏览器贴码**；无服务端合成 |
 | `invitePosterEdit` | 编辑模板 | `/invite-posters/:id` | 标定矩形 | 画布+数字框+日期 | `startsAt`/`endsAt` 可空 |
-| `releases` | 版本 | `/releases` | 发渠道包 | 表；Android 一行一渠道 | `versionCode` 输入 `yyyyMMdd` |
+| `releases` | 版本 | `/releases` | 发渠道包 | 表；Android 一行一渠道 | `versionCode` 输入 `yyyyMMdd`。说明可选纯文本或有限富文本，对应 `format` |
 | `runtimeConfigs` | 特殊配置 | `/runtime-configs` | 渠道/端/版本行为 | 表+JSON 表单 | 只允许已锁 payload 键 |
-| `announcements` | 公告 | `/announcements` | 定向投放 | 表+抽屉 | 端/渠道多选；版本范围日期码 |
-| `inbox` | 站内信 | `/inbox` | 发给一个人 | 表单 userId+标题正文 | 禁止全站群发 |
+| `announcements` | 公告 | `/announcements` | 定向投放 | 表+抽屉 | 端/渠道多选；版本范围日期码。正文可选纯文本或有限富文本，对应 `format` |
+| `inbox` | 站内信 | `/inbox` | 发给一个人 | 表单 userId+标题正文 | 禁止全站群发。正文可选纯文本或有限富文本，对应 `format`；列表显示去掉标签后的文字 |
 | `chatSuggestions` | 推荐问题 | `/chat-suggestions` | 配新对话空态问题 | 表+抽屉 | 上架最多 12；下架不物理删 |
 | `agentPrompts` | 提示词 | `/agent-prompts` | 改八条固定提示词 | 左 key 右编辑器 | 不能增删 key；保存后下一轮对话生效 |
 | `llmModels` | 模型分流 | `/llm-models` | 多个模型与权重 | 表+抽屉 | 密钥只写不回显；列表只显示末 4 位 |

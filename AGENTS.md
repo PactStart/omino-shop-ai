@@ -71,6 +71,7 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | JSON                     | `com.fasterxml.jackson.core:jackson-databind`                 | 随 Boot          | 禁止再引入 Fastjson                                                                     |
 | 校验                       | `spring-boot-starter-validation`                              | 随 Boot          |                                                                                    |
 | OpenAPI                  | `org.springdoc:springdoc-openapi-starter-webmvc-ui`           | `2.8.5`         | 两个产出物都要能打开文档：`/api/app/v3/api-docs`、`/api/app/swagger-ui.html` 与 Admin 对应路径。Controller 的每个映射方法必须有 `@Operation`，类上有 `@Tag`。文档路径不要求登录 |
+| HTML 清洗 | `org.jsoup:jsoup` | `1.21.1` | 只清洗公告、站内信、版本说明的有限 HTML。不用它抓网页。MIT。放 `shop-api-common` |
 | 安全（APP）                  | `spring-boot-starter-security` + Nimbus JWT                   | 随 Boot / `9.47` | APP JWT                                                                            |
 | 安全（Admin）                | Spring Security OAuth2 Client                                 | 随 Boot          | 对接 omino-sso                                                                       |
 | 迁移                       | `org.flywaydb:flyway-core` + `flyway-database-postgresql`     | `11.3.1`        | 唯一 schema 变更方式                                                                     |
@@ -182,7 +183,8 @@ Sign in with Apple 用 AuthenticationServices。微信为开放平台 **iOS 应�
 | 请求  | `axios`                   | `1.7.9`  | `withCredentials: true`（Admin Cookie 会话）                                    |
 | UI  | `element-plus`            | `2.9.1`  | 全局注册允许（独立 admin 应用）                                                         |
 | 图标  | `@element-plus/icons-vue` | `2.3.1`  |                                                                             |
-| SSO | `oidc-client-ts`          | `3.1.0`  | 仅当走纯 SPA 时；**推荐 BFF**：浏览器只打 Admin API，由 Java 完成 code 交换（与 omino-sso 接入指南一致） |
+| SSO | `oidc-client-ts`          | `3.1.0`  | 仅当走纯 SPA 时；**推荐 BFF**：浏览器只打 Admin API，由 Java 完成 code 交换（与 omino-sso 接入指南一致）。本阶段不引入 |
+| 二维码 | `qrcode`                  | `1.5.4`  | 只用 Canvas 把占位邀请地址画进海报矩形。不向服务端要合成图。MIT。不引入第二个二维码库 |
 
 
 Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁止自建管理员账号密码表。
@@ -570,6 +572,8 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 | [`docs/data-model.md`](docs/data-model.md) | PostgreSQL 表 |
 | [`docs/app-ui.md`](docs/app-ui.md) | 消费者页面 |
 | [`docs/admin-ui.md`](docs/admin-ui.md) | 管理后台页面 |
+| [`docs/ops-metrics.md`](docs/ops-metrics.md) | 运营指标口径、汇总表、只读接口与后台页面。指标表与字段只写在这一份 |
+| [`docs/admin-access.md`](docs/admin-access.md) | 管理后台角色、权限点、菜单与操作的可见范围。不在本仓库建权限表 |
 
 交叉字段只在一处写死，其它文档链接过去。改行为先改对应文档，再改代码。
 
@@ -801,6 +805,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `SSO_CLIENT_ID`        | omino-sso 应用 ID                    |
 | `SSO_CLIENT_SECRET`    | 密钥；token 端点用 `client_secret_basic` |
 | `SSO_REDIRECT_URI`     | 必须事先在 IdP 注册                       |
+| `SSO_LOGIN_URL`        | 门户登录页，如 `http://localhost:5173/login`。登出只作废本应用会话，不结束统一身份会话，并打开该地址所在源的 `/account/apps`。空则不跳到 IdP |
 | `ADMIN_SESSION_SECRET` | Cookie 会话加密                        |
 | `GOD_VIEW_ENABLED`     | 上帝视角；`local` 默认可 `true`，`prod` 必须 `false` 除非书面开启 |
 

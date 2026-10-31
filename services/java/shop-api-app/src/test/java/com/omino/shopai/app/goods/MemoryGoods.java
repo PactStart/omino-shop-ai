@@ -1,6 +1,6 @@
 package com.omino.shopai.app.goods;
 
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 
 import com.omino.shopai.app.service.goods.IGoodsDetailCache;
 import com.omino.shopai.app.service.goods.IGoodsGate;

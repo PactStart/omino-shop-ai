@@ -2,6 +2,7 @@ package com.omino.shopai.admin.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -29,6 +30,10 @@ class AdminSessionTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(40100))
                 .andExpect(content().string(not(containsString("access_token"))));
+        mvc.perform(get("/v1/users").cookie(new Cookie("sid_admin", "stale")))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/users").sessionAttr("ssoSub", "ops"))
+                .andExpect(status().isOk());
         mvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));

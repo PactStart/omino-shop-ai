@@ -5,7 +5,6 @@ import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.api.ErrorCodes;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -57,20 +56,15 @@ public class AdminSessionFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
-/**
- * 只认 HttpOnly 的后台会话 Cookie。
- */
-
+    /**
+     * 只认会话里的登录主体。残留的 sid_admin 不能单独通过。
+     *
+     * @param request 当前请求
+     * @return 会话里有登录主体时为 true
+     */
     private static boolean hasSession(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("sid_admin".equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
-                    return true;
-                }
-            }
-        }
         HttpSession session = request.getSession(false);
-        return session != null && session.getAttribute("ssoSub") != null;
+        Object sub = session == null ? null : session.getAttribute("ssoSub");
+        return sub != null && !sub.toString().isBlank();
     }
 }

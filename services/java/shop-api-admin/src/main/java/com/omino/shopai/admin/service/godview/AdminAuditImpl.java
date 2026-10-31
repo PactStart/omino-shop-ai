@@ -18,6 +18,6 @@ public class AdminAuditImpl implements IAdminAudit {
 
     @Override
     public void write(AdminAuditLog row) {
-        logs.insert(row);
+        logs.insertJson(row);
     }
 }

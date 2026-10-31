@@ -6,7 +6,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** 积分流水类型。 库存的是 code，不是枚举名。 */
 public enum CreditLedgerType {
-    PURCHASE("purchase");
+    PURCHASE("purchase"),
+    CONSUME("consume"),
+    REFUND("refund"),
+    ADJUST("adjust");
 
     @EnumValue
     @JsonValue

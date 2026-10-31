@@ -1,6 +1,7 @@
 package com.omino.shopai.app.service.meta;
 
 import com.omino.shopai.enums.OnOff;
+import com.omino.shopai.enums.RichTextFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -76,6 +77,9 @@ public class AppReleaseService {
         body.put("action", action);
         body.put("versionCode", latest.getVersionCode());
         body.put("versionName", latest.getVersionName());
+        body.put("title", latest.getTitle());
+        body.put("changelog", latest.getChangelog());
+        body.put("format", latest.getFormat() == null ? RichTextFormat.PLAIN.code() : latest.getFormat().code());
         body.put("downloadUrl", latest.getDownloadUrl());
         return body;
     }

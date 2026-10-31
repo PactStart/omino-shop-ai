@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.dto.WalletViewDto;
 import com.omino.shopai.app.web.app.dto.ApplyRequestDto;
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.app.service.wallet.WithdrawalService;
 import com.omino.shopai.app.dto.WithdrawalViewDto;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -181,7 +181,7 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 | 有更高且 `force_update=true` | `force`（客户端阻断，仅更新） |
 | 有更高且非强制 | `optional` |
 
-`data` 另含 `versionCode` `versionName` `title` `changelog` `downloadUrl`（APK 或商店链）。H5 的 `downloadUrl` 可空（刷新即可）。
+`data` 另含 `versionCode` `versionName` `title` `changelog` `format` `downloadUrl`（APK 或商店链）。`format` 为 `plain` 或 `html`，含义见 [`data-model.md`](./data-model.md) 站内信一节。H5 的 `downloadUrl` 可空（刷新即可）。
 
 **运行时特殊配置** `GET /api/app/v1/app/runtime-config`（JWT）
 
@@ -195,7 +195,7 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 
 **公告** `GET /api/app/v1/announcements`（JWT）
 
-`announcement`：`published`、当前时间在 `starts_at`–`ends_at`（空=不限）、`client_types` 含当前端（空=全端）、`channels` 含当前渠道（空=全渠道）、版本范围含当前。按 `sort` 降序。已读由客户端本地记 id，不落库。
+`announcement`：`published`、当前时间在 `starts_at`–`ends_at`（空=不限）、`client_types` 含当前端（空=全端）、`channels` 含当前渠道（空=全渠道）、版本范围含当前。按 `sort` 降序。已读由客户端本地记 id，不落库。每条含 `body` 与 `format`（`plain` / `html`）。
 
 **协议** `GET /api/app/v1/legal`：`{ "agreementUrl", "privacyUrl" }`，来自 yml，无 JWT。
 
@@ -203,7 +203,7 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/app/v1/inbox` | 当前用户私信分页；`title` `body` `readAt` `createdAt` |
+| GET | `/api/app/v1/inbox` | 当前用户私信分页；`title` `body` `format` `readAt` `createdAt`。`format` 为 `plain` 或 `html` |
 | GET | `/api/app/v1/inbox/unread-count` | `{ "count": n }` 供「我的」红点 |
 | POST | `/api/app/v1/inbox/{id}/read` | 标已读，幂等 |
 | PATCH | `/api/app/v1/me/push` | body `{ "enabled": true\|false }` 写 `app_user.push_enabled` |

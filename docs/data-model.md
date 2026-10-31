@@ -456,7 +456,7 @@
 | title      | VARCHAR(256)   | NOT NULL |                |
 | body       | TEXT           | NOT NULL | 运营维护的规则正文      |
 | embedding  | vector(1536)   | 可空       | `search_kb` 检索 |
-| status     | VARCHAR(16)    | NOT NULL | `active`       |
+| status     | VARCHAR(16)    | NOT NULL | `published` \| `retired` |
 | updated_at | TIMESTAMPTZ(3) | NOT NULL |                |
 
 
@@ -593,7 +593,8 @@
 | version_name | VARCHAR(32) | NOT NULL | 展示，如 `1.2.0` |
 | force_update | TINYINT | NOT NULL，默认 0 | `1` 强制 |
 | title | VARCHAR(128) | NOT NULL | 更新弹窗标题 |
-| changelog | TEXT | NOT NULL | 更新说明 |
+| changelog | TEXT | NOT NULL | 更新说明。`format=plain` 时按纯文本展示；`html` 时只含有限标签，见下方 |
+| format | VARCHAR(16) | NOT NULL，默认 `plain` | `plain` \| `html` |
 | download_url | VARCHAR(1024) | 可空 | APK / 商店；H5 可空 |
 | status | VARCHAR(16) | NOT NULL | `draft` \| `published` |
 | published_at | TIMESTAMPTZ(3) | 可空 | |
@@ -630,7 +631,8 @@
 | --- | --- | --- | --- |
 | id | CHAR(26) | PK | |
 | title | VARCHAR(128) | NOT NULL | |
-| body | TEXT | NOT NULL | 展示文案；禁止密钥 |
+| body | TEXT | NOT NULL | 展示文案；禁止密钥。`format=plain` 时按纯文本展示；`html` 时只含有限标签，见下方 |
+| format | VARCHAR(16) | NOT NULL，默认 `plain` | `plain` \| `html` |
 | client_types | JSONB | NOT NULL，默认 `[]` | `[]`=全端；否则 `android`/`ios`/`h5` 子集 |
 | channels | JSONB | NOT NULL，默认 `[]` | `[]`=全渠道 |
 | version_code_min | INT | 可空 | `yyyyMMdd` |
@@ -651,13 +653,16 @@
 | id | CHAR(26) | PK | |
 | user_id | CHAR(26) | NOT NULL，FK | 只此一人 |
 | title | VARCHAR(128) | NOT NULL | |
-| body | TEXT | NOT NULL | |
+| body | TEXT | NOT NULL | `format=plain` 时按纯文本展示；`html` 时只含有限标签，见下方 |
+| format | VARCHAR(16) | NOT NULL，默认 `plain` | `plain` \| `html` |
 | read_at | TIMESTAMPTZ(3) | 可空 | 空=未读 |
 | created_at | TIMESTAMPTZ(3) | NOT NULL | |
 | INDEX(user_id, created_at) | | | |
 
 
 禁止群发同一接口刷全表；要群发用公告。运营发送写 `admin_audit_log`。
+
+`announcement.body`、`inbox_message.body`、`app_release.changelog` 共用 `format`。`plain` 原样当文字。`html` 入库前只保留 `p` `br` `strong` `em` `a` `ul` `ol` `li`，链接只留 `http`/`https`。脚本、样式、图片和其他标签丢掉，标签里的文字留下。已有行是 `plain`。列表、红点和推送用去掉标签后的文字，详情再按 `format` 渲染。
 
 ### 6.28 `chat_suggestion` 新对话推荐问题
 
@@ -733,5 +738,9 @@ Worker 每次开 run 读完全表，放进 `graph/invoke` 的 `prompts`。缺任
 没有候选：`test` / `prod` 不调 Agent，run 失败（`50020`）。仅 `APP_ENV=local` 且本表没有任何候选时，允许不注入模型，由 Agent 使用进程环境变量 `OPENAI_API_BASE` / `OPENAI_API_KEY` / `OPENAI_MODEL`。一旦存在候选，环境变量不再参与分流。
 
 读接口不返回密钥，只返回是否已设置，以及末 4 位掩码。更新时省略密钥字段 = 保留原密钥。日志、审计 `detail`、Langfuse 禁止出现密钥明文。改权重、启停、换地址、换密钥写 `admin_audit_log`（`action=llm_model.update`，`detail` 只有字段名与权重前后值）。
+
+### 6.31 运营指标
+
+`stats_*` 表的字段、口径和任务只写在 [`ops-metrics.md`](./ops-metrics.md)。业务表不因为指标加列。
 
 ---

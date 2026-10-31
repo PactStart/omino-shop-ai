@@ -8,7 +8,7 @@ import com.omino.shopai.app.service.auth.InternalAccountService;
 import com.omino.shopai.app.service.credit.CreditBillingImpl;
 import com.omino.shopai.app.dto.OrderDetailDto;
 import com.omino.shopai.app.dto.OrderViewDto;
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.app.service.order.OrderQueryService;
 import com.omino.shopai.app.dto.WalletViewDto;
 import com.omino.shopai.app.service.wallet.WithdrawalService;

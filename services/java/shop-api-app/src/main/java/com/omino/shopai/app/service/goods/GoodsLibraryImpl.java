@@ -1,6 +1,6 @@
 package com.omino.shopai.app.service.goods;
 
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 
 import com.omino.shopai.enums.Platform;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

@@ -1,5 +1,6 @@
 package com.omino.shopai.app.service.meta;
 
+import com.omino.shopai.enums.RichTextFormat;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.InboxMessage;
@@ -39,6 +40,7 @@ public class InboxService {
         message.setId(Ids.ulid());
         message.setUserId(userId);
         message.setTitle(title);
+        message.setFormat(RichTextFormat.PLAIN);
         message.setBody(body);
         message.setCreatedAt(OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC));
         book.insertInbox(message);

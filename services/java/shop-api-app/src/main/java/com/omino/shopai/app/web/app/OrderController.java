@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.dto.OrderDetailDto;
 import com.omino.shopai.app.dto.OrderViewDto;
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.app.service.order.OrderQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

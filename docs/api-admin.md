@@ -9,10 +9,18 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/admin/v1/auth/login` | 无会话时 302 到 omino-sso 授权端点。PKCE 仅 S256。已有会话则 302 到登录后的后台入口 |
-| GET | `/api/admin/v1/auth/callback` | 校验 state，用授权码换令牌，建立 `sid_admin`。失败不发会话 cookie |
-| POST | `/api/admin/v1/auth/logout` | 清本地会话，再引导浏览器到 IdP `/logout`。不把 `end_session` 当作唯一步骤 |
+| GET | `/api/admin/v1/auth/callback` | 校验 state，用授权码换令牌，建立 `sid_admin`。成功后 302 到管理前端源的 `/`。失败不发会话 cookie。响应和地址栏不出现 access_token |
+| POST | `/api/admin/v1/auth/logout` | 让 `sid_admin` 立刻过期（Path 为上下文路径），并作废本应用服务端会话。业务接口只认会话里的登录主体；只有 Cookie、没有登录主体时返回 401。不调用 IdP `/logout`，不结束统一身份会话。随后 302 到 `SSO_LOGIN_URL` 所在源的 `/account/apps`。门户未登录时由其自己进入登录页。未配置 `SSO_LOGIN_URL` 时不跳到 IdP |
 
-未登录访问 `/api/admin/v1/**` 业务路径：HTTP `401`，信封 `code` 为 `40100`，`data` 为 null。`GET /api/admin/actuator/health` 不套信封，不要求会话。不建管理员密码表。
+未登录访问 `/api/admin/v1/**` 业务路径：HTTP `401`，信封 `code` 为 `40100`，`data` 为 null。已登录但没有该接口要求的权限点：HTTP `403`，信封 `code` 为 `40300`。角色和权限点见 [`admin-access.md`](./admin-access.md)。`GET /api/admin/actuator/health` 不套信封，不要求会话。不建管理员密码表。
+
+## 工作台
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/dashboard` | `syncFailures`、`ticketCount`、`pendingWithdrawals`。`syncFailures` 只计 `taobao` `jd` `pdd` `vip` 里 `last_error` 非空的平台数。`ticketCount` 是工单行数。`pendingWithdrawals` 是 `status=pending` 的提现数。没有行时三个整数都是 0 |
+
+运营指标的路径、字段和口径只写在 [`ops-metrics.md`](./ops-metrics.md)。`GET /api/admin/v1/dashboard` 仍只有上面三个待办，不并入那些指标。
 
 ## 用户
 
@@ -28,6 +36,63 @@
 | GET | `/api/admin/v1/users/{id}/goods/collections/{cid}` | 合集内未移除商品 |
 
 其它域（订单、会话、工单、钱包流水、积分流水/订单、站内信、提现）**复用既有 Admin 列表**，必须带 `userId`（与路径 id 一致）；未带则仍为全站查询。后台用户详情页一律带该参数。
+
+## 用户对话
+
+只读。不提供修改用户话的方法。响应不含模型密钥和联盟 PID。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/conversations` | 分页。query：`userId` `page` `size`。行含 `id` `userId` `title` `lastIntent` `updatedAt` |
+| GET | `/api/admin/v1/conversations/{id}/messages` | 按时间升序。含 `role` `content` `intent` `createdAt` |
+
+## 工单
+
+状态只用 `open` `processing` `closed`。只回复不改状态。`status=closed` 才是关单。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/tickets` | 分页。query：`userId` `status` `page` `size` |
+| GET | `/api/admin/v1/tickets/{id}` | 工单当前值加处理记录时间线 |
+| POST | `/api/admin/v1/tickets/{id}/reply` | body：`content`。只追加 `kind=reply`。状态不变。已关闭则 `40001` |
+| PATCH | `/api/admin/v1/tickets/{id}` | 可选 `status` `priority` `assigneeSsoSub`。改了哪一项就在同一事务追加对应的处理记录 |
+
+## 知识库
+
+`status` 只用 `published` 或 `retired`。新建为 `published`。没有删除。`retired` 不再被知识库检索返回。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/kb/articles` | 含 `retired` |
+| POST | `/api/admin/v1/kb/articles` | body：`title` `body`。新建为 `published` |
+| PATCH | `/api/admin/v1/kb/articles/{id}` | 可改标题、正文、`status`（`published` 或 `retired`） |
+
+## 审计
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/audit-logs` | 分页，时间倒序。query：`page` `size`。行含 `ssoSub` `action` `resource` `createdAt`。`detail` 若有，也不含密钥、PID、完整收款账号 |
+
+## 钱包流水
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/wallet-ledger` | 分页。query：`userId` `page` `size`。用户详情必须带 `userId`。金额为两位小数字符串。不提供修改历史行的方法 |
+
+## 订单同步
+
+固定四个平台：`taobao` `jd` `pdd` `vip`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/order-sync` | 固定四行。每行 `lastSyncCreateTime` `lastSyncUpdateTime` `lastError` `updatedAt` |
+| POST | `/api/admin/v1/order-sync/{platform}/retry` | 平台不是这四个则 `40001`，且不调用 APP。先写审计 `action=order.sync.retry`，再触发 APP 上一次该平台的既有增量。失败时 `lastError` 仍是固定文案，不含密钥 |
+
+APP 侧触发路径只给这次重试用，**不**进入 [`api-internal.md`](./api-internal.md) 的工具白名单：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/internal/v1/order-sync/{platform}` | 仅内部令牌。调用现有单平台增量 |
 
 ## 积分套餐
 
@@ -55,10 +120,10 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/POST/PATCH | `/api/admin/v1/releases`（及 `/{id}`） | 版本/渠道包；`published` 才参与检查更新 |
+| GET/POST/PATCH | `/api/admin/v1/releases`（及 `/{id}`） | 版本/渠道包；`published` 才参与检查更新。`changelog` 配 `format`（`plain` / `html`），`html` 按数据模型的白名单清洗后入库 |
 | GET/POST/PATCH | `/api/admin/v1/runtime-configs`（及 `/{id}`） | 按端/渠道/`version_code` 范围浅合并 |
-| GET/POST/PATCH | `/api/admin/v1/announcements`（及 `/{id}`） | `clientTypes[]` `channels[]` 版本范围 |
-| POST | `/api/admin/v1/inbox` | 点对点：`userId` `title` `body`；禁止当群发 |
+| GET/POST/PATCH | `/api/admin/v1/announcements`（及 `/{id}`） | `clientTypes[]` `channels[]` 版本范围。`body` 配 `format`（`plain` / `html`），`html` 按数据模型的白名单清洗后入库 |
+| POST | `/api/admin/v1/inbox` | 点对点：`userId` `title` `body` `format`；禁止当群发。`format` 缺省为 `plain`，`html` 按数据模型的白名单清洗后入库 |
 | GET | `/api/admin/v1/inbox` | 可按 userId 查 |
 | POST | `/api/admin/v1/god-view/tokens` | body `{ "userId" }`；短时 APP JWT `gv=1` TTL 1h。须 `GOD_VIEW_ENABLED=true`，写 `admin_audit_log`。`prod` 默认 false；未开返回 `40303` |
 

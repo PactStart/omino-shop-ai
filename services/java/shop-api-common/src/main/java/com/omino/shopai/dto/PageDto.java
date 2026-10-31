@@ -1,9 +1,9 @@
-package com.omino.shopai.app.dto;
+package com.omino.shopai.dto;
 
 import java.util.List;
 
 /**
- * 一页列表。商品、订单、提现共用这一个形状。
+ * 一页列表。商品、订单、提现和后台列表共用这一个形状。
  *
  * @param list 当前页
  * @param page 页码，从 1 起

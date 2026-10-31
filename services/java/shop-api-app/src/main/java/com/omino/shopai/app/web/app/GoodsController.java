@@ -12,7 +12,7 @@ import com.omino.shopai.app.dto.GoodsCardDto;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.dto.GoodsDetailDto;
 import com.omino.shopai.app.service.goods.GoodsLibraryService;
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

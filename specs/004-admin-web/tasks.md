@@ -30,9 +30,9 @@ description: "Task list for 004-admin-web"
 
 **Purpose**: 先改权威文档，再允许代码依赖新路径和新的二维码库
 
-- [ ] T001 [P] 在 `docs/data-model.md` 把 `kb_article.status` 的注释从 `active` 改为 `published` | `retired`，与 `services/java/shop-api-common/src/main/java/com/omino/shopai/enums/PublishStatus.java` 一致。不改列类型，不做数据迁移
-- [ ] T002 [P] 把 `specs/004-admin-web/contracts/admin-additions.md` 的新路径写入 `docs/api-admin.md`：工作台、会话与消息、工单、知识库、审计、钱包流水、同步游标与重试。写明 `POST /internal/v1/order-sync/{platform}` 只给 Admin 重试用，不进入 `docs/api-internal.md` 的工具白名单。不改已有路径的字段含义
-- [ ] T003 [P] 在 `AGENTS.md` §2.4 锁定 `qrcode` 的精确版本，写明只用 Canvas 输出、不向服务端要合成图。版本用该包当前稳定版的精确号，不写范围号。本任务不改 `apps/admin-web/package.json`
+- [X] T001 [P] 在 `docs/data-model.md` 把 `kb_article.status` 的注释从 `active` 改为 `published` | `retired`，与 `services/java/shop-api-common/src/main/java/com/omino/shopai/enums/PublishStatus.java` 一致。不改列类型，不做数据迁移
+- [X] T002 [P] 把 `specs/004-admin-web/contracts/admin-additions.md` 的新路径写入 `docs/api-admin.md`：工作台、会话与消息、工单、知识库、审计、钱包流水、同步游标与重试。写明 `POST /internal/v1/order-sync/{platform}` 只给 Admin 重试用，不进入 `docs/api-internal.md` 的工具白名单。不改已有路径的字段含义
+- [X] T003 [P] 在 `AGENTS.md` §2.4 锁定 `qrcode` 的精确版本，写明只用 Canvas 输出、不向服务端要合成图。版本用该包当前稳定版的精确号，不写范围号。本任务不改 `apps/admin-web/package.json`
 
 **Checkpoint**: 文档已覆盖新接口和知识库状态。依赖还没装，Java 还没改
 
@@ -44,10 +44,10 @@ description: "Task list for 004-admin-web"
 
 **⚠️ CRITICAL**: 用户故事开始前必须完成本阶段
 
-- [ ] T004 把 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/dto/PageDto.java` 移到 `services/java/shop-api-common/src/main/java/com/omino/shopai/dto/PageDto.java`。字段保持 `list`、`page`、`size`、`total`，`page` 从 1 起。改掉 app 模块里的 import。Admin 不得再定义第二个分页类型，也不得依赖 `shop-api-app`
-- [ ] T005 [P] 在 `apps/admin-web/vite.config.ts` 把 `/api/admin` 反代到 `http://127.0.0.1:8082`，开发端口保持 `5183`
-- [ ] T006 [P] 新增 `apps/admin-web/src/api/http.ts`：axios 的 baseURL 为 `/api/admin`，`withCredentials: true`。不设置 `Authorization`，不读取 Cookie
-- [ ] T007 在 `services/java/shop-api-admin/src/main/resources/application-local.yml` 增加非密钥默认值：管理前端源 `http://127.0.0.1:5183`，APP 根 `http://127.0.0.1:8181`。内部令牌继续用环境里已有的 `AGENT_INTERNAL_TOKEN`，不写进 yml
+- [X] T004 把 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/dto/PageDto.java` 移到 `services/java/shop-api-common/src/main/java/com/omino/shopai/dto/PageDto.java`。字段保持 `list`、`page`、`size`、`total`，`page` 从 1 起。改掉 app 模块里的 import。Admin 不得再定义第二个分页类型，也不得依赖 `shop-api-app`
+- [X] T005 [P] 在 `apps/admin-web/vite.config.ts` 把 `/api/admin` 反代到 `http://127.0.0.1:8082`，开发端口保持 `5183`
+- [X] T006 [P] 新增 `apps/admin-web/src/api/http.ts`：axios 的 baseURL 为 `/api/admin`，`withCredentials: true`。不设置 `Authorization`，不读取 Cookie
+- [X] T007 在 `services/java/shop-api-admin/src/main/resources/application-local.yml` 增加非密钥默认值：管理前端源 `http://127.0.0.1:5183`，APP 根 `http://127.0.0.1:8181`。内部令牌继续用环境里已有的 `AGENT_INTERNAL_TOKEN`，不写进 yml
 
 **Checkpoint**: 前端能把请求发到 Admin API。列表可以返回同一个 `PageDto`
 
@@ -61,9 +61,9 @@ description: "Task list for 004-admin-web"
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] 改 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminAuthController.java`：会话建立后 302 到 T007 的前端源 `/`。失败不发 `sid_admin`。不在重定向地址里放 access_token
-- [ ] T009 [US1] 新增 `apps/admin-web/src/router/index.ts` 和 `apps/admin-web/src/views/login-callback.vue`，并在 `apps/admin-web/src/main.ts` 挂上这个路由。未登录访问业务页时，浏览器整页打开 `/api/admin/v1/auth/login`。`/login/callback` 只在失败时提供重新登录，不交换授权码，不出现账号或密码输入框
-- [ ] T010 [US1] 新增 `apps/admin-web/src/layouts/AdminShell.vue`：顶栏登出调用 `POST /api/admin/v1/auth/logout`。登出后不能再看到业务数据
+- [X] T008 [US1] 改 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminAuthController.java`：会话建立后 302 到 T007 的前端源 `/`。失败不发 `sid_admin`。不在重定向地址里放 access_token
+- [X] T009 [US1] 新增 `apps/admin-web/src/router/index.ts` 和 `apps/admin-web/src/views/login-callback.vue`，并在 `apps/admin-web/src/main.ts` 挂上这个路由。未登录访问业务页时，浏览器整页打开 `/api/admin/v1/auth/login`。`/login/callback` 只在失败时提供重新登录，不交换授权码，不出现账号或密码输入框
+- [X] T010 [US1] 新增 `apps/admin-web/src/layouts/AdminShell.vue`：顶栏登出调用 `POST /api/admin/v1/auth/logout`。登出后不能再看到业务数据
 
 **Checkpoint**: 能登录并登出。左栏菜单可以还是空的
 
@@ -77,14 +77,14 @@ description: "Task list for 004-admin-web"
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] 在 `apps/admin-web/src/router/index.ts` 登记 `docs/admin-ui.md` §2 的全部路由 ID 与路径，包括工作台、订单、同步游标、用户、用户视角、会话、工单、提现、积分三页、海报、版本、特殊配置、公告、站内信、推荐问题、提示词、模型、知识库、审计，以及详情页。业务页套 `apps/admin-web/src/layouts/AdminShell.vue`
-- [ ] T012 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDashboardService.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminDashboardController.java` 实现 `GET /v1/dashboard`。`syncFailures` 是 `last_error` 非空的平台数，只计 `taobao` `jd` `pdd` `vip`。`ticketCount` 是工单行数。`pendingWithdrawals` 是 `status=pending` 的提现数。没有行时三个数都是 0
-- [ ] T013 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminConversationService.java` 和对应 Controller 实现会话分页 `GET /v1/conversations`（query `userId` `page` `size`）和消息 `GET /v1/conversations/{id}/messages`（时间升序）。只读，不提供修改用户话的方法
-- [ ] T014 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ticket/AdminTicketService.java` 和对应 Controller 实现 `GET /v1/tickets`（query `userId` `status` `page` `size`）和 `GET /v1/tickets/{id}`（含处理记录时间线）。本任务不写回复和改状态
-- [ ] T015 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/kb/AdminKbService.java` 和对应 Controller 实现 `GET /v1/kb/articles`，结果含 `retired`。本任务不写新增和修改
-- [ ] T016 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/godview/AdminAuditQueryService.java` 和对应 Controller 实现 `GET /v1/audit-logs` 分页、时间倒序。行含 `ssoSub` `action` `resource` `createdAt`。`detail` 不得含密钥、PID、完整收款账号
-- [ ] T017 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/order/AdminOrderSyncService.java` 和对应 Controller 实现 `GET /v1/order-sync`。固定四行 `taobao` `jd` `pdd` `vip`，字段 `lastSyncCreateTime` `lastSyncUpdateTime` `lastError` `updatedAt`。本任务不写重试
-- [ ] T018 [US2] 新增只读视图 `apps/admin-web/src/views/dashboard.vue`、`conversations.vue`、`conversation-detail.vue`、`tickets.vue`、`ticket-detail.vue`、`kb.vue`、`audit.vue`、`order-sync.vue`，分别调用 T012 到 T017。加载失败显示失败，不填示例行。会话详情没有编辑用户话的控件
+- [X] T011 [US2] 在 `apps/admin-web/src/router/index.ts` 登记 `docs/admin-ui.md` §2 的全部路由 ID 与路径，包括工作台、订单、同步游标、用户、用户视角、会话、工单、提现、积分三页、海报、版本、特殊配置、公告、站内信、推荐问题、提示词、模型、知识库、审计，以及详情页。业务页套 `apps/admin-web/src/layouts/AdminShell.vue`
+- [X] T012 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDashboardService.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminDashboardController.java` 实现 `GET /v1/dashboard`。`syncFailures` 是 `last_error` 非空的平台数，只计 `taobao` `jd` `pdd` `vip`。`ticketCount` 是工单行数。`pendingWithdrawals` 是 `status=pending` 的提现数。没有行时三个数都是 0
+- [X] T013 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminConversationService.java` 和对应 Controller 实现会话分页 `GET /v1/conversations`（query `userId` `page` `size`）和消息 `GET /v1/conversations/{id}/messages`（时间升序）。只读，不提供修改用户话的方法
+- [X] T014 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ticket/AdminTicketService.java` 和对应 Controller 实现 `GET /v1/tickets`（query `userId` `status` `page` `size`）和 `GET /v1/tickets/{id}`（含处理记录时间线）。本任务不写回复和改状态
+- [X] T015 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/kb/AdminKbService.java` 和对应 Controller 实现 `GET /v1/kb/articles`，结果含 `retired`。本任务不写新增和修改
+- [X] T016 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/godview/AdminAuditQueryService.java` 和对应 Controller 实现 `GET /v1/audit-logs` 分页、时间倒序。行含 `ssoSub` `action` `resource` `createdAt`。`detail` 不得含密钥、PID、完整收款账号
+- [X] T017 [P] [US2] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/order/AdminOrderSyncService.java` 和对应 Controller 实现 `GET /v1/order-sync`。固定四行 `taobao` `jd` `pdd` `vip`，字段 `lastSyncCreateTime` `lastSyncUpdateTime` `lastError` `updatedAt`。本任务不写重试
+- [X] T018 [US2] 新增只读视图 `apps/admin-web/src/views/dashboard.vue`、`conversations.vue`、`conversation-detail.vue`、`tickets.vue`、`ticket-detail.vue`、`kb.vue`、`audit.vue`、`order-sync.vue`，分别调用 T012 到 T017。加载失败显示失败，不填示例行。会话详情没有编辑用户话的控件
 
 **Checkpoint**: 菜单和只读页可用。工单还不能回复，知识库还不能改，同步还不能重试
 
@@ -98,14 +98,14 @@ description: "Task list for 004-admin-web"
 
 ### Tests for User Story 3
 
-- [ ] T019 [US3] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/ops/SuggestionTest.java`：列表含 `retired`；PATCH 能改 `text` `sort` `status`；已有 12 条 `active` 时再上架返回 `40001` 且该条保持原状态。不提供物理删除
+- [X] T019 [US3] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/ops/SuggestionTest.java`：列表含 `retired`；PATCH 能改 `text` `sort` `status`；已有 12 条 `active` 时再上架返回 `40001` 且该条保持原状态。不提供物理删除
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 的推荐问题映射上补 `GET /v1/chat-suggestions` 和 `PATCH /v1/chat-suggestions/{id}`，查询与 12 条限制放在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 或同包的一个用例类，使 T019 通过。`text` 去空白后 1–128 字
-- [ ] T021 [P] [US3] 新增 `apps/admin-web/src/views/chat-suggestions.vue`：可改文案、排序、上下架。没有删除按钮。超过 12 条时显示接口返回的原因
-- [ ] T022 [P] [US3] 新增 `apps/admin-web/src/views/agent-prompts.vue`：只展示并修改已有八条的 `content`。不能新增、删除或改名。去空白后为空时不提交。保存后重新 GET
-- [ ] T023 [P] [US3] 新增 `apps/admin-web/src/views/llm-models.vue`：改权重时密钥留空表示不修改。列表只显示 `apiKeySet` 和 `apiKeyMask`，不出现密钥全文
+- [X] T020 [US3] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 的推荐问题映射上补 `GET /v1/chat-suggestions` 和 `PATCH /v1/chat-suggestions/{id}`，查询与 12 条限制放在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 或同包的一个用例类，使 T019 通过。`text` 去空白后 1–128 字
+- [X] T021 [P] [US3] 新增 `apps/admin-web/src/views/chat-suggestions.vue`：可改文案、排序、上下架。没有删除按钮。超过 12 条时显示接口返回的原因
+- [X] T022 [P] [US3] 新增 `apps/admin-web/src/views/agent-prompts.vue`：只展示并修改已有八条的 `content`。不能新增、删除或改名。去空白后为空时不提交。保存后重新 GET
+- [X] T023 [P] [US3] 新增 `apps/admin-web/src/views/llm-models.vue`：改权重时密钥留空表示不修改。列表只显示 `apiKeySet` 和 `apiKeyMask`，不出现密钥全文
 
 **Checkpoint**: 三处修改都能读回。其他运营页可以还没做
 
@@ -119,10 +119,10 @@ description: "Task list for 004-admin-web"
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 把订单列表改为 `PageDto`，支持 query `userId` `platform` `orderStatus` `settleStatus` `page` `size`，并增加 `GET /v1/orders/{id}`。行内含 `mediaCommission` 与 `userCommission`，没有物流时为空。不返回联盟原始报文
-- [ ] T025 [US4] 在同一对文件补用户列表 query `keyword` `phone` `inviteCode` `id` `status`，列表手机号脱敏；`GET /v1/users/{id}` 返回完整手机、`inviterId`（没有则为 null）和四平台授权状态，授权对象不含 PID。补 `GET /v1/users/{id}/goods/history`、`favorites`、`collections`、`collections/{cid}`，只读
-- [ ] T026 [US4] 提现列表改为分页并支持 `userId`。响应只有 `accountMask`，没有完整收款账号。打款失败时页面能显示「打款未成功，冻结额未动」。改 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/wallet/AdminWithdrawalService.java`
-- [ ] T027 [US4] 新增 `apps/admin-web/src/views/orders.vue`、`order-detail.vue`、`users.vue`、`user-detail.vue`、`withdrawals.vue`。用户详情先接资料、订单、浏览收藏合集。对话、钱包流水、工单栏留到 T041，避免在接口完成前做空壳文案
+- [X] T024 [US4] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 把订单列表改为 `PageDto`，支持 query `userId` `platform` `orderStatus` `settleStatus` `page` `size`，并增加 `GET /v1/orders/{id}`。行内含 `mediaCommission` 与 `userCommission`，没有物流时为空。不返回联盟原始报文
+- [X] T025 [US4] 在同一对文件补用户列表 query `keyword` `phone` `inviteCode` `id` `status`，列表手机号脱敏；`GET /v1/users/{id}` 返回完整手机、`inviterId`（没有则为 null）和四平台授权状态，授权对象不含 PID。补 `GET /v1/users/{id}/goods/history`、`favorites`、`collections`、`collections/{cid}`，只读
+- [X] T026 [US4] 提现列表改为分页并支持 `userId`。响应只有 `accountMask`，没有完整收款账号。打款失败时页面能显示「打款未成功，冻结额未动」。改 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/wallet/AdminWithdrawalService.java`
+- [X] T027 [US4] 新增 `apps/admin-web/src/views/orders.vue`、`order-detail.vue`、`users.vue`、`user-detail.vue`、`withdrawals.vue`。用户详情先接资料、订单、浏览收藏合集。对话、钱包流水、工单栏留到 T041，避免在接口完成前做空壳文案
 
 **Checkpoint**: 订单和用户主路径可查。用户详情还缺对话、流水、工单三栏
 
@@ -136,11 +136,11 @@ description: "Task list for 004-admin-web"
 
 ### Implementation for User Story 5
 
-- [ ] T028 [US5] 按 T003 锁定的精确版本，把 `qrcode` 写入 `apps/admin-web/package.json` 并安装。不引入第二个二维码库
-- [ ] T029 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补齐积分：套餐 PATCH 与下架 `retired`（被订单引用的不物理删除）、`GET /v1/credit-rate` 只读、`GET /v1/credit-orders`、`GET /v1/credits/ledger`、`POST /v1/credits/adjust`。调账备注为空则 `40001`，并写审计
-- [ ] T030 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补 `PATCH /v1/invite-posters/{id}`。`startsAt` 与 `endsAt` 都有时必须 `endsAt` 晚于 `startsAt`，否则 `40001`。不新增预览或合成图接口
-- [ ] T031 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补 `GET` 与 `PATCH`：`/v1/releases`、`/v1/runtime-configs`、`/v1/announcements`，以及 `GET /v1/inbox`。`versionCode` 必须是八位日期。同端同渠道同日已有行时禁止再 POST 第二条。站内信 `userId` 为空则 `40001`，不提供群发
-- [ ] T032 [US5] 新增视图 `apps/admin-web/src/views/credit-packages.vue`、`credit-orders.vue`、`credit-ledger.vue`、`invite-posters.vue`、`invite-poster-edit.vue`、`releases.vue`、`runtime-configs.vue`、`announcements.vue`、`inbox.vue`、`god-view.vue`。海报预览用 `qrcode` 的 Canvas 把占位邀请地址画进矩形。用户视角调用已有 `POST /v1/god-view/tokens`。返回 `40303` 时提示拒绝。签发成功时 `apps/admin-web/src/views/god-view.vue` 和 `apps/admin-web/src/views/user-detail.vue` 都只提示成功，不渲染、不复制凭证，不写入可读写存储，不打开消费者页面
+- [X] T028 [US5] 按 T003 锁定的精确版本，把 `qrcode` 写入 `apps/admin-web/package.json` 并安装。不引入第二个二维码库
+- [X] T029 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补齐积分：套餐 PATCH 与下架 `retired`（被订单引用的不物理删除）、`GET /v1/credit-rate` 只读、`GET /v1/credit-orders`、`GET /v1/credits/ledger`、`POST /v1/credits/adjust`。调账备注为空则 `40001`，并写审计
+- [X] T030 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补 `PATCH /v1/invite-posters/{id}`。`startsAt` 与 `endsAt` 都有时必须 `endsAt` 晚于 `startsAt`，否则 `40001`。不新增预览或合成图接口
+- [X] T031 [US5] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/web/AdminOpsControllers.java` 和 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ops/AdminDirectory.java` 补 `GET` 与 `PATCH`：`/v1/releases`、`/v1/runtime-configs`、`/v1/announcements`，以及 `GET /v1/inbox`。`versionCode` 必须是八位日期。同端同渠道同日已有行时禁止再 POST 第二条。站内信 `userId` 为空则 `40001`，不提供群发
+- [X] T032 [US5] 新增视图 `apps/admin-web/src/views/credit-packages.vue`、`credit-orders.vue`、`credit-ledger.vue`、`invite-posters.vue`、`invite-poster-edit.vue`、`releases.vue`、`runtime-configs.vue`、`announcements.vue`、`inbox.vue`、`god-view.vue`。海报预览用 `qrcode` 的 Canvas 把占位邀请地址画进矩形。用户视角调用已有 `POST /v1/god-view/tokens`。返回 `40303` 时提示拒绝。签发成功时 `apps/admin-web/src/views/god-view.vue` 和 `apps/admin-web/src/views/user-detail.vue` 都只提示成功，不渲染、不复制凭证，不写入可读写存储，不打开消费者页面
 
 **Checkpoint**: 配置类页面可保存。会话和工单的写操作还没做
 
@@ -154,18 +154,18 @@ description: "Task list for 004-admin-web"
 
 ### Tests for User Story 6
 
-- [ ] T033 [P] [US6] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/ticket/TicketCommandTest.java`：回复只追加 `kind=reply` 且 `status` 不变；`status=closed` 必须是一次明确变更并追加 `status_change`；已关闭再回复返回 `40001`
-- [ ] T034 [P] [US6] 先写失败测试 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/kb/KbPublishedTest.java`：`status=retired` 的文章不被 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/kb/KbImpl.java` 的 `published()` 返回
-- [ ] T035 [P] [US6] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/order/OrderSyncRetryTest.java`：平台不是 `taobao` `jd` `pdd` `vip` 时 `40001` 且不调用 APP；合法平台先写 `action=order.sync.retry` 的审计，`detail` 不含密钥、PID、完整收款账号
+- [X] T033 [P] [US6] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/ticket/TicketCommandTest.java`：回复只追加 `kind=reply` 且 `status` 不变；`status=closed` 必须是一次明确变更并追加 `status_change`；已关闭再回复返回 `40001`
+- [X] T034 [P] [US6] 先写失败测试 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/kb/KbPublishedTest.java`：`status=retired` 的文章不被 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/kb/KbImpl.java` 的 `published()` 返回
+- [X] T035 [P] [US6] 先写失败测试 `services/java/shop-api-admin/src/test/java/com/omino/shopai/admin/order/OrderSyncRetryTest.java`：平台不是 `taobao` `jd` `pdd` `vip` 时 `40001` 且不调用 APP；合法平台先写 `action=order.sync.retry` 的审计，`detail` 不含密钥、PID、完整收款账号
 
 ### Implementation for User Story 6
 
-- [ ] T036 [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ticket/AdminTicketService.java` 实现 `POST /v1/tickets/{id}/reply` 和 `PATCH /v1/tickets/{id}`，使 T033 通过。改状态、优先级、处理人时，工单更新与一条 `ticket_log` 同一事务。只回复不改 `status`。状态只用 `open` `processing` `closed`
-- [ ] T037 [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/kb/AdminKbService.java` 实现 `POST /v1/kb/articles` 与 `PATCH /v1/kb/articles/{id}`。新建为 `published`。`status` 只接受 `published` 或 `retired`。不提供删除。使 T034 通过
-- [ ] T038 [US6] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/internal/InternalOrderSyncController.java` 增加 `POST /internal/v1/order-sync/{platform}`，只调用现有 `OrderSyncService.sync`。Admin 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/order/AdminOrderSyncService.java` 先写审计，再用内部令牌调用该路径，使 T035 通过。Admin 不 import app 模块，不调用联盟 SDK
-- [ ] T039 [P] [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/wallet/AdminWalletLedgerService.java` 和对应 Controller 实现 `GET /v1/wallet-ledger`，query `userId` `page` `size`。金额为两位小数字符串。不提供修改历史行的方法
-- [ ] T040 [US6] 给 `apps/admin-web/src/views/ticket-detail.vue`、`kb.vue`、`order-sync.vue` 接上回复、改状态、编辑、下架和重试。回复成功后状态显示不变。同步页没有美团一行
-- [ ] T041 [US6] 在 `apps/admin-web/src/views/user-detail.vue` 接上对话、钱包流水、工单三栏，请求都带当前用户 id。浏览、收藏、合集仍然没有删除按钮
+- [X] T036 [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/ticket/AdminTicketService.java` 实现 `POST /v1/tickets/{id}/reply` 和 `PATCH /v1/tickets/{id}`，使 T033 通过。改状态、优先级、处理人时，工单更新与一条 `ticket_log` 同一事务。只回复不改 `status`。状态只用 `open` `processing` `closed`
+- [X] T037 [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/kb/AdminKbService.java` 实现 `POST /v1/kb/articles` 与 `PATCH /v1/kb/articles/{id}`。新建为 `published`。`status` 只接受 `published` 或 `retired`。不提供删除。使 T034 通过
+- [X] T038 [US6] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/internal/InternalOrderSyncController.java` 增加 `POST /internal/v1/order-sync/{platform}`，只调用现有 `OrderSyncService.sync`。Admin 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/order/AdminOrderSyncService.java` 先写审计，再用内部令牌调用该路径，使 T035 通过。Admin 不 import app 模块，不调用联盟 SDK
+- [X] T039 [P] [US6] 在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/wallet/AdminWalletLedgerService.java` 和对应 Controller 实现 `GET /v1/wallet-ledger`，query `userId` `page` `size`。金额为两位小数字符串。不提供修改历史行的方法
+- [X] T040 [US6] 给 `apps/admin-web/src/views/ticket-detail.vue`、`kb.vue`、`order-sync.vue` 接上回复、改状态、编辑、下架和重试。回复成功后状态显示不变。同步页没有美团一行
+- [X] T041 [US6] 在 `apps/admin-web/src/views/user-detail.vue` 接上对话、钱包流水、工单三栏，请求都带当前用户 id。浏览、收藏、合集仍然没有删除按钮
 
 **Checkpoint**: 规格里的六条故事都能单独演示。用户详情不再缺栏
 
@@ -175,9 +175,9 @@ description: "Task list for 004-admin-web"
 
 **Purpose**: 新接口的文档注解和整条 quickstart
 
-- [ ] T042 给本功能新增的每个 Controller 方法补 `@Operation`，`summary` 写这个动作做什么，不写路径。类上保留 `@Tag`。方法正上方写 Javadoc，说明参数和返回值。涉及工单事务和重试的分支写行注释，说明这一步在保证什么
-- [ ] T043 按 `specs/004-admin-web/quickstart.md` 走一遍登录、菜单、三处读回、订单与用户、五页操作、海报预览和用户视角关闭。失败则修到通过为止
-- [ ] T044 [P] 在 `apps/admin-web/src` 确认没有账号密码表单，也没有读取或保存 access_token 的代码
+- [X] T042 给本功能新增的每个 Controller 方法补 `@Operation`，`summary` 写这个动作做什么，不写路径。类上保留 `@Tag`。方法正上方写 Javadoc，说明参数和返回值。涉及工单事务和重试的分支写行注释，说明这一步在保证什么
+- [X] T043 按 `specs/004-admin-web/quickstart.md` 走一遍登录、菜单、三处读回、订单与用户、五页操作、海报预览和用户视角关闭。失败则修到通过为止
+- [X] T044 [P] 在 `apps/admin-web/src` 确认没有账号密码表单，也没有读取或保存 access_token 的代码
 
 ---
 

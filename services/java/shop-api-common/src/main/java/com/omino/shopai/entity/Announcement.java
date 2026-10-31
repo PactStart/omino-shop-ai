@@ -3,6 +3,7 @@ package com.omino.shopai.entity;
 import lombok.Getter;
 import lombok.Setter;
 import com.omino.shopai.enums.PublishStatus;
+import com.omino.shopai.enums.RichTextFormat;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -21,6 +22,7 @@ public class Announcement {
     private String id;
     private String title;
     private String body;
+    private RichTextFormat format;
     private String clientTypes;
     private String channels;
     private Integer versionCodeMin;

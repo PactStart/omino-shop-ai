@@ -1,13 +1,12 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import 'element-plus/dist/index.css'
-import { createRouter, createWebHistory } from 'vue-router'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import App from './App.vue'
+import { router } from './router'
+import { applyTheme, readTheme } from './support/theme'
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [{ path: '/', component: { template: '<div></div>' } }],
-})
-
-createApp(App).use(createPinia()).use(router).use(ElementPlus).mount('#app')
+applyTheme(readTheme())
+createApp(App).use(createPinia()).use(router).use(ElementPlus, { locale: zhCn }).mount('#app')

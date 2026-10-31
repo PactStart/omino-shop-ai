@@ -29,6 +29,7 @@ class GodViewTest {
         List<AdminAuditLog> audit = new ArrayList<>();
         var denied = mvc(new AdminGodViewService(new GodViewIssuer(secret()), audit::add, false));
         denied.perform(post("/v1/god-view/tokens")
+                        .sessionAttr("ssoSub", "ops")
                         .cookie(new Cookie("sid_admin", "session"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"01USER0000000000000000000A\"}"))
@@ -37,6 +38,7 @@ class GodViewTest {
 
         var allowed = mvc(new AdminGodViewService(new GodViewIssuer(secret()), audit::add, true));
         String body = allowed.perform(post("/v1/god-view/tokens")
+                        .sessionAttr("ssoSub", "ops")
                         .cookie(new Cookie("sid_admin", "session"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"01USER0000000000000000000A\"}"))

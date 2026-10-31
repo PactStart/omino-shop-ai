@@ -2,7 +2,7 @@ package com.omino.shopai.app.service.order;
 
 import com.omino.shopai.app.dto.OrderDetailDto;
 
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 
 import com.omino.shopai.app.dto.OrderViewDto;
 
