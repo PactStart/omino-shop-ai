@@ -1,8 +1,8 @@
 package com.omino.shopai.app.credit;
 
 import com.omino.shopai.enums.CreditOrderStatus;
-import com.omino.shopai.app.adapter.pay.AlipayNotifyVerifier;
-import com.omino.shopai.app.adapter.pay.WechatPayNotifyVerifier;
+import com.omino.shopai.app.adapter.pay.AlipayNotifyImpl;
+import com.omino.shopai.app.adapter.pay.WechatPayNotifyImpl;
 import com.omino.shopai.app.service.credit.CreditPurchaseService;
 import com.omino.shopai.entity.CreditOrder;
 import com.omino.shopai.entity.CreditPackage;
@@ -78,8 +78,8 @@ class CreditPurchaseTest {
 
     @Test
     void badSignatureDoesNotCreditAndValidCallbackCreditsOnce() {
-        assertFalse(new WechatPayNotifyVerifier("", "", "").accepted("serial", "1", "n", "sig", "{}"));
-        assertFalse(new AlipayNotifyVerifier("").accepted("out_trade_no=x&sign=y"));
+        assertFalse(new WechatPayNotifyImpl("", "", "").accepted("serial", "1", "n", "sig", "{}"));
+        assertFalse(new AlipayNotifyImpl("").accepted("out_trade_no=x&sign=y"));
         CreditPackage pack = books.addPackage("1.00", "3.00");
         CreditOrder wechat = service.place(USER, pack.getId(), "wechat_pay", "wx-1");
         CreditOrder alipay = service.place(USER, pack.getId(), "alipay", "ali-1");

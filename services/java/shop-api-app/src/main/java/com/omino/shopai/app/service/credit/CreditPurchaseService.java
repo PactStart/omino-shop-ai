@@ -5,7 +5,7 @@ import com.omino.shopai.enums.CreditOrderStatus;
 import com.omino.shopai.enums.ActiveStatus;
 import com.omino.shopai.enums.WalletLedgerType;
 import com.omino.shopai.enums.CreditLedgerType;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.CreditAccount;
 import com.omino.shopai.entity.CreditLedger;
@@ -32,13 +32,13 @@ public class CreditPurchaseService {
 
     private static final Set<String> CHANNELS = Set.of("wechat_pay", "alipay", "wallet");
 
-    private final CreditBook book;
+    private final ICredit book;
     private final Clock clock;
 /**
  * 注入账本和时钟。下单与入账都走这里。
  */
 
-    public CreditPurchaseService(CreditBook book, Clock clock) {
+    public CreditPurchaseService(ICredit book, Clock clock) {
         this.book = book;
         this.clock = clock;
     }

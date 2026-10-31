@@ -1,15 +1,15 @@
 package com.omino.shopai.app.wallet;
 
 import com.omino.shopai.enums.WithdrawalStatus;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.service.wallet.WithdrawalService;
-import com.omino.shopai.app.service.wallet.WithdrawalView;
+import com.omino.shopai.app.dto.WithdrawalViewDto;
 import com.omino.shopai.app.web.app.WalletController;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.Withdrawal;
-import com.omino.shopai.support.withdrawal.PayoutPort;
-import com.omino.shopai.support.withdrawal.PayoutView;
+import com.omino.shopai.support.withdrawal.IPayout;
+import com.omino.shopai.support.withdrawal.PayoutViewDto;
 import com.omino.shopai.support.withdrawal.WithdrawalTransition;
 import com.omino.shopai.support.withdrawal.WithdrawalWorkflow;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +64,7 @@ class WithdrawalTest {
 
     @Test
     void applyMovesAvailableToFrozenWithoutLedger() {
-        WithdrawalView view = service.apply(USER, "4.00", "13800138000", null);
+        WithdrawalViewDto view = service.apply(USER, "4.00", "13800138000", null);
         assertEquals("pending", view.status());
         assertEquals("alipay", view.channel());
         assertEquals("138****8000", view.accountMask());
@@ -101,7 +101,7 @@ class WithdrawalTest {
             int rejected = 0;
             for (Future<Object> future : futures) {
                 Object value = future.get(5, TimeUnit.SECONDS);
-                if (value instanceof WithdrawalView) {
+                if (value instanceof WithdrawalViewDto) {
                     ok++;
                 } else if (Integer.valueOf(40001).equals(value)) {
                     rejected++;
@@ -122,10 +122,10 @@ class WithdrawalTest {
 
     @Test
     void failedPayoutKeepsFreezeUntilALaterSuccess() {
-        WithdrawalView view = service.apply(USER, "10.00", "alipay@example.com", "alipay");
+        WithdrawalViewDto view = service.apply(USER, "10.00", "alipay@example.com", "alipay");
         books.presetTransferId(view.id(), "PRESET");
         port.succeed = false;
-        PayoutView failed = workflow.payout(view.id());
+        PayoutViewDto failed = workflow.payout(view.id());
         assertEquals(WithdrawalTransition.FAIL_MESSAGE, failed.message());
         assertEquals("failed", failed.payoutResult());
         assertEquals("pending", failed.status());
@@ -138,7 +138,7 @@ class WithdrawalTest {
         assertEquals(0, books.withdrawLedgerCount(view.id()));
 
         port.succeed = true;
-        PayoutView paid = workflow.payout(view.id());
+        PayoutViewDto paid = workflow.payout(view.id());
         assertEquals("paid", paid.status());
         stored = books.find(view.id());
         assertEquals(WithdrawalStatus.PAID, stored.getStatus());
@@ -158,9 +158,9 @@ class WithdrawalTest {
 
     @Test
     void rereadAfterLockSkipsPayoutWhenNoLongerPending() {
-        WithdrawalView view = service.apply(USER, "10.00", "alipay@example.com", null);
+        WithdrawalViewDto view = service.apply(USER, "10.00", "alipay@example.com", null);
         books.rejectOnNextLockedRead = true;
-        PayoutView skipped = workflow.payout(view.id());
+        PayoutViewDto skipped = workflow.payout(view.id());
         assertEquals(0, port.ids.size());
         assertEquals(WithdrawalStatus.PENDING, books.find(view.id()).getStatus());
         assertEquals("ok", skipped.message());
@@ -170,7 +170,7 @@ class WithdrawalTest {
 
     @Test
     void rejectUnfreezesAndASecondRejectDoesNot() {
-        WithdrawalView view = service.apply(USER, "6.00", "13800138000", null);
+        WithdrawalViewDto view = service.apply(USER, "6.00", "13800138000", null);
         workflow.reject(view.id(), "账号不对");
         assertEquals(WithdrawalStatus.REJECTED, books.find(view.id()).getStatus());
         assertEquals(0, new BigDecimal("10.00").compareTo(books.wallet(USER).getAvailableAmount()));
@@ -222,7 +222,7 @@ class WithdrawalTest {
         assertTrue(stored.getPaidAt() != null);
     }
 
-    private static final class ScriptedPayout implements PayoutPort {
+    private static final class ScriptedPayout implements IPayout {
         private final List<String> ids = new ArrayList<>();
         private boolean succeed;
 

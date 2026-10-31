@@ -1,11 +1,11 @@
 package com.omino.shopai.app.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.security.AppJwtFilter;
 import com.omino.shopai.app.service.auth.AppJwtIssuer;
-import com.omino.shopai.app.service.auth.LoginSession;
+import com.omino.shopai.app.dto.LoginSessionDto;
 import com.omino.shopai.app.service.auth.SmsAuthService;
 import com.omino.shopai.app.web.app.AuthController;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +68,7 @@ class SmsLoginTest {
 
     @Test
     void issuedTokenOpensPrivateRoute() throws Exception {
-        LoginSession session = service.login("13800000002", "888888", null);
+        LoginSessionDto session = service.login("13800000002", "888888", null);
         assertFalse(session.accessToken().isBlank());
         mvc.perform(get("/v1/me").header("Authorization", "Bearer " + session.accessToken()))
                 .andExpect(status().isOk());

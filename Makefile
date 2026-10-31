@@ -17,7 +17,7 @@ COMPOSE := docker compose -f $(ROOT)/deploy/docker-compose.local.yml --env-file 
 MVN ?= mvn
 INFRA := postgres redis nacos langfuse-web langfuse-db
 
-.PHONY: help env require-infra require-app require-admin require-agent up down logs app admin agent test java-test agent-test admin-web www land h5 android ios
+.PHONY: help env require-infra require-app require-admin require-agent up down logs app admin agent test java-test agent-test accept admin-web www land h5 android ios
 
 help:
 	@printf '%s\n' \
@@ -28,9 +28,10 @@ help:
 		'make app         APP API，默认 :8181，先读 infra 再读 app env' \
 		'make admin       Admin API，默认 :8082，先读 infra 再读 admin env' \
 		'make agent       Agent，默认 :8190，只监听本机，先读 infra 再读 agent env' \
-		'make test        Java 与 Agent 测试' \
+		'make test        Java 与 Agent 测试，不出网' \
 		'make java-test   只跑 Java 测试' \
 		'make agent-test  只跑 Agent 测试' \
+		'make accept      四个平台的授权状态、搜品、详情、转链。PLATFORM=jd 只跑一个，不进 make test' \
 		'make admin-web   管理后台空壳，:5183，读 apps/admin-web/.env' \
 		'make h5          消费者 H5 空壳，:5177，读 apps/h5/.env' \
 		'make www         官网空壳，:5175，读 apps/www/.env' \
@@ -92,6 +93,10 @@ agent-test:
 	cd "$(ROOT)/services/agent" && uv run pytest
 
 test: java-test agent-test
+
+accept: require-app
+	set -a && . "$(INFRA_ENV)" && . "$(APP_ENV)" && set +a && \
+	bash "$(ROOT)/scripts/union-accept.sh" $(PLATFORM)
 
 define ensure_dotenv
 	@test -f "$(1)/.env" || cp "$(1)/.env.example" "$(1)/.env"

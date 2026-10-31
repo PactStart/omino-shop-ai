@@ -3,12 +3,12 @@ package com.omino.shopai.app.meta;
 import com.omino.shopai.enums.PublishStatus;
 import com.omino.shopai.enums.ClientType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.security.ClientHeaderFilter;
 import com.omino.shopai.app.service.meta.AppReleaseService;
 import com.omino.shopai.app.service.meta.InboxService;
-import com.omino.shopai.app.service.meta.MetaBook;
+import com.omino.shopai.app.service.meta.IMeta;
 import com.omino.shopai.entity.Announcement;
 import com.omino.shopai.entity.AppRelease;
 import com.omino.shopai.entity.AppRuntimeConfig;
@@ -73,7 +73,7 @@ class AppMetaTest {
         }
     }
 
-    private static final class MemoryMeta implements MetaBook {
+    private static final class MemoryMeta implements IMeta {
         private final List<AppRelease> releases = new ArrayList<>();
         private final List<InboxMessage> inbox = new ArrayList<>();
 

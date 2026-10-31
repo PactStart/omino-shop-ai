@@ -2,12 +2,12 @@ package com.omino.shopai.app.wallet;
 
 import com.omino.shopai.enums.WithdrawalStatus;
 import com.omino.shopai.enums.WalletLedgerType;
-import com.omino.shopai.app.service.wallet.WithdrawalStore;
+import com.omino.shopai.app.service.wallet.IWithdrawal;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.WalletLedger;
 import com.omino.shopai.entity.Withdrawal;
 import com.omino.shopai.support.Ids;
-import com.omino.shopai.support.withdrawal.WithdrawalAccounts;
+import com.omino.shopai.support.withdrawal.IWithdrawalAccount;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-public final class MemoryBooks implements WithdrawalStore, WithdrawalAccounts, TransactionOperations {
+public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, TransactionOperations {
 
     boolean rejectOnNextLockedRead;
 

@@ -83,6 +83,11 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | DAO XML 生成器              | `com.baomidou:mybatis-plus-generator`                         | `3.5.9`         | 只生成 Mapper 接口与 XML。不生成 Entity、Service、Controller。只放 test 范围，不进两个可运行 jar。不用它的 Service 模板。Apache-2.0 |
 | 微信支付                     | `com.github.wechatpay-apiv3:wechatpay-java`                   | `0.2.17`        | 只用 APIv3 下单与回调验签。不用于向用户打款，不带入示例商户站点。Apache-2.0。只进 `shop-api-app` |
 | 支付宝                      | `com.alipay.sdk:alipay-sdk-java`                              | `4.40.1044.ALL` | 回调验签（APP）与单笔转账（Admin）。不引第二个支付宝库。Apache-2.0。若依赖树抬高已锁定版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x` |
+| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细，以及授权换票和渠道备案。另装同版本 `sources`。不用推荐、退款、处罚、活动、口令。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
+| 京东联盟 SDK                 | `com.jd:open-api-sdk`                                         | `20250925`      | 只用商品查询、子联盟转链、订单行查询。不用京粉、大字段、物料、榜单、活动。许可例外同上。只进 `shop-api-app` |
+| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。不用推荐、PID 生成、招商。许可例外同上。只进 `shop-api-app` |
+| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。商品转链不用渠道链接。不用相似推荐、猜你喜欢、退款、PID 生成。许可例外同上。只进 `shop-api-app` |
+| 唯品会传输                   | `com.vip:osp-sdk`                                             | `20250214094310` | 只作为 `vop-sdk` 的调用运行时，不单独发起业务接口。许可例外同上。只进 `shop-api-app` |
 
 
 Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`shop-api-admin`。两个 Spring Boot 主类打两个 fat jar。parent 的 `dependencyManagement` 导入上述两个 BOM。
@@ -243,6 +248,8 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 
 `test`/`prod` 启动必须连上 Nacos，连不上则失败退出。`local` 允许 `NACOS_CONFIG_ENABLED=false`，热配置回落到 yml 默认值（Demo）。业务代码读配置经 `@ConfigurationProperties` + `@RefreshScope`（仅 Nacos 项），禁止散落 `System.getenv` 解析运营数字。
 
+APP 与 Admin 对每次 HTTP 请求打一行访问日志：方法、路径、`traceId`、`ts`、HTTP 状态、信封 `code` 与 `message`、耗时。`traceId` 与信封相同。日志里的 `ts` 是上海时间，格式 `yyyyMMdd HH:mm:ss`；有信封时把信封时间换算成这个格式，没有信封时用打日志这一刻。HTTP 状态 ≥ 400，或信封 `code` 非 0 时，同一行再带查询字符串和请求体。不记录请求头。口令、令牌、验证码字段打成 `***`。`/actuator/` 不打。
+
 ---
 
 ## 3. 目录结构（精确到核心文件）
@@ -327,6 +334,7 @@ omino-shop-ai/
 │   │   │   └── src/main/
 │   │   │       ├── java/com/omino/shopai/
 │   │   │       │   ├── api/ApiResponse.java
+│   │   │       │   ├── api/HttpAccessLogFilter.java
 │   │   │       │   ├── api/ErrorCodes.java
 │   │   │       │   ├── enums/Platform.java
 │   │   │       │   ├── enums/Intent.java
@@ -395,6 +403,7 @@ omino-shop-ai/
 │   │   │       │   │   ├── AppMetaController.java     # 检查更新、运行时配置、公告、协议 URL
 │   │   │       │   │   ├── InboxController.java
 │   │   │       │   │   ├── MeController.java          # 资料、推送开关、注销
+│   │   │       │   │   ├── AuthorizationController.java # 授权状态、取消授权、淘宝回调
 │   │   │       │   │   └── FileController.java
 │   │   │       │   ├── web/internal/                  # 对 Agent：/internal/v1，禁止再调 Agent
 │   │   │       │   │   ├── InternalGoodsController.java
@@ -405,7 +414,7 @@ omino-shop-ai/
 │   │   │       │   │   └── InternalKbController.java
 │   │   │       │   ├── service/                       # 用例编排，无 HTTP 类型
 │   │   │       │   │   ├── chat/ChatTurnService.java      # POST 开 run
-│   │   │       │   ├── chat/ChatRunWorker.java        # 调 Agent，XADD Redis
+│   │   │       │   ├── chat/ChatWorkerImpl.java        # 调 Agent，XADD Redis
 │   │   │       │   ├── chat/ChatEventPump.java        # ≤100ms 读 Redis → SSE
 │   │   │       │   ├── chat/ChatCancelService.java    # SET cancel 键；不假设 Worker 在本机
 │   │   │       │   │   ├── goods/GoodsQueryService.java
@@ -419,19 +428,19 @@ omino-shop-ai/
 │   │   │       │   │   ├── invite/AffiliateService.java
 │   │   │       │   │   ├── invite/InvitePosterService.java  # 只下发模板图与二维码矩形；禁止服务端合成成品
 │   │   │       │   │   ├── kb/KbSearchService.java
-│   │   │       │   │   ├── credit/CreditBillingService.java
+│   │   │       │   │   ├── credit/CreditBillingImpl.java
 │   │   │       │   │   ├── app/AppReleaseService.java
 │   │   │       │   │   ├── app/AppRuntimeConfigService.java
 │   │   │       │   │   ├── app/AnnouncementService.java
 │   │   │       │   │   └── inbox/InboxService.java
 │   │   │       │   ├── adapter/
-│   │   │       │   │   ├── agent/AgentGateway.java    # WebClient SSE 调 Python
+│   │   │       │   │   ├── agent/IAgentGateway.java    # WebClient SSE 调 Python
 │   │   │       │   │   ├── ocr/ImageParseClient.java
 │   │   │       │   │   ├── pay/PayClient.java         # 积分套餐支付；SDK 按 §7.1.6 引入前先改 §2
 │   │   │       │   │   └── platform/                  # 联盟官方 SDK 封装，禁止进 service 直接 new SDK
-│   │   │       │   │       ├── PlatformGoodsClient.java
-│   │   │       │   │       ├── TaobaoGoodsClient.java
-│   │   │       │   │       └── JdGoodsClient.java
+│   │   │       │   │       ├── IPlatformGoods.java
+│   │   │       │   │       ├── TaobaoGoodsImpl.java
+│   │   │       │   │       └── JdGoodsImpl.java
 │   │   │       │   ├── job/OrderSyncJob.java
 │   │   │       │   └── support/sse/SseEmitterSupport.java
 │   │   │       └── resources/
@@ -530,6 +539,16 @@ omino-shop-ai/
 
 不引入 Spring Data JPA。口语里的 repository = 本项目的 `mapper`。Admin 与 App **共用** common 的 entity/mapper，各自只写自己的 web + service。公共查询可抽 `common` 里的 `support` 工具类，但 **带事务的用例仍放各产出物的 service**，避免 common 依赖 Spring Web。
 
+命名与摆放：
+
+- 业务接口以 `I` 开头，其实现类以 `Impl` 结尾。`mapper` 是 DAO，保持 `XxxMapper`，不加 `I`。
+- 业务类禁止以 `Mybatis` 开头，禁止以 `Store` 结尾。
+- 异常放 `com.omino.shopai.exception`，类名以 `Exception` 结尾。
+- 对外的请求体、响应体放 `dto`（common 的 `com.omino.shopai.dto`，或仅 app 使用的 `com.omino.shopai.app.dto`）。类名以 `Dto` 结尾。只被一个 Controller 使用的请求记录放在该 Controller 所在目录的 `dto` 包，不写在 Controller 类里面。分页只有 `PageDto<T>`，字段仍是 `list`、`page`、`size`、`total`，不要再按资源各写一个分页记录。
+- 无状态工具放 `support` 或 `app.util`，不和用例、联盟适配器放在同一个包。
+- 同一件事不要拆成只被一处调用的一串小类型。
+- 信封的 `traceId` 和 `ts` 不由 Controller 填写。访问过滤器在进入 Controller 之前生成这一次请求的追踪号，放在请求属性上，访问日志用同一个号。Controller 返回 `ApiResponse.ok(data)`。`ResponseBodyAdvice` 在写出 JSON 之前把追踪号和上海时间写进信封；异常信封走同一条，成功和失败是同一个号。微信/支付宝回调原文、登录重定向和 SSE 不是信封，Advice 不改它们。`@Operation.summary` 写这个接口做什么，不写路径。
+
 ---
 
 ## 4. 契约文档索引
@@ -556,7 +575,7 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 
 ## 5. 统一响应格式
 
-所有 HTTP JSON API（APP / Admin / Agent）使用同一信封。业务成功时 HTTP 状态为 `200` 且 `code` 为 `0`。业务失败时 HTTP 仍可为 `200`（APP 友好），`code` 为非 0；传输层错误（网关、未登录）可用 `401/403/429`。
+所有 HTTP JSON API（APP / Admin / Agent）使用同一信封。业务成功时 HTTP 状态为 `200` 且 `code` 为 `0`。业务失败时 HTTP 仍可为 `200`（APP 友好），`code` 为非 0；传输层错误（网关、未登录）可用 `401/403/429`。`traceId` 一次 HTTP 请求一个：进入 Controller 前生成，写出响应时写入信封，访问日志用同一个号。`ts` 是写出时的上海时间。
 
 ### 5.1 成功模板
 
@@ -633,9 +652,9 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 6. **先检索再实现，禁止盲目造轮子**：遇到不熟悉的能力（SSE、OIDC、向量检索、OSS 直传、验证码、联盟 SDK 封装等），**不要**立刻从零手写协议/编解码/会话机。先在 GitHub 检索维护活跃（近 12 个月有提交或 issue 响应）、许可证明确（MIT / Apache-2.0 / BSD；**拒绝 GPL / AGPL**）、star 与生态匹配的同类项目，优先引入或对照其用法适配本仓库。引入依赖须先改本文件 §2 锁定**精确版本**并说明用哪部分、不用哪部分；不得与已锁版本冲突。本条**不**授权复制 `mall-guide` 源码。
 7. **实体用 Lombok**：`entity` 上的持久化类必须用 Lombok `@Getter` 与 `@Setter`，需要无参构造时加 `@NoArgsConstructor`。禁止手写 getter/setter，禁止 `@Data`。对外 DTO 若使用 Lombok，Jackson 必须能通过访问器读到字段。
 8. **不建数据库外键**：表与表之间不建数据库外键。关联列只保存对方主键，由应用在事务里校验存在性与一致性。允许 `CHECK`、唯一约束和索引。
-9. **枚举字段用枚举类型**：实体上的枚举字段必须定义 Java 枚举，业务代码使用枚举常量，禁止用裸数字或散落字符串表示同一取值。库存仍是约定的字符串或 `0`/`1`，用 MyBatis-Plus `@EnumValue` 映射，不把枚举名写入数据库。数量、排序、版本号、token 数、像素和超时不是枚举。
-10. **Controller 必须有 OpenAPI**：每个映射方法必须有 `@Operation`，类上有 `@Tag`。APP 与 Admin 都提供可访问的 `/v3/api-docs` 与 Swagger UI。文档路径不要求登录，也不被客户端头拦截。
-11. **注释**：除 mapper（DAO 接口与 XML）外，类和函数都要有 Javadoc，只有一两行的简单逻辑可以不写。多步事务、状态机、验签和分支在关键步骤写行注释，说明这一步在保证什么。注释写意图，不重复方法名。
+9. **枚举字段用枚举类型**：实体上的枚举字段必须定义 Java 枚举，业务代码使用枚举常量，禁止用裸数字或散落字符串表示同一取值。平台、订单状态、结算状态、授权状态的判断用枚举，不要再维护一份同含义的字符串集合。库存仍是约定的字符串或 `0`/`1`，用 MyBatis-Plus `@EnumValue` 映射，不把枚举名写入数据库。数量、排序、版本号、token 数、像素和超时不是枚举。
+10. **Controller 必须有 OpenAPI**：每个映射方法必须有 `@Operation`，类上有 `@Tag`。`summary` 写这个接口做什么，不写 URL。APP 与 Admin 都提供可访问的 `/v3/api-docs` 与 Swagger UI。文档路径不要求登录，也不被客户端头拦截。
+11. **注释**：除 mapper（DAO 接口与 XML）外，每个函数正上方都要有 Javadoc，写明每个参数和返回值。注解写在这段注释和函数之间。多步事务、状态机、验签和分支在关键步骤写行注释，说明这一步在保证什么。注释写意图，不重复方法名。
 
 ### 7.2 非目标 / 本阶段不做（7）
 
@@ -759,8 +778,10 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_P8`       | Sign in with Apple                                      |
 | `GOOGLE_CLIENT_ID`                                                      | Google 登录                                               |
 | `SMS_PROVIDER`                                                          | `mock` / `chuanglan`；`prod` 禁止 mock。创蓝对齐 omino-sso：`SMS_CHUANGLAN_URL` / `ACCOUNT` / `PASSWORD` / `TEMPLATE_ID`（模板变量 key 硬编码 `param1`） |
-| `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET` / `UNION_TAOBAO_PID` | 淘宝客                                                     |
-| `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET` / `UNION_JD_SITE_ID`         | 京东联盟                                                    |
+| `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET`                       | 淘宝客。不读取推广位 PID                                           |
+| `UNION_TAOBAO_INVITE_CODE`                                              | 淘宝渠道备案邀请码。空则授权回调无法写入 relation_id。不下发客户端 |
+| `UNION_TAOBAO_OAUTH_REDIRECT`                                           | 淘宝授权回调的完整 HTTPS 地址，须在开放平台登记。如 `https://api.example.com/api/app/v1/me/authorizations/taobao/callback`。空则不签发授权链接 |
+| `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`                              | 京东联盟。不读取站点号                                             |
 | `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`                       | 拼多多                                                     |
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |
 | `PAY_WECHAT_PUBLIC_KEY` / `PAY_WECHAT_PUBLIC_KEY_ID` / `PAY_WECHAT_API_V3_KEY` | 微信支付回调验签。任一为空则拒绝入账，不向微信发探测请求。SDK 坐标锁定前见 §2 |

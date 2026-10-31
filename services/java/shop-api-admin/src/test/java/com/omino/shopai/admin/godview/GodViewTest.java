@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.SignedJWT;
 import com.omino.shopai.admin.security.AdminSessionFilter;
 import com.omino.shopai.admin.security.GodViewIssuer;
-import com.omino.shopai.admin.service.godview.AdminAudit;
+import com.omino.shopai.admin.service.godview.IAdminAudit;
 import com.omino.shopai.admin.service.godview.AdminGodViewService;
 import com.omino.shopai.admin.web.AdminGodViewController;
 import com.omino.shopai.api.ApiExceptionHandler;

@@ -5,11 +5,11 @@ import com.omino.shopai.enums.SettleStatus;
 import com.omino.shopai.enums.WalletLedgerType;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.job.OrderSyncJob;
-import com.omino.shopai.app.service.order.EmptyPlatformOrderSource;
-import com.omino.shopai.app.service.order.IncomingOrder;
+import com.omino.shopai.app.adapter.platform.IPlatformOrder;
+import com.omino.shopai.app.service.order.EmptyPlatformOrderImpl;
+import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.app.service.order.OrderQueryService;
 import com.omino.shopai.app.service.order.OrderSyncService;
-import com.omino.shopai.app.service.order.PlatformOrderSource;
 import com.omino.shopai.app.web.app.OrderController;
 import com.omino.shopai.entity.AppOrder;
 import com.omino.shopai.entity.OrderSyncCursor;
@@ -43,7 +43,7 @@ class OrderSettleOnceTest {
     @Test
     void emptyJobDoesNotCredit() {
         MemoryOrders orders = new MemoryOrders();
-        new OrderSyncJob(sync(orders, new EmptyPlatformOrderSource(), "0.80")).run();
+        new OrderSyncJob(sync(orders, new EmptyPlatformOrderImpl(), "0.80")).run();
         assertEquals(0, orders.commissionCount(BUYER));
         assertNotNull(orders.cursor("jd").getLastSyncUpdateTime());
         assertNotNull(orders.cursor("taobao").getLastSyncUpdateTime());
@@ -53,7 +53,7 @@ class OrderSettleOnceTest {
     void completedOrderCreditsBuyerOnceAndHidesMediaCommission() throws Exception {
         MemoryOrders orders = new MemoryOrders();
         orders.seedWallet(BUYER);
-        PlatformOrderSource source = (platform, cursor) -> List.of(sample());
+        IPlatformOrder source = (platform, cursor) -> List.of(sample());
         OrderSyncService sync = sync(orders, source, "0.80");
 
         orders.failAdvance = true;
@@ -122,12 +122,12 @@ class OrderSettleOnceTest {
         assertFalse(body.contains("100.00"));
     }
 
-    private static OrderSyncService sync(MemoryOrders orders, PlatformOrderSource source, String rate) {
+    private static OrderSyncService sync(MemoryOrders orders, IPlatformOrder source, String rate) {
         return new OrderSyncService(orders, source, orders, Clock.systemUTC(), rate);
     }
 
-    private static IncomingOrder sample() {
-        return new IncomingOrder(
+    private static IncomingOrderDto sample() {
+        return new IncomingOrderDto(
                 "JD100",
                 BUYER,
                 PARENT,
@@ -136,7 +136,7 @@ class OrderSettleOnceTest {
                 "https://cdn.example/1.jpg",
                 new BigDecimal("199.00"),
                 new BigDecimal("100.00"),
-                "completed",
+                OrderStatus.COMPLETED,
                 OffsetDateTime.parse("2026-10-29T10:00:00+08:00"),
                 OffsetDateTime.parse("2026-10-29T12:00:00+08:00"));
     }

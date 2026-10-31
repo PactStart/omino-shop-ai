@@ -7,7 +7,8 @@ import com.omino.shopai.app.service.chat.ChatCancelService;
 import com.omino.shopai.app.service.chat.ChatEventPump;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatTurnService;
-import com.omino.shopai.app.service.chat.TurnAccepted;
+import com.omino.shopai.app.dto.TurnAcceptedDto;
+import com.omino.shopai.app.web.app.dto.TurnRequestDto;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,10 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * ChatController 提供 HTTP 接口。
@@ -46,21 +44,28 @@ public class ChatController {
         this.pump = pump;
         this.cancels = cancels;
     }
-/**
- * 受理一轮对话并立刻返回 runId。
- */
-
-    @Operation(summary = "提交 /turns")
+    /**
+     * 受理一轮对话并立刻返回 run。
+     *
+     * @param userId 当前用户
+     * @param request 文本和客户端消息号
+     * @return 已受理的 run 信封
+     */
+    @Operation(summary = "提交一轮对话")
     @PostMapping("/turns")
-    public ApiResponse<TurnAccepted> turns(@RequestAttribute("userId") String userId, @RequestBody TurnRequest request) {
-        TurnAccepted accepted = turns.open(userId, request.conversationId(), request.clientMsgId(), request.text());
-        return ApiResponse.ok(accepted, traceId(), now());
+    public ApiResponse<TurnAcceptedDto> turns(@RequestAttribute("userId") String userId, @RequestBody TurnRequestDto request) {
+        TurnAcceptedDto accepted = turns.open(userId, request.conversationId(), request.clientMsgId(), request.text());
+        return ApiResponse.ok(accepted);
     }
-/**
- * 把 Redis 里的事件按间隔泵成 SSE。客户端断开不中断工人。
- */
-
-    @Operation(summary = "查询 /runs/{runId}/events")
+    /**
+     * 订阅一轮对话的事件流。断开连接不打断生成。
+     *
+     * @param userId 当前用户
+     * @param runId 这一轮的编号
+     * @param lastEventId 已收到的最后事件号，可空
+     * @return 事件流
+     */
+    @Operation(summary = "订阅一轮对话的事件")
     @GetMapping(value = "/runs/{runId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter events(
             @RequestAttribute("userId") String userId,
@@ -81,15 +86,18 @@ public class ChatController {
         Thread.ofVirtual().start(() -> pump(emitter, open, runId, lastEventId));
         return emitter;
     }
-/**
- * 取消进行中的运行。
- */
-
-    @Operation(summary = "提交 /runs/{runId}/cancel")
+    /**
+     * 请求取消一轮尚未结束的对话。
+     *
+     * @param userId 当前用户
+     * @param runId 这一轮的编号
+     * @return 空信封
+     */
+    @Operation(summary = "取消一轮对话")
     @PostMapping("/runs/{runId}/cancel")
     public ApiResponse<Void> cancel(@RequestAttribute("userId") String userId, @PathVariable String runId) {
         cancels.cancel(userId, runId);
-        return ApiResponse.ok(null, traceId(), now());
+        return ApiResponse.ok(null);
     }
 /**
  * 在超时内把新事件写给当前连接。终态后结束流。
@@ -116,32 +124,5 @@ public class ChatController {
             Thread.currentThread().interrupt();
             pump.onDisconnect(runId);
         }
-    }
-
-    private static String traceId() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
-/**
- * 一轮对话的文本和客户端消息号。
- */
-
-    public record TurnRequest(String conversationId, String clientMsgId, String inputType, String text, Device device) {
-    }
-/**
- * 开 run 时带上的端信息，用于归因。
- */
-
-    public record Device(
-            String os,
-            String osVersion,
-            String clientType,
-            String channel,
-            Integer versionCode,
-            String versionName,
-            List<String> installedPlatforms) {
     }
 }

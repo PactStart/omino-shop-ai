@@ -61,7 +61,7 @@
 
 详情页「去购买」按钮调用。**禁止**列表/对话卡片批量转链。不实现 `/goods/buy`、`/goods/promotion-link`。
 
-顺序（全部在 Java）：① 该用户该 `platform` 是否已联盟授权，未授权返回 `40301` 且 `error.reason=NEED_AUTH`（APP 可跳对话发 `auth.grant` 或打开授权页）；② `preferApp=true` 时看已上报 `app_user_installed_app`，未安装则只给 H5/`universalLink`；③ 用服务端 PID/relationId 转链；④ 写入 `click_event`（归因）。**禁止**把联盟 PID 下发客户端。
+顺序（全部在 Java）：① 淘宝、拼多多、唯品会须已联盟授权，未授权返回 `40301` 且 `error.reason=NEED_AUTH`（APP 打开 §4.12 授权页）。京东不需要用户授权，跳过这一步；② 读取该用户的推广身份 `platform_authorization.relation_id`（拼多多转链的 pid 读京东那条），先 Redis 后数据库，没有则同样 `40301`，不出站；③ `preferApp=true` 时看已上报 `app_user_installed_app`，未安装则只给 H5/`universalLink`；④ 用该身份转链；⑤ 写入 `click_event`（归因）。**禁止**把联盟 PID 下发客户端。
 
 **Request**
 
@@ -233,6 +233,35 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 | GET | `/api/app/v1/withdrawals/{id}` | 本人一笔。别人的返回 `40400` |
 
 无 JWT：HTTP `401`，`code` 为 `40100`。积分不能走这些路径。
+
+### 4.12 联盟授权
+
+须登录，除淘宝回调。平台只接受 `taobao` `jd` `pdd` `vip`。响应不下发 `relation_id`、openId、pid。
+
+`data`：
+
+```json
+{
+  "platform": "taobao",
+  "required": true,
+  "authorized": false,
+  "authUrl": "https://oauth.taobao.com/authorize?..."
+}
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| required | 京东为 `false`，其它三个为 `true` |
+| authorized | 当前能否当作已授权。京东恒为 `true`，且不调用京东 |
+| authUrl | 未授权时给客户端打开的一条链接。已授权或不需要授权时为 `null` |
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/app/v1/me/authorizations/status` | body `{ "platform" }`。京东直接返回 `required=false`、`authorized=true`、`authUrl=null`。淘宝看本表：已授权且有 relation_id 则不再给链接；否则返回手机页授权链接，`state` 用 `JWT_ACCESS_SECRET` 签名，30 分钟内有效。拼多多先要该用户的京东推广身份，没有则 `40001`（文案不出现 pid）；再问官方是否备案，未备案则返回一条授权链接。唯品会用本表里的 openId 问官方；还没有就先生成并记下，状态为 `none`，再取备案链接 |
+| POST | `/api/app/v1/me/authorizations/revoke` | body `{ "platform" }`。京东返回 `40001`。尚未授权返回 `40001`。淘宝只把本表改为 `revoked` 并清空 relation_id。唯品会先官方解绑，成功后再改本表，openId 保留。拼多多没有官方解绑，只改本表；下次再查状态时若官方仍是已备案，会回到已授权 |
+| GET | `/api/app/v1/me/authorizations/taobao/callback` | 淘宝浏览器回调，不校验登录和客户端头。query：`code`、`state`。`state` 无效或过期为 `40001`。用授权码换票并做渠道备案，成功后本表为 `authorized`。同一授权码十分钟内重复打开，沿用第一次的结果，不再向淘宝提交。`error` 非空则为 `40001`，不把官方说明原文返回 |
+
+拼多多或唯品会查询失败、淘宝换票或备案失败，为 `50010`，文案固定「平台查询失败」。邀请码或回调地址没配时，淘宝也是这一码，不出站。
 
 ---
 

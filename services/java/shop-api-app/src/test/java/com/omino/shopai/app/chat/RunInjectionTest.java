@@ -1,14 +1,14 @@
 package com.omino.shopai.app.chat;
 
-import com.omino.shopai.api.ApiBusinessException;
-import com.omino.shopai.app.service.agent.AgentCatalog;
+import com.omino.shopai.exception.ApiBusinessException;
+import com.omino.shopai.app.service.agent.IAgentCatalog;
 import com.omino.shopai.app.service.agent.AgentConfigService;
-import com.omino.shopai.app.service.chat.AgentGateway;
+import com.omino.shopai.app.service.chat.IAgentGateway;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatRun;
-import com.omino.shopai.app.service.chat.ChatRunWorker;
+import com.omino.shopai.app.service.chat.ChatWorkerImpl;
 import com.omino.shopai.app.service.chat.RunContext;
-import com.omino.shopai.app.service.chat.RunEventLog;
+import com.omino.shopai.app.service.chat.IRunEventLog;
 import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.entity.LlmModel;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class RunInjectionTest {
         CapturingGateway gateway = new CapturingGateway();
         MemoryLog events = new MemoryLog();
         RunContext ready = new RunContext(prompts(), new RunContext.LlmChoice("m1", "https://api.deepseek.com", "deepseek-chat", "secret-value-1234", 30000));
-        ChatRunWorker worker = new ChatRunWorker(events, gateway, Clock.systemUTC(), 30, run -> ready);
+        ChatWorkerImpl worker = new ChatWorkerImpl(events, gateway, Clock.systemUTC(), 30, run -> ready);
         worker.start(run());
         assertEquals(1, gateway.calls);
         assertEquals(8, gateway.context.prompts().size());
@@ -44,7 +44,7 @@ class RunInjectionTest {
     void missingPromptDoesNotCallAgent() {
         CapturingGateway gateway = new CapturingGateway();
         MemoryLog events = new MemoryLog();
-        ChatRunWorker worker = new ChatRunWorker(events, gateway, Clock.systemUTC(), 30, run -> null);
+        ChatWorkerImpl worker = new ChatWorkerImpl(events, gateway, Clock.systemUTC(), 30, run -> null);
         ChatRun run = run();
         worker.start(run);
         assertEquals(0, gateway.calls);
@@ -54,7 +54,7 @@ class RunInjectionTest {
     @Test
     void localWithoutAModelMayOmitInjection() {
         CapturingGateway gateway = new CapturingGateway();
-        ChatRunWorker worker = new ChatRunWorker(new MemoryLog(), gateway, Clock.systemUTC(), 30, run -> new RunContext(prompts(), null));
+        ChatWorkerImpl worker = new ChatWorkerImpl(new MemoryLog(), gateway, Clock.systemUTC(), 30, run -> new RunContext(prompts(), null));
         worker.start(run());
         assertEquals(1, gateway.calls);
         assertNull(gateway.context.llm());
@@ -82,23 +82,23 @@ class RunInjectionTest {
         return rows;
     }
 
-    private static final class CapturingGateway implements AgentGateway {
+    private static final class CapturingGateway implements IAgentGateway {
         private int calls;
         private RunContext context;
 
         @Override
-        public void stream(ChatRun run, AgentGateway.AgentSink sink) {
+        public void stream(ChatRun run, IAgentGateway.AgentSink sink) {
         }
 
         @Override
-        public void stream(ChatRun run, RunContext context, AgentGateway.AgentSink sink) {
+        public void stream(ChatRun run, RunContext context, IAgentGateway.AgentSink sink) {
             calls++;
             this.context = context;
             sink.event("done", "{}");
         }
     }
 
-    private static final class MemoryCatalog implements AgentCatalog {
+    private static final class MemoryCatalog implements IAgentCatalog {
         private int active;
 
         @Override
@@ -122,7 +122,7 @@ class RunInjectionTest {
         }
     }
 
-    private static final class MemoryLog implements RunEventLog {
+    private static final class MemoryLog implements IRunEventLog {
         private final Map<String, List<ChatEvents.Event>> streams = new LinkedHashMap<>();
         private final Map<String, Integer> sequences = new LinkedHashMap<>();
 

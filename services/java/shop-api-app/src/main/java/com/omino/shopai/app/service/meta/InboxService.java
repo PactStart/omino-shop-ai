@@ -1,6 +1,6 @@
 package com.omino.shopai.app.service.meta;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.InboxMessage;
 import com.omino.shopai.support.Ids;
@@ -17,13 +17,13 @@ import java.util.List;
 @Service
 public class InboxService {
 
-    private final MetaBook book;
+    private final IMeta book;
     private final Clock clock;
 /**
  * 注入站内信存储。发送和已读都走这里。
  */
 
-    public InboxService(MetaBook book, Clock clock) {
+    public InboxService(IMeta book, Clock clock) {
         this.book = book;
         this.clock = clock;
     }

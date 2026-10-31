@@ -1,7 +1,10 @@
 package com.omino.shopai.app.service.goods;
 
+import com.omino.shopai.app.dto.ConvertedLinkDto;
+
+import com.omino.shopai.exception.PlatformCallException;
 import com.omino.shopai.enums.Platform;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.GoodsSnapshot;
 import org.springframework.stereotype.Service;
@@ -12,14 +15,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class GoodsConvertLinkService {
 
-    private final GoodsSnapshotStore snapshots;
-    private final GoodsGateStore gate;
-    private final LinkIssuer issuer;
-/**
- * 点击后才转链。未授权或未安装则拒绝。
- */
+    private final IGoodsSnapshot snapshots;
+    private final IGoodsGate gate;
+    private final ILinkIssuer issuer;
 
-    public GoodsConvertLinkService(GoodsSnapshotStore snapshots, GoodsGateStore gate, LinkIssuer issuer) {
+    /**
+     * 点击后才转链。未授权或没有推广身份则拒绝。
+     *
+     * @param snapshots 商品快照
+     * @param gate 授权、推广身份和点击
+     * @param issuer 向联盟要购买链接
+     */
+    public GoodsConvertLinkService(
+            IGoodsSnapshot snapshots,
+            IGoodsGate gate,
+            ILinkIssuer issuer) {
         this.snapshots = snapshots;
         this.gate = gate;
         this.issuer = issuer;
@@ -28,7 +38,7 @@ public class GoodsConvertLinkService {
  * 转换链接。
  */
 
-    public ConvertedLink convert(
+    public ConvertedLinkDto convert(
             String userId,
             String goodsId,
             String platform,
@@ -41,14 +51,23 @@ public class GoodsConvertLinkService {
                     .map(Platform::code)
                     .orElse(null);
         }
-        GoodsQueryService.requirePlatform(resolved);
-        if (!gate.authorized(userId, resolved)) {
+        Platform parsed = GoodsQueryService.requirePlatform(resolved);
+        // 京东没有用户授权。其它三个平台必须先是已授权，否则不能拿推广身份去转链。
+        if (parsed != Platform.JD && !gate.authorized(userId, parsed.code())) {
             throw new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH");
         }
+        String promotionId = gate.relationId(userId, parsed.relationPlatform().code())
+                .filter(id -> !id.isBlank())
+                .orElseThrow(() -> new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH"));
         GoodsSnapshot goods = resolve(goodsId, resolved, platformGoodsId);
         String platformCode = goods.getPlatform() == null ? null : goods.getPlatform().code();
         boolean openInApp = !Boolean.FALSE.equals(preferApp) && gate.installed(userId, platformCode);
-        ConvertedLink link = issuer.issue(goods, openInApp);
+        ConvertedLinkDto link;
+        try {
+            link = issuer.issue(goods, openInApp, userId, promotionId);
+        } catch (PlatformCallException ex) {
+            throw new ApiBusinessException(ErrorCodes.UPSTREAM_PLATFORM, "平台查询失败");
+        }
         gate.click(userId, platformCode, goods.getId(), goods.getPlatformGoodsId());
         return link;
     }

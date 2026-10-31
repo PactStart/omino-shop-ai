@@ -1,6 +1,8 @@
 package com.omino.shopai.app.service.chat;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.app.dto.TurnAcceptedDto;
+
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.Conversation;
 import com.omino.shopai.support.Ids;
@@ -17,22 +19,22 @@ import java.util.concurrent.Executor;
 @Service
 public class ChatTurnService {
 
-    private final ConversationStore conversations;
+    private final IConversation conversations;
     private final ChatCancelService cancels;
-    private final ChatWorker worker;
+    private final IChatWorker worker;
     private final Executor executor;
     private final Clock clock;
     private final Duration timeout;
-    private final CreditGate credits;
+    private final ICreditGate credits;
 
     public ChatTurnService(
-            ConversationStore conversations,
+            IConversation conversations,
             ChatCancelService cancels,
-            ChatWorker worker,
+            IChatWorker worker,
             Executor chatWorkerExecutor,
             Clock clock,
             Duration chatRunTimeout) {
-        this(conversations, cancels, worker, chatWorkerExecutor, clock, chatRunTimeout, CreditGate.ALLOW);
+        this(conversations, cancels, worker, chatWorkerExecutor, clock, chatRunTimeout, ICreditGate.ALLOW);
     }
 /**
  * 注入会话、取消标记、工人和积分门。开 run 不在控制器里做。
@@ -40,13 +42,13 @@ public class ChatTurnService {
 
     @Autowired
     public ChatTurnService(
-            ConversationStore conversations,
+            IConversation conversations,
             ChatCancelService cancels,
-            ChatWorker worker,
+            IChatWorker worker,
             Executor chatWorkerExecutor,
             Clock clock,
             Duration chatRunTimeout,
-            CreditGate credits) {
+            ICreditGate credits) {
         this.conversations = conversations;
         this.cancels = cancels;
         this.worker = worker;
@@ -59,7 +61,7 @@ public class ChatTurnService {
  * 校验文本后按 clientMsgId 幂等。已受理则返回原来的 runId。
  */
 
-    public TurnAccepted open(String userId, String conversationId, String clientMsgId, String text) {
+    public TurnAcceptedDto open(String userId, String conversationId, String clientMsgId, String text) {
         if (clientMsgId == null || clientMsgId.isBlank() || clientMsgId.length() > 64) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "clientMsgId 不能为空");
         }
@@ -69,14 +71,14 @@ public class ChatTurnService {
         String trimmed = text.trim();
         Conversation conversation = resolveConversation(userId, conversationId, trimmed);
         return conversations.findRunId(conversation.getId(), clientMsgId)
-                .map(runId -> new TurnAccepted(conversation.getId(), runId, clientMsgId))
+                .map(runId -> new TurnAcceptedDto(conversation.getId(), runId, clientMsgId))
                 .orElseGet(() -> start(userId, conversation.getId(), clientMsgId, trimmed));
     }
 /**
  * 写入用户消息并立刻返回 runId。积分不足时不把工人丢进线程池。
  */
 
-    private TurnAccepted start(String userId, String conversationId, String clientMsgId, String text) {
+    private TurnAcceptedDto start(String userId, String conversationId, String clientMsgId, String text) {
         String runId = Ids.ulid();
         conversations.insertUserMessage(conversationId, clientMsgId, text, runId);
         ChatRun run = new ChatRun(runId, userId, conversationId, clientMsgId, text, clock.instant().plus(timeout));
@@ -84,7 +86,7 @@ public class ChatTurnService {
         if (!credits.block(run)) {
             executor.execute(() -> worker.start(run));
         }
-        return new TurnAccepted(conversationId, runId, clientMsgId);
+        return new TurnAcceptedDto(conversationId, runId, clientMsgId);
     }
 /**
  * 沿用已有会话，或按本轮文本新建一条。

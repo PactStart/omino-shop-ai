@@ -10,11 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 /**
  * InviteController 提供 HTTP 接口。
  */
@@ -29,30 +26,38 @@ public class InviteController {
     public InviteController(InvitePosterService invites) {
         this.invites = invites;
     }
-
-    @Operation(summary = "查询")
+    /**
+     * 读取当前用户的邀请码和邀请链接。
+     *
+     * @param userId 当前用户
+     * @return 邀请信息信封
+     */
+    @Operation(summary = "读取我的邀请信息")
     @GetMapping
-    public ApiResponse<InvitePosterService.InviteView> invite(@RequestAttribute("userId") String userId) {
-        return ApiResponse.ok(invites.invite(userId), trace(), now());
+    public ApiResponse<InvitePosterService.InviteViewDto> invite(@RequestAttribute("userId") String userId) {
+        return ApiResponse.ok(invites.invite(userId));
     }
-
-    @Operation(summary = "查询 /posters")
+    /**
+     * 列出当前生效的邀请海报模板和贴码矩形。
+     *
+     * @return 海报模板信封
+     */
+    @Operation(summary = "列出可用的邀请海报模板")
     @GetMapping("/posters")
-    public ApiResponse<List<InvitePosterService.PosterView>> posters() {
-        return ApiResponse.ok(invites.posters(), trace(), now());
+    public ApiResponse<List<InvitePosterService.PosterViewDto>> posters() {
+        return ApiResponse.ok(invites.posters());
     }
-
-    @Operation(summary = "查询 /lookup")
+    /**
+     * 检查邀请码是否存在。
+     *
+     * @param code 邀请码
+     * @return 是否存在
+     */
+    @Operation(summary = "检查邀请码是否存在")
     @GetMapping("/lookup")
     public ApiResponse<Map<String, Boolean>> lookup(@RequestParam("code") String code) {
-        return ApiResponse.ok(invites.lookup(code), trace(), now());
+        return ApiResponse.ok(invites.lookup(code));
     }
 
-    private static String trace() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
 
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
 }

@@ -4,7 +4,7 @@ import com.omino.shopai.enums.OnOff;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.Announcement;
 import com.omino.shopai.entity.AppRelease;
@@ -27,14 +27,14 @@ import java.util.Map;
 @Service
 public class AppReleaseService {
 
-    private final MetaBook book;
+    private final IMeta book;
     private final Clock clock;
     private final ObjectMapper json = new ObjectMapper();
     private final String agreementUrl;
     private final String privacyUrl;
 
     public AppReleaseService(
-            MetaBook book,
+            IMeta book,
             Clock clock,
             @Value("${LEGAL_AGREEMENT_URL:}") String agreementUrl,
             @Value("${LEGAL_PRIVACY_URL:}") String privacyUrl) {

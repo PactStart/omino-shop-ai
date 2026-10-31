@@ -17,6 +17,7 @@ build/
 target/
 *.class
 *.jar
+!services/java/sdks/**/*.jar
 
 __pycache__/
 *.pyc

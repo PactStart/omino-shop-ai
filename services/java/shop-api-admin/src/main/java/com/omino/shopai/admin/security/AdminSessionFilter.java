@@ -13,9 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * 没有后台会话则 401。
  */
@@ -52,12 +49,10 @@ public class AdminSessionFilter extends OncePerRequestFilter {
         if (!hasSession(request)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            objectMapper.writeValue(response.getWriter(), new ApiResponse<>(
+            objectMapper.writeValue(response.getWriter(), ApiResponse.reject(
                     ErrorCodes.UNAUTHENTICATED,
                     "未登录",
-                    null,
-                    UUID.randomUUID().toString().replace("-", ""),
-                    OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString()));
+                    request.getAttribute(ApiResponse.TRACE_ATTRIBUTE)));
             return;
         }
         filterChain.doFilter(request, response);

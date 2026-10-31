@@ -54,7 +54,7 @@
 
 | Tool 名                      | 方法路径                                                     | 用途                                                                              |
 | --------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `search_goods`              | `POST /internal/v1/goods/search`                         | body：`keywords[]`、`budgetMin/Max`、`platforms[]`、`scene?`。返回 `goods[]`；**条数 > 6** 时 Java 建合集并带 `collectionId`、`total`，`goods` 仅预览最多 4 张 |
+| `search_goods`              | `POST /internal/v1/goods/search`                         | body：`keywords[]`、`budgetMin/Max`、`platforms[]`、`scene?`。返回 `goods[]`；**条数 > 6** 时 Java 建合集并带 `collectionId`、`total`，`goods` 仅预览最多 4 张。出站前要有当前用户的 `relation_id`（拼多多用京东那条），没有则 `40301` |
 | `parse_goods_link`          | `POST /internal/v1/goods/parse-link`                     | body：`sourceUrl`；解析平台+商品 ID，详情缓存后返回 **单张** 卡                                    |
 | `parse_goods_image`         | `POST /internal/v1/goods/parse-image`                    | body：`imageObjectKey`；OCR/识别平台与标题，能定位则单卡，否则 keywords 再 `search_goods`           |
 | `goods_detail`              | `POST /internal/v1/goods/detail`                         | 与 4.2 同构，走 Redis                                                                |

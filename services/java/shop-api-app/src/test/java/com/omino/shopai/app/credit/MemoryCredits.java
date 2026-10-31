@@ -2,9 +2,9 @@ package com.omino.shopai.app.credit;
 
 import com.omino.shopai.enums.ActiveStatus;
 import com.omino.shopai.enums.CreditLedgerType;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
-import com.omino.shopai.app.service.credit.CreditBook;
+import com.omino.shopai.app.service.credit.ICredit;
 import com.omino.shopai.entity.CreditAccount;
 import com.omino.shopai.entity.CreditLedger;
 import com.omino.shopai.entity.CreditOrder;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-final class MemoryCredits implements CreditBook {
+final class MemoryCredits implements ICredit {
 
     private final ConcurrentHashMap<String, Object> locks = new ConcurrentHashMap<>();
     private final List<Wallet> wallets = new ArrayList<>();

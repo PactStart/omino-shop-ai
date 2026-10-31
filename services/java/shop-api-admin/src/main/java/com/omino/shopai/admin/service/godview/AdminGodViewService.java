@@ -1,7 +1,7 @@
 package com.omino.shopai.admin.service.godview;
 
 import com.omino.shopai.admin.security.GodViewIssuer;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AdminAuditLog;
 import com.omino.shopai.support.Ids;
@@ -19,13 +19,13 @@ import java.time.ZoneOffset;
 public class AdminGodViewService {
 
     private final GodViewIssuer issuer;
-    private final AdminAudit audit;
+    private final IAdminAudit audit;
     private final boolean enabled;
 
     @Autowired
     public AdminGodViewService(
             @Value("${JWT_ACCESS_SECRET:0123456789abcdef0123456789abcdef}") String secret,
-            AdminAudit audit,
+            IAdminAudit audit,
             @Value("${GOD_VIEW_ENABLED:false}") boolean enabled) {
         this.issuer = new GodViewIssuer(secret);
         this.audit = audit;
@@ -35,7 +35,7 @@ public class AdminGodViewService {
  * 注入签发器和审计。关闭时由调用方拒绝。
  */
 
-    public AdminGodViewService(GodViewIssuer issuer, AdminAudit audit, boolean enabled) {
+    public AdminGodViewService(GodViewIssuer issuer, IAdminAudit audit, boolean enabled) {
         this.issuer = issuer;
         this.audit = audit;
         this.enabled = enabled;

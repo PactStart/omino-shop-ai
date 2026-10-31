@@ -26,23 +26,38 @@ public class AdminAuthController {
     public AdminAuthController(@Value("${SSO_ISSUER:http://127.0.0.1:8080}") String issuer) {
         this.issuer = issuer.endsWith("/") ? issuer.substring(0, issuer.length() - 1) : issuer;
     }
-
-    @Operation(summary = "查询 /login")
+    /**
+     * 把浏览器重定向到统一登录。
+     *
+     * @param request 当前请求
+     * @param response 用于写出重定向
+     * @return 无，由重定向完成
+     */
+    @Operation(summary = "跳转到统一登录")
     @GetMapping("/login")
     public void login(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.sendRedirect(request.getContextPath() + "/oauth2/authorization/omino");
     }
-
-    @Operation(summary = "查询 /callback")
+    /**
+     * 用授权码换会话并回到后台。
+     *
+     * @param request 当前请求，带授权码
+     * @param response 用于写会话并重定向
+     * @return 无，由重定向完成
+     */
+    @Operation(summary = "完成登录回调")
     @GetMapping("/callback")
     public void callback(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.sendRedirect(request.getContextPath() + "/v1/users");
     }
-/**
- * 退出登录。
- */
-
-    @Operation(summary = "提交 /logout")
+    /**
+     * 清掉后台会话。
+     *
+     * @param request 当前请求
+     * @param response 用于清会话
+     * @return 无
+     */
+    @Operation(summary = "退出管理后台")
     @PostMapping("/logout")
     public void logout(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);

@@ -11,18 +11,18 @@ import java.util.List;
 @Service
 public class KbSearchService {
 
-    private final KbBook book;
+    private final IKb book;
 
-    public KbSearchService(KbBook book) {
+    public KbSearchService(IKb book) {
         this.book = book;
     }
 /**
  * 按条件检索。
  */
 
-    public KbHit search(String query) {
+    public KbHitDto search(String query) {
         if (query == null || query.isBlank()) {
-            return KbHit.miss();
+            return KbHitDto.miss();
         }
         String needle = query.trim();
         List<KbArticle> hits = book.published().stream()
@@ -30,9 +30,9 @@ public class KbSearchService {
                 .limit(5)
                 .toList();
         if (hits.isEmpty()) {
-            return KbHit.miss();
+            return KbHitDto.miss();
         }
-        return new KbHit(true, hits);
+        return new KbHitDto(true, hits);
     }
 
     private static boolean contains(String text, String needle) {
@@ -42,9 +42,9 @@ public class KbSearchService {
  * 知识库命中的一条。没有命中时调用方显式说没找到。
  */
 
-    public record KbHit(boolean hit, List<KbArticle> articles) {
-        public static KbHit miss() {
-            return new KbHit(false, List.of());
+    public record KbHitDto(boolean hit, List<KbArticle> articles) {
+        public static KbHitDto miss() {
+            return new KbHitDto(false, List.of());
         }
     }
 }

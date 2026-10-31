@@ -1,7 +1,7 @@
 package com.omino.shopai.app.auth;
 
 import com.omino.shopai.enums.InviteStatus;
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.app.service.auth.AppJwtIssuer;
 import com.omino.shopai.app.service.auth.SmsAuthService;
 import com.omino.shopai.entity.AppInvite;

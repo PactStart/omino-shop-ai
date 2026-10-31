@@ -7,10 +7,13 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
+import com.omino.shopai.app.adapter.platform.IPlatformGoods;
+import com.omino.shopai.app.dto.PromotionLinkDto;
+import com.omino.shopai.dto.order.IncomingOrderDto;
+import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.ServerLinkIssuer;
+import com.omino.shopai.app.service.goods.LinkIssuerImpl;
 import com.omino.shopai.app.web.app.GoodsController;
 import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.support.Ids;
@@ -46,9 +49,11 @@ class GoodsGateTest {
     void setUp() {
         goods = new MemoryGoods();
         goods.relation(USER, "jd", "none", SECRET);
+        goods.relation(USER, "taobao", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
-        GoodsQueryService query = new GoodsQueryService(goods, List.of(new JdCatalog()), goods, goods, json);
-        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new ServerLinkIssuer());
+        JdCatalog catalog = new JdCatalog();
+        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods);
+        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(List.of(catalog)));
         mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, convert, new com.omino.shopai.app.service.goods.GoodsLibraryService(goods, goods)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -69,7 +74,7 @@ class GoodsGateTest {
         String body = mvc.perform(post("/v1/goods/convert-link")
                         .requestAttr("userId", USER)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"platform\":\"jd\",\"platformGoodsId\":\"100012345678\",\"preferApp\":true}"))
+                        .content("{\"platform\":\"taobao\",\"platformGoodsId\":\"100012345678\",\"preferApp\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(40301))
                 .andExpect(jsonPath("$.error.reason").value("NEED_AUTH"))
@@ -146,14 +151,19 @@ class GoodsGateTest {
         assertFalse(text.contains("\"PID\""));
     }
 
-    private static final class JdCatalog implements PlatformGoodsClient {
+    private static final class JdCatalog implements IPlatformGoods {
         @Override
-        public String platform() {
-            return "jd";
+        /**
+         * 这个假目录只回答京东。
+         *
+         * @return 京东
+         */
+        public Platform platform() {
+            return Platform.JD;
         }
 
         @Override
-        public GoodsSnapshot detail(String platformGoodsId) {
+        public GoodsSnapshot detail(String platformGoodsId, String userId, String promotionId) {
             GoodsSnapshot snapshot = new GoodsSnapshot();
             snapshot.setPlatform(Platform.JD);
             snapshot.setPlatformGoodsId(platformGoodsId);
@@ -165,7 +175,17 @@ class GoodsGateTest {
         }
 
         @Override
-        public List<GoodsSnapshot> search(String keyword) {
+        public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
+            return List.of();
+        }
+
+        @Override
+        public PromotionLinkDto convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId) {
+            return new PromotionLinkDto(goods.getGoodsUrl(), null, goods.getGoodsUrl(), goods.getGoodsUrl());
+        }
+
+        @Override
+        public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
             return List.of();
         }
     }

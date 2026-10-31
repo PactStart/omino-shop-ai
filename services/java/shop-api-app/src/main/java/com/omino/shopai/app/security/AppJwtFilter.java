@@ -12,10 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
-import java.util.UUID;
 /**
  * 校验 APP 访问令牌。文档路径放行。
  */
@@ -46,6 +43,7 @@ public class AppJwtFilter extends OncePerRequestFilter {
                 || uri.contains("/v1/invite/lookup")
                 || uri.contains("/v1/app/check-update")
                 || uri.contains("/v1/legal")
+                || uri.contains("/v1/me/authorizations/taobao/callback")
                 || uri.contains("/actuator/health")
                 || uri.contains("/v3/api-docs")
                 || uri.contains("/swagger-ui")
@@ -60,29 +58,29 @@ public class AppJwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
-            reject(response);
+            reject(request, response);
             return;
         }
         Optional<String> userId = tokens.subject(header.substring("Bearer ".length()).trim());
         if (userId.isEmpty()) {
-            reject(response);
+            reject(request, response);
             return;
         }
         request.setAttribute("userId", userId.get());
         filterChain.doFilter(request, response);
     }
-/**
- * 拒绝并解开冻结。
- */
-
-    private void reject(HttpServletResponse response) throws IOException {
+    /**
+     * 未登录时直接写 401 信封。追踪号用这一次请求上已有的。
+     *
+     * @param request 当前请求
+     * @param response 当前响应
+     */
+    private void reject(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), new ApiResponse<>(
+        objectMapper.writeValue(response.getWriter(), ApiResponse.reject(
                 ErrorCodes.UNAUTHENTICATED,
                 "未登录或 access_token 失效",
-                null,
-                UUID.randomUUID().toString().replace("-", ""),
-                OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString()));
+                request.getAttribute(ApiResponse.TRACE_ATTRIBUTE)));
     }
 }

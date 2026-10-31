@@ -1,6 +1,6 @@
 package com.omino.shopai.app.service.chat;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import org.springframework.stereotype.Service;
 /**
@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class ChatCancelService {
 
-    private final RunEventLog events;
+    private final IRunEventLog events;
 
-    public ChatCancelService(RunEventLog events) {
+    public ChatCancelService(IRunEventLog events) {
         this.events = events;
     }
 

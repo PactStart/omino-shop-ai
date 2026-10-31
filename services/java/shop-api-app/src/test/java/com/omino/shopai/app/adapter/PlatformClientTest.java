@@ -1,12 +1,13 @@
 package com.omino.shopai.app.adapter;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
-import com.omino.shopai.app.adapter.platform.JdGoodsClient;
-import com.omino.shopai.app.adapter.platform.PddGoodsClient;
-import com.omino.shopai.app.adapter.platform.PlatformGoodsClient;
-import com.omino.shopai.app.adapter.platform.TaobaoGoodsClient;
-import com.omino.shopai.app.adapter.platform.VipGoodsClient;
+import com.omino.shopai.app.adapter.platform.JdGoodsImpl;
+import com.omino.shopai.app.util.SdkSessions;
+import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
+import com.omino.shopai.app.adapter.platform.IPlatformGoods;
+import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
+import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.goods.MemoryGoods;
 import com.omino.shopai.app.service.goods.GoodsQueryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,42 +29,38 @@ class PlatformClientTest {
 
     @Test
     void clientsLiveInThePlatformAdapterPackage() {
-        assertEquals(PACKAGE, PlatformGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, TaobaoGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, JdGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, PddGoodsClient.class.getPackageName());
-        assertEquals(PACKAGE, VipGoodsClient.class.getPackageName());
+        assertEquals(PACKAGE, IPlatformGoods.class.getPackageName());
+        assertEquals(PACKAGE, TaobaoGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, JdGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, PddGoodsImpl.class.getPackageName());
+        assertEquals(PACKAGE, VipGoodsImpl.class.getPackageName());
     }
 
     @Test
-    void missingKeysAndPresentKeysBothFailAs50010WithoutLeakingSecrets() {
+    void missingKeysFailAs50010WithoutOpeningOfficialClients() {
+        SdkSessions.opened.set(0);
         GoodsQueryService missing = query(List.of(
-                new TaobaoGoodsClient("", "", ""),
-                new JdGoodsClient("", "", ""),
-                new PddGoodsClient("", ""),
-                new VipGoodsClient("", "")));
-        GoodsQueryService present = query(List.of(
-                new TaobaoGoodsClient(SECRET, SECRET, SECRET),
-                new JdGoodsClient(SECRET, SECRET, SECRET),
-                new PddGoodsClient(SECRET, SECRET),
-                new VipGoodsClient(SECRET, SECRET)));
+                new TaobaoGoodsImpl("", ""),
+                new JdGoodsImpl("", ""),
+                new PddGoodsImpl("", ""),
+                new VipGoodsImpl("", "")));
         for (String platform : List.of("taobao", "jd", "pdd", "vip")) {
             assertUpstream(missing, platform);
-            assertUpstream(present, platform);
         }
+        assertEquals(0, SdkSessions.opened.get());
     }
 
     @Test
     void meituanIsRejected() {
         GoodsQueryService query = query(List.of(
-                new TaobaoGoodsClient("", "", ""),
-                new JdGoodsClient("", "", ""),
-                new PddGoodsClient("", ""),
-                new VipGoodsClient("", "")));
+                new TaobaoGoodsImpl("", ""),
+                new JdGoodsImpl("", ""),
+                new PddGoodsImpl("", ""),
+                new VipGoodsImpl("", "")));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
                 () -> query.detail("01USER0000000000000000000A", null, "meituan", "1"));
         ApiBusinessException search = assertThrows(ApiBusinessException.class,
-                () -> query.search("meituan", "耳机"));
+                () -> query.search("01USER0000000000000000000A", "meituan", "耳机"));
         assertEquals(ErrorCodes.VALIDATION, detail.code());
         assertEquals(ErrorCodes.VALIDATION, search.code());
         assertFalse(detail.getMessage().contains(SECRET));
@@ -78,7 +76,8 @@ class PlatformClientTest {
     }
 
     private static void assertUpstream(GoodsQueryService query, String platform) {
-        ApiBusinessException search = assertThrows(ApiBusinessException.class, () -> query.search(platform, "耳机"));
+        ApiBusinessException search = assertThrows(ApiBusinessException.class,
+                () -> query.search("01USER0000000000000000000A", platform, "耳机"));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
                 () -> query.detail("01USER0000000000000000000A", null, platform, "100"));
         assertEquals(ErrorCodes.UPSTREAM_PLATFORM, search.code());
@@ -87,8 +86,13 @@ class PlatformClientTest {
         assertFalse(detail.getMessage().contains(SECRET));
     }
 
-    private static GoodsQueryService query(List<PlatformGoodsClient> clients) {
+    private static GoodsQueryService query(List<IPlatformGoods> clients) {
         MemoryGoods goods = new MemoryGoods();
-        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper());
+        String userId = "01USER0000000000000000000A";
+        goods.relation(userId, "taobao", "authorized", "1");
+        goods.relation(userId, "jd", "authorized", "1");
+        goods.relation(userId, "pdd", "authorized", "1");
+        goods.relation(userId, "vip", "authorized", "1");
+        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper(), goods);
     }
 }

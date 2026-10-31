@@ -1,5 +1,7 @@
 package com.omino.shopai.api;
 
+import com.omino.shopai.exception.UnauthenticatedException;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.ResponseEntity;

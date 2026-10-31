@@ -4,14 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.service.kb.KbSearchService;
+import com.omino.shopai.app.web.internal.dto.KbSearchRequestDto;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * InternalKbController 提供 HTTP 接口。
  */
@@ -26,24 +24,15 @@ public class InternalKbController {
     public InternalKbController(KbSearchService search) {
         this.search = search;
     }
-
-    @Operation(summary = "提交 /search")
+    /**
+     * 按问题检索知识库。
+     *
+     * @param request 问题文本
+     * @return 命中的文章信封
+     */
+    @Operation(summary = "检索知识库")
     @PostMapping("/search")
-    public ApiResponse<KbSearchService.KbHit> search(@RequestBody SearchRequest request) {
-        return ApiResponse.ok(search.search(request.query()), trace(), now());
-    }
-
-    private static String trace() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
-    private static String now() {
-        return OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString();
-    }
-/**
- * 搜索词和平台。
- */
-
-    public record SearchRequest(String query) {
+    public ApiResponse<KbSearchService.KbHitDto> search(@RequestBody KbSearchRequestDto request) {
+        return ApiResponse.ok(search.search(request.query()));
     }
 }

@@ -13,9 +13,9 @@ public class ChatEventPump {
 
     public static final Duration POLL_INTERVAL = Duration.ofMillis(100);
 
-    private final RunEventLog events;
+    private final IRunEventLog events;
 
-    public ChatEventPump(RunEventLog events) {
+    public ChatEventPump(IRunEventLog events) {
         this.events = events;
     }
 

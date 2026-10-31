@@ -1,15 +1,15 @@
 package com.omino.shopai.app.credit;
 
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.adapter.pay.AlipayNotifyVerifier;
-import com.omino.shopai.app.adapter.pay.WechatPayNotifyVerifier;
+import com.omino.shopai.app.adapter.pay.AlipayNotifyImpl;
+import com.omino.shopai.app.adapter.pay.WechatPayNotifyImpl;
 import com.omino.shopai.app.service.chat.ChatCancelService;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatTurnService;
-import com.omino.shopai.app.service.chat.ConversationStore;
-import com.omino.shopai.app.service.chat.RunEventLog;
-import com.omino.shopai.app.service.chat.TurnAccepted;
-import com.omino.shopai.app.service.credit.CreditBillingService;
+import com.omino.shopai.app.service.chat.IConversation;
+import com.omino.shopai.app.service.chat.IRunEventLog;
+import com.omino.shopai.app.dto.TurnAcceptedDto;
+import com.omino.shopai.app.service.credit.CreditBillingImpl;
 import com.omino.shopai.app.service.credit.CreditPurchaseService;
 import com.omino.shopai.app.web.app.CreditController;
 import com.omino.shopai.entity.Conversation;
@@ -48,7 +48,7 @@ class CreditBoundaryTest {
     void lowBalanceStillReturnsRunAndEndsWithCreditExhausted() {
         MemoryEvents events = new MemoryEvents();
         MemoryCredits books = new MemoryCredits();
-        CreditBillingService billing = new CreditBillingService(books, events, true, "1000");
+        CreditBillingImpl billing = new CreditBillingImpl(books, events, true, "1000");
         QueuedExecutor executor = new QueuedExecutor();
         AtomicInteger workerCalls = new AtomicInteger();
         ChatTurnService turns = new ChatTurnService(
@@ -59,7 +59,7 @@ class CreditBoundaryTest {
                 Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneId.of("UTC")),
                 Duration.ofSeconds(30),
                 billing);
-        TurnAccepted accepted = turns.open("01USER0000000000000000000A", null, "msg-1", "想买鞋");
+        TurnAcceptedDto accepted = turns.open("01USER0000000000000000000A", null, "msg-1", "想买鞋");
         assertFalse(accepted.runId().isBlank());
         assertEquals(0, executor.pending());
         assertEquals(0, workerCalls.get());
@@ -76,13 +76,13 @@ class CreditBoundaryTest {
         assertFalse(source.contains("to-wallet"));
         MemoryCredits books = new MemoryCredits();
         CreditPurchaseService purchases = new CreditPurchaseService(books, Clock.systemUTC());
-        CreditBillingService billing = new CreditBillingService(books, new MemoryEvents(), false, "1000");
+        CreditBillingImpl billing = new CreditBillingImpl(books, new MemoryEvents(), false, "1000");
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new CreditController(
                         purchases,
                         billing,
                         books,
-                        new WechatPayNotifyVerifier("", "", ""),
-                        new AlipayNotifyVerifier("")))
+                        new WechatPayNotifyImpl("", "", ""),
+                        new AlipayNotifyImpl("")))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
         String withdraw = mvc.perform(post("/v1/credits/withdraw").contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -93,7 +93,7 @@ class CreditBoundaryTest {
         assertFalse(convert.contains("\"code\":0"));
     }
 
-    private static final class MemoryConversations implements ConversationStore {
+    private static final class MemoryConversations implements IConversation {
         @Override
         public Conversation create(String userId, String title) {
             Conversation conversation = new Conversation();
@@ -131,7 +131,7 @@ class CreditBoundaryTest {
         }
     }
 
-    private static final class MemoryEvents implements RunEventLog {
+    private static final class MemoryEvents implements IRunEventLog {
         private final Map<String, List<ChatEvents.Event>> streams = new HashMap<>();
         private final Map<String, Integer> sequences = new HashMap<>();
         private final Set<String> cancels = new HashSet<>();

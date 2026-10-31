@@ -1,6 +1,6 @@
 package com.omino.shopai.support;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 
 import java.util.List;

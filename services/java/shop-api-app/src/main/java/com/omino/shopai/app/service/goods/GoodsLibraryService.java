@@ -1,6 +1,12 @@
 package com.omino.shopai.app.service.goods;
 
-import com.omino.shopai.api.ApiBusinessException;
+import com.omino.shopai.app.dto.CollectionViewDto;
+
+import com.omino.shopai.app.dto.PageDto;
+
+import com.omino.shopai.app.dto.GoodsCardDto;
+
+import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -14,22 +20,22 @@ import java.util.List;
 @Service
 public class GoodsLibraryService {
 
-    private final GoodsSnapshotStore snapshots;
-    private final GoodsLibraryStore library;
+    private final IGoodsSnapshot snapshots;
+    private final IGoodsLibrary library;
 /**
  * 浏览、收藏和合集的用例。不在这里转链。
  */
 
-    public GoodsLibraryService(GoodsSnapshotStore snapshots, GoodsLibraryStore library) {
+    public GoodsLibraryService(IGoodsSnapshot snapshots, IGoodsLibrary library) {
         this.snapshots = snapshots;
         this.library = library;
     }
 
-    public GoodsPage<GoodsCard> history(String userId, int page, int size) {
+    public PageDto<GoodsCardDto> history(String userId, int page, int size) {
         return cards(library.history(userId, pageOf(page), sizeOf(size)));
     }
 
-    public GoodsPage<GoodsCard> favorites(String userId, int page, int size) {
+    public PageDto<GoodsCardDto> favorites(String userId, int page, int size) {
         return cards(library.favorites(userId, pageOf(page), sizeOf(size)));
     }
 /**
@@ -54,10 +60,10 @@ public class GoodsLibraryService {
  * 读出合集及其中仍有效的商品。
  */
 
-    public CollectionView collection(String userId, String collectionId) {
+    public CollectionViewDto collection(String userId, String collectionId) {
         GoodsCollection collection = owned(userId, collectionId);
-        List<GoodsCard> goods = library.activeItems(collectionId).stream().map(GoodsQueryService::toCard).toList();
-        return new CollectionView(collection.getId(), collection.getTitle(), goods);
+        List<GoodsCardDto> goods = library.activeItems(collectionId).stream().map(GoodsQueryService::toCard).toList();
+        return new CollectionViewDto(collection.getId(), collection.getTitle(), goods);
     }
 /**
  * 移除。
@@ -82,8 +88,8 @@ public class GoodsLibraryService {
         return collection;
     }
 
-    private static GoodsPage<GoodsCard> cards(GoodsLibraryStore.SnapshotPage page) {
-        return new GoodsPage<>(
+    private static PageDto<GoodsCardDto> cards(PageDto<GoodsSnapshot> page) {
+        return new PageDto<>(
                 page.list().stream().map(GoodsQueryService::toCard).toList(),
                 page.page(),
                 page.size(),

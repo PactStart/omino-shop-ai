@@ -2,7 +2,7 @@ package com.omino.shopai.app.order;
 
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.WalletLedgerType;
-import com.omino.shopai.app.service.order.OrderStore;
+import com.omino.shopai.app.service.order.IOrder;
 import com.omino.shopai.entity.AppOrder;
 import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.entity.Wallet;
@@ -22,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class MemoryOrders implements OrderStore, TransactionOperations {
+final class MemoryOrders implements IOrder, TransactionOperations {
 
     boolean failAdvance;
 
@@ -101,6 +101,17 @@ final class MemoryOrders implements OrderStore, TransactionOperations {
         if (failAdvance) {
             throw new IllegalStateException("cursor");
         }
+    }
+
+    @Override
+    public void fail(String platform, String message) {
+        OrderSyncCursor cursor = copy(cursor(platform));
+        if (cursor.getPlatform() == null) {
+            cursor.setPlatform(Platform.fromCode(platform));
+        }
+        cursor.setLastError(message);
+        cursor.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        cursors().put(platform, cursor);
     }
 
     @Override

@@ -11,9 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 /**
  * 内部工具接口的共享令牌。
  */
@@ -53,12 +50,10 @@ public class InternalTokenFilter extends OncePerRequestFilter {
         if (expectedToken.isBlank() || token == null || !expectedToken.equals(token) || userId == null || userId.isBlank()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            ApiResponse<Void> body = new ApiResponse<>(
+            ApiResponse<Void> body = ApiResponse.reject(
                     ErrorCodes.UNAUTHENTICATED,
                     "未登录或 access_token 失效",
-                    null,
-                    UUID.randomUUID().toString().replace("-", ""),
-                    OffsetDateTime.now(ZoneId.of("Asia/Shanghai")).toString());
+                    request.getAttribute(ApiResponse.TRACE_ATTRIBUTE));
             objectMapper.writeValue(response.getWriter(), body);
             return;
         }
