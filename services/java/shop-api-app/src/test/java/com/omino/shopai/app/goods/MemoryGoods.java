@@ -111,6 +111,17 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
         return Optional.of(value);
     }
 
+    /**
+     * 测试里的推广身份没有单独的缓存层，直接删掉这条。
+     *
+     * @param userId 用户
+     * @param platform 平台码
+     */
+    @Override
+    public void forgetRelation(String userId, String platform) {
+        relations.remove(userId + "\0" + platform);
+    }
+
     @Override
     public boolean installed(String userId, String platform) {
         return Boolean.TRUE.equals(installs.get(userId + "\0" + platform));

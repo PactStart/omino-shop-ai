@@ -90,6 +90,20 @@ public class GoodsGateImpl implements IGoodsGate {
     }
 
     /**
+     * 授权变更后丢掉缓存。下一次转链会重新读表。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     */
+    @Override
+    public void forgetRelation(String userId, String platform) {
+        if (userId == null || userId.isBlank() || platform == null || platform.isBlank()) {
+            return;
+        }
+        redis.delete("union:relation:" + userId + ":" + platform);
+    }
+
+    /**
      * 先读缓存，未命中再查表。
      *
      * @param userId 当前用户

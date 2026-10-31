@@ -52,7 +52,8 @@ public class GoodsConvertLinkService {
                     .orElse(null);
         }
         Platform parsed = GoodsQueryService.requirePlatform(resolved);
-        if (!gate.authorized(userId, parsed.code())) {
+        // 京东没有用户授权。其它三个平台必须先是已授权，否则不能拿推广身份去转链。
+        if (parsed != Platform.JD && !gate.authorized(userId, parsed.code())) {
             throw new ApiBusinessException(ErrorCodes.NEED_AUTH, "请先完成联盟授权", "NEED_AUTH");
         }
         String promotionId = gate.relationId(userId, parsed.relationPlatform().code())

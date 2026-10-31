@@ -19,17 +19,26 @@ import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.enums.OrderStatus;
 import com.omino.shopai.enums.Platform;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taobao.api.AutoRetryTaobaoClient;
 import com.taobao.api.request.TbkDgGeneralLinkConvertRequest;
 import com.taobao.api.request.TbkDgMaterialOptionalUpgradeRequest;
 import com.taobao.api.request.TbkItemInfoUpgradeGetRequest;
 import com.taobao.api.request.TbkOrderDetailsGetRequest;
+import com.taobao.api.request.TbkScPublisherInfoSaveRequest;
+import com.taobao.api.request.TopAuthTokenCreateRequest;
 import com.taobao.api.response.TbkDgGeneralLinkConvertResponse;
 import com.taobao.api.response.TbkDgMaterialOptionalUpgradeResponse;
 import com.taobao.api.response.TbkItemInfoUpgradeGetResponse;
 import com.taobao.api.response.TbkOrderDetailsGetResponse;
+import com.taobao.api.response.TbkScPublisherInfoSaveResponse;
+import com.taobao.api.response.TopAuthTokenCreateResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -38,7 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 淘宝客。只用物料搜索、商品详情、万能转链和订单明细。
+ * 淘宝客。只用物料搜索、商品详情、万能转链、订单明细，以及授权换票和渠道备案。
  */
 @Component
 public class TaobaoGoodsImpl implements IPlatformGoods {
@@ -50,12 +59,37 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
 
     private final String appKey;
     private final String appSecret;
+    private final String inviteCode;
+    private final String oauthRedirect;
 
+    /**
+     * 测试只给应用标识和密钥。备案邀请码和回调地址留空，授权链接不会出站。
+     *
+     * @param appKey 应用标识
+     * @param appSecret 应用密钥
+     */
+    public TaobaoGoodsImpl(String appKey, String appSecret) {
+        this(appKey, appSecret, "", "");
+    }
+
+    /**
+     * 淘宝客客户端。邀请码和回调地址只用于授权，不参与搜品。
+     *
+     * @param appKey 应用标识
+     * @param appSecret 应用密钥
+     * @param inviteCode 渠道备案邀请码
+     * @param oauthRedirect 已在开放平台登记的回调地址
+     */
+    @Autowired
     public TaobaoGoodsImpl(
             @Value("${UNION_TAOBAO_APP_KEY:}") String appKey,
-            @Value("${UNION_TAOBAO_APP_SECRET:}") String appSecret) {
+            @Value("${UNION_TAOBAO_APP_SECRET:}") String appSecret,
+            @Value("${UNION_TAOBAO_INVITE_CODE:}") String inviteCode,
+            @Value("${UNION_TAOBAO_OAUTH_REDIRECT:}") String oauthRedirect) {
         this.appKey = appKey;
         this.appSecret = appSecret;
+        this.inviteCode = inviteCode;
+        this.oauthRedirect = oauthRedirect;
     }
 
     /**
@@ -219,6 +253,70 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
             if (rows.size() < 50) {
                 return;
             }
+        }
+    }
+
+    /**
+     * 拼出手机页授权地址。缺应用标识或回调地址时不出站。
+     *
+     * @param state 已签名的状态，回调时再验
+     * @return 淘宝授权页地址
+     */
+    public String authorizeUrl(String state) {
+        if (appKey == null || appKey.isBlank()
+                || oauthRedirect == null || oauthRedirect.isBlank()
+                || state == null || state.isBlank()) {
+            throw new PlatformCallException();
+        }
+        return "https://oauth.taobao.com/authorize?response_type=code&client_id="
+                + URLEncoder.encode(appKey, StandardCharsets.UTF_8)
+                + "&redirect_uri=" + URLEncoder.encode(oauthRedirect, StandardCharsets.UTF_8)
+                + "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8)
+                + "&view=wap";
+    }
+
+    /**
+     * 用一次性授权码换票，再做渠道备案。成功时返回要写入本表的推广身份。
+     *
+     * @param code 淘宝回调里的授权码
+     * @return relationId；没有 relationId 时用 specialId
+     */
+    public String filing(String code) {
+        Upstream.call(appKey, appSecret);
+        if (inviteCode == null || inviteCode.isBlank() || code == null || code.isBlank()) {
+            throw new PlatformCallException();
+        }
+        try {
+            TopAuthTokenCreateRequest tokenRequest = new TopAuthTokenCreateRequest();
+            tokenRequest.setCode(code);
+            TopAuthTokenCreateResponse tokenResponse = SdkLog.exchange(
+                    "taobao", "auth.token", tokenRequest, () -> client().execute(tokenRequest));
+            if (tokenResponse == null || !tokenResponse.isSuccess() || tokenResponse.getTokenResult() == null) {
+                throw new PlatformCallException();
+            }
+            // 会话只用于紧接着的备案，不落库，也不放进响应。
+            String session = new ObjectMapper().readTree(tokenResponse.getTokenResult()).path("access_token").asText("");
+            if (session.isBlank()) {
+                throw new PlatformCallException();
+            }
+            TbkScPublisherInfoSaveRequest save = new TbkScPublisherInfoSaveRequest();
+            save.setInviterCode(inviteCode);
+            save.setInfoType(1L);
+            TbkScPublisherInfoSaveResponse saved = SdkLog.exchange(
+                    "taobao", "publisher.info.save", save, () -> client().execute(save, session));
+            if (saved == null || !saved.isSuccess() || saved.getData() == null) {
+                throw new PlatformCallException();
+            }
+            TbkScPublisherInfoSaveResponse.Data data = saved.getData();
+            Long relation = data.getRelationId() != null ? data.getRelationId() : data.getSpecialId();
+            if (relation == null) {
+                throw new PlatformCallException();
+            }
+            return relation.toString();
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
         }
     }
 

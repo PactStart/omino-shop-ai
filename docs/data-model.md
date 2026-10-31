@@ -307,7 +307,7 @@
 | UNIQUE(user_id, platform) |                |             |                     |
 
 
-对话「授权了哪些平台」读此表。HITL 授权完成回调后 `authorized`。
+对话「授权了哪些平台」读此表。消费者查授权状态时：京东不向官方询问，也不要求本表为 `authorized`；淘宝以本表为准，回调写入 `relation_id` 后为 `authorized`；拼多多、唯品会以官方查询为准，查到已授权则写成 `authorized`。取消授权：京东拒绝；淘宝只改本表并清空 `relation_id`；唯品会先官方解绑，再改本表，**保留** `relation_id`（openId）；拼多多没有官方解绑，下次查询仍以官方为准。
 
 ### 6.12 `ticket` 工单
 

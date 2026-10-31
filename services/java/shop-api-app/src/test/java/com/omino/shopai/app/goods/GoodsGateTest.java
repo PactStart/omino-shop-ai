@@ -49,6 +49,7 @@ class GoodsGateTest {
     void setUp() {
         goods = new MemoryGoods();
         goods.relation(USER, "jd", "none", SECRET);
+        goods.relation(USER, "taobao", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
         JdCatalog catalog = new JdCatalog();
         GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods);
@@ -73,7 +74,7 @@ class GoodsGateTest {
         String body = mvc.perform(post("/v1/goods/convert-link")
                         .requestAttr("userId", USER)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"platform\":\"jd\",\"platformGoodsId\":\"100012345678\",\"preferApp\":true}"))
+                        .content("{\"platform\":\"taobao\",\"platformGoodsId\":\"100012345678\",\"preferApp\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(40301))
                 .andExpect(jsonPath("$.error.reason").value("NEED_AUTH"))

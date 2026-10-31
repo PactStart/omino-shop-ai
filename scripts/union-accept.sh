@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本地验收：搜品、详情、转链。不进 make test，不拉订单。
+# 本地验收：授权状态、搜品、详情、转链。不进 make test，不拉订单。
 # APP 须已在跑。用法：scripts/union-accept.sh [taobao|jd|pdd|vip]
 # 不带参数则四个都跑。KEYWORD 默认「纸巾」。
 
@@ -117,6 +117,15 @@ elif mode == "link":
     print(data.get("universalLink") or "")
     print(data.get("fallbackHttpUrl") or "")
     print(data.get("deeplink") or "")
+elif mode == "auth":
+    print(code)
+    print(message)
+    print(data.get("platform") or "")
+    required = data.get("required")
+    authorized = data.get("authorized")
+    print("true" if required is True else "false" if required is False else "")
+    print("true" if authorized is True else "false" if authorized is False else "")
+    print(data.get("authUrl") or "")
 else:
     print(code)
     print(message)
@@ -187,11 +196,78 @@ fail_vip() {
   fi
 }
 
+# 授权链接里可以带官方参数。单独的推广身份字段不能出现。
+hide_promotion_fields() {
+  python3 -c '
+import json, sys
+banned = {"relationid", "relation_id", "openid", "pid"}
+def walk(node):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key.lower() in banned:
+                sys.exit(1)
+            walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            walk(item)
+walk(json.load(sys.stdin))
+'
+}
+
 run_platform() {
   local platform="$1"
   local body file goods_id platform_goods_id title
   local clicks_before clicks_after payload
+  local required authorized auth_url
   echo "== $platform =="
+
+  payload="$(PLATFORM="$platform" python3 -c 'import json,os; print(json.dumps({"platform":os.environ["PLATFORM"]}))')"
+  body="$(post_json "$BASE/v1/me/authorizations/status" "$payload" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "X-Client-Type: h5" -H "X-App-Channel: web" \
+    -H "X-App-Version-Code: 20261030" -H "X-App-Version-Name: accept")"
+  file="$(mktemp)"
+  printf '%s' "$body" >"$file"
+  if ! scan_secrets "$file"; then rm -f "$file"; return 1; fi
+  if ! hide_promotion_fields <"$file"; then
+    echo "$platform 授权  失败  响应里出现了推广身份"
+    rm -f "$file"
+    return 1
+  fi
+  rm -f "$file"
+  read_parsed < <(printf '%s' "$body" | parse_json auth)
+  if [ "${lines[0]}" != "0" ]; then
+    echo "$platform 授权  失败  ${lines[0]} ${lines[1]}"
+    fail_vip "$platform"
+    return 1
+  fi
+  required="${lines[3]}"
+  authorized="${lines[4]}"
+  auth_url="${lines[5]}"
+  if [ "${lines[2]}" != "$platform" ]; then
+    echo "$platform 授权  失败  平台不一致"
+    return 1
+  fi
+  if [ "$platform" = "jd" ]; then
+    if [ "$required" != "false" ] || [ "$authorized" != "true" ] || [ -n "$auth_url" ]; then
+      echo "$platform 授权  失败  京东应不需要授权且没有链接"
+      return 1
+    fi
+    echo "$platform 授权  通过  不需要授权"
+  else
+    if [ "$required" != "true" ]; then
+      echo "$platform 授权  失败  这个平台需要授权"
+      return 1
+    fi
+    if [ "$authorized" = "true" ] && [ -z "$auth_url" ]; then
+      echo "$platform 授权  通过  已授权"
+    elif [ "$authorized" = "false" ] && [ -n "$auth_url" ]; then
+      echo "$platform 授权  通过  未授权，已返回链接"
+    else
+      echo "$platform 授权  失败  授权状态和链接不一致"
+      return 1
+    fi
+  fi
 
   payload="$(PLATFORM="$platform" KEYWORD="$KEYWORD" python3 -c 'import json,os; p=os.environ["PLATFORM"]; k=os.environ["KEYWORD"]; print(json.dumps({"platform":p,"keyword":k,"keywords":[k],"platforms":[p]}))')"
   body="$(post_json "$BASE/internal/v1/goods/search" "$payload" \

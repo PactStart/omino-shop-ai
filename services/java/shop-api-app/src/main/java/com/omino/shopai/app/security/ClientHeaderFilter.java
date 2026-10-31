@@ -33,6 +33,7 @@ public class ClientHeaderFilter extends OncePerRequestFilter {
                 || uri.contains("/internal/")
                 || uri.contains("/v1/auth/sms/")
                 || uri.contains("/v1/pay/")
+                || uri.contains("/v1/me/authorizations/taobao/callback")
                 || uri.contains("/actuator/health")
                 || uri.contains("/v3/api-docs")
                 || uri.contains("/swagger-ui")

@@ -43,6 +43,7 @@ public class AppJwtFilter extends OncePerRequestFilter {
                 || uri.contains("/v1/invite/lookup")
                 || uri.contains("/v1/app/check-update")
                 || uri.contains("/v1/legal")
+                || uri.contains("/v1/me/authorizations/taobao/callback")
                 || uri.contains("/actuator/health")
                 || uri.contains("/v3/api-docs")
                 || uri.contains("/swagger-ui")

@@ -19,13 +19,23 @@ import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.enums.OrderStatus;
 import com.omino.shopai.enums.Platform;
+import com.omino.shopai.support.Ids;
+import com.vip.adp.api.open.service.CheckUserRequest;
+import com.vip.adp.api.open.service.CheckUserResponse;
 import com.vip.adp.api.open.service.GetByGoodsIdsRequest;
+import com.vip.adp.api.open.service.GetChannelUrlByTypeData;
+import com.vip.adp.api.open.service.GetChannelUrlByTypeEnum;
+import com.vip.adp.api.open.service.GetChannelUrlByTypeRequest;
+import com.vip.adp.api.open.service.GetChannelUrlByTypeResponse;
 import com.vip.adp.api.open.service.GoodsInfo;
 import com.vip.adp.api.open.service.OrderQueryModel;
 import com.vip.adp.api.open.service.QueryGoodsRequest;
+import com.vip.adp.api.open.service.UnBindOpenIdResponse;
+import com.vip.adp.api.open.service.UnbindOpenIdRequest;
 import com.vip.adp.api.open.service.UnionGoodsV2ServiceHelper;
 import com.vip.adp.api.open.service.UnionOrderV2ServiceHelper;
 import com.vip.adp.api.open.service.UnionUrlV2ServiceHelper;
+import com.vip.adp.api.open.service.UnionUserV2ServiceHelper;
 import com.vip.adp.api.open.service.UrlGenByGoodsIdRequest;
 import com.vip.adp.api.open.service.UrlInfo;
 import com.vip.osp.sdk.context.ClientInvocationContext;
@@ -39,7 +49,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 唯品会联盟。只用商品查询、按商品号详情、按商品号转链和订单列表。传输走 osp-sdk。
+ * 唯品会联盟。只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。
  */
 @Component
 public class VipGoodsImpl implements IPlatformGoods {
@@ -176,6 +186,94 @@ public class VipGoodsImpl implements IPlatformGoods {
         }
     }
 
+    /**
+     * 问这个 openId 是否已在渠道授权。结果为 1 才算已授权。
+     *
+     * @param openId 记在本表里的唯品会身份
+     * @return 已授权时为真
+     */
+    public boolean bound(String openId) {
+        Upstream.call(appKey, appSecret);
+        try {
+            CheckUserRequest request = new CheckUserRequest();
+            request.setOpenId(UnionMaps.promotion(openId));
+            request.setRequestId(Ids.ulid());
+            request.setScene(2);
+            UnionUserV2ServiceHelper.UnionUserV2ServiceClient http = userClient();
+            CheckUserResponse response = SdkLog.exchange("vip", "user.check", request, () -> http.checkUser(request));
+            if (response == null || response.getResult() == null) {
+                throw new PlatformCallException();
+            }
+            return response.getResult() == 1;
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    /**
+     * 取备案链接。chanTag 仍是固定推广位，身份写在 openId。
+     *
+     * @param userId 当前用户，写进统计参数，便于订单回到本人
+     * @param openId 记在本表里的唯品会身份
+     * @return 给客户端打开的一条链接
+     */
+    public String authUrl(String userId, String openId) {
+        Upstream.call(appKey, appSecret);
+        try {
+            GetChannelUrlByTypeRequest request = new GetChannelUrlByTypeRequest();
+            request.setType(GetChannelUrlByTypeEnum.BIND_FILING_LINK);
+            request.setChanTag("default_pid");
+            request.setOpenId(UnionMaps.promotion(openId));
+            request.setRequestId(Ids.ulid());
+            request.setRealCall(true);
+            String buyer = UnionMaps.userId(userId);
+            if (buyer != null) {
+                request.setStatParam(buyer);
+            }
+            UnionUrlV2ServiceHelper.UnionUrlV2ServiceClient http = urlClient();
+            GetChannelUrlByTypeResponse response = SdkLog.exchange(
+                    "vip", "channel.url", request, () -> http.getChannelUrlByType(request));
+            if (response == null || response.getData() == null) {
+                throw new PlatformCallException();
+            }
+            GetChannelUrlByTypeData data = response.getData();
+            String url = UnionMaps.first(data.getDeeplinkUrl(), data.getShortUrl(), data.getShortLink(), data.getVipWxUrl());
+            if (url == null) {
+                throw new PlatformCallException();
+            }
+            return url;
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    /**
+     * 解除这个 openId 的授权。调用失败时不改本地状态。
+     *
+     * @param openId 记在本表里的唯品会身份
+     */
+    public void unbind(String openId) {
+        Upstream.call(appKey, appSecret);
+        try {
+            UnbindOpenIdRequest request = new UnbindOpenIdRequest();
+            request.setOpenId(UnionMaps.promotion(openId));
+            request.setRequestId(Ids.ulid());
+            UnionUserV2ServiceHelper.UnionUserV2ServiceClient http = userClient();
+            UnBindOpenIdResponse response = SdkLog.exchange("vip", "user.unbind", request, () -> http.unbindOpenId(request));
+            if (response == null) {
+                throw new PlatformCallException();
+            }
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
     /** 推广身份写 openId。chanTag 仍是固定推广位。 */
     public static void bind(QueryGoodsRequest request, String openId) {
         request.setChanTag("default_pid");
@@ -232,6 +330,17 @@ public class VipGoodsImpl implements IPlatformGoods {
 
     private UnionGoodsV2ServiceHelper.UnionGoodsV2ServiceClient goodsClient() {
         var client = new UnionGoodsV2ServiceHelper.UnionGoodsV2ServiceClient();
+        client.setClientInvocationContext(context());
+        return client;
+    }
+
+    /**
+     * 授权检查和解绑走用户服务，不走商品服务。
+     *
+     * @return 带本应用密钥的客户端
+     */
+    private UnionUserV2ServiceHelper.UnionUserV2ServiceClient userClient() {
+        var client = new UnionUserV2ServiceHelper.UnionUserV2ServiceClient();
         client.setClientInvocationContext(context());
         return client;
     }

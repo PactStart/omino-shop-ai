@@ -31,7 +31,7 @@ help:
 		'make test        Java 与 Agent 测试，不出网' \
 		'make java-test   只跑 Java 测试' \
 		'make agent-test  只跑 Agent 测试' \
-		'make accept      四个平台的搜品、详情、转链。PLATFORM=jd 只跑一个，不进 make test' \
+		'make accept      四个平台的授权状态、搜品、详情、转链。PLATFORM=jd 只跑一个，不进 make test' \
 		'make admin-web   管理后台空壳，:5183，读 apps/admin-web/.env' \
 		'make h5          消费者 H5 空壳，:5177，读 apps/h5/.env' \
 		'make www         官网空壳，:5175，读 apps/www/.env' \

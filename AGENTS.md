@@ -83,10 +83,10 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | DAO XML 生成器              | `com.baomidou:mybatis-plus-generator`                         | `3.5.9`         | 只生成 Mapper 接口与 XML。不生成 Entity、Service、Controller。只放 test 范围，不进两个可运行 jar。不用它的 Service 模板。Apache-2.0 |
 | 微信支付                     | `com.github.wechatpay-apiv3:wechatpay-java`                   | `0.2.17`        | 只用 APIv3 下单与回调验签。不用于向用户打款，不带入示例商户站点。Apache-2.0。只进 `shop-api-app` |
 | 支付宝                      | `com.alipay.sdk:alipay-sdk-java`                              | `4.40.1044.ALL` | 回调验签（APP）与单笔转账（Admin）。不引第二个支付宝库。Apache-2.0。若依赖树抬高已锁定版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x` |
-| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细。另装同版本 `sources`。不用推荐、退款、处罚、活动、口令。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
+| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细，以及授权换票和渠道备案。另装同版本 `sources`。不用推荐、退款、处罚、活动、口令。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
 | 京东联盟 SDK                 | `com.jd:open-api-sdk`                                         | `20250925`      | 只用商品查询、子联盟转链、订单行查询。不用京粉、大字段、物料、榜单、活动。许可例外同上。只进 `shop-api-app` |
-| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单。不用推荐、PID 生成、授权、招商。许可例外同上。只进 `shop-api-app` |
-| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表。不用相似推荐、猜你喜欢、退款、PID 生成、渠道链接。许可例外同上。只进 `shop-api-app` |
+| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。不用推荐、PID 生成、招商。许可例外同上。只进 `shop-api-app` |
+| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。商品转链不用渠道链接。不用相似推荐、猜你喜欢、退款、PID 生成。许可例外同上。只进 `shop-api-app` |
 | 唯品会传输                   | `com.vip:osp-sdk`                                             | `20250214094310` | 只作为 `vop-sdk` 的调用运行时，不单独发起业务接口。许可例外同上。只进 `shop-api-app` |
 
 
@@ -403,6 +403,7 @@ omino-shop-ai/
 │   │   │       │   │   ├── AppMetaController.java     # 检查更新、运行时配置、公告、协议 URL
 │   │   │       │   │   ├── InboxController.java
 │   │   │       │   │   ├── MeController.java          # 资料、推送开关、注销
+│   │   │       │   │   ├── AuthorizationController.java # 授权状态、取消授权、淘宝回调
 │   │   │       │   │   └── FileController.java
 │   │   │       │   ├── web/internal/                  # 对 Agent：/internal/v1，禁止再调 Agent
 │   │   │       │   │   ├── InternalGoodsController.java
@@ -778,6 +779,8 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `GOOGLE_CLIENT_ID`                                                      | Google 登录                                               |
 | `SMS_PROVIDER`                                                          | `mock` / `chuanglan`；`prod` 禁止 mock。创蓝对齐 omino-sso：`SMS_CHUANGLAN_URL` / `ACCOUNT` / `PASSWORD` / `TEMPLATE_ID`（模板变量 key 硬编码 `param1`） |
 | `UNION_TAOBAO_APP_KEY` / `UNION_TAOBAO_APP_SECRET`                       | 淘宝客。不读取推广位 PID                                           |
+| `UNION_TAOBAO_INVITE_CODE`                                              | 淘宝渠道备案邀请码。空则授权回调无法写入 relation_id。不下发客户端 |
+| `UNION_TAOBAO_OAUTH_REDIRECT`                                           | 淘宝授权回调的完整 HTTPS 地址，须在开放平台登记。如 `https://api.example.com/api/app/v1/me/authorizations/taobao/callback`。空则不签发授权链接 |
 | `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`                              | 京东联盟。不读取站点号                                             |
 | `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`                       | 拼多多                                                     |
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |

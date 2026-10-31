@@ -24,11 +24,15 @@ import com.pdd.pop.sdk.http.PopHttpClient;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsDetailRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsPromotionUrlGenerateRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsSearchRequest;
+import com.pdd.pop.sdk.http.api.pop.request.PddDdkMemberAuthorityQueryRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkOrderListIncrementGetRequest;
+import com.pdd.pop.sdk.http.api.pop.request.PddDdkRpPromUrlGenerateRequest;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsDetailResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsPromotionUrlGenerateResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsSearchResponse;
+import com.pdd.pop.sdk.http.api.pop.response.PddDdkMemberAuthorityQueryResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkOrderListIncrementGetResponse;
+import com.pdd.pop.sdk.http.api.pop.response.PddDdkRpPromUrlGenerateResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 拼多多联盟。只用商品搜索、详情、推广链接和增量订单。
+ * 拼多多联盟。只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。
  */
 @Component
 public class PddGoodsImpl implements IPlatformGoods {
@@ -195,6 +199,70 @@ public class PddGoodsImpl implements IPlatformGoods {
                 }
             }
             return found;
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    /**
+     * 问这个用户是否已经在该推广身份下备案。bind 为 1 才算已授权。
+     *
+     * @param userId 当前用户
+     * @param pid 京东那条授权上的推广身份
+     * @return 已备案时为真
+     */
+    public boolean bound(String userId, String pid) {
+        Upstream.call(clientId, clientSecret);
+        try {
+            PddDdkMemberAuthorityQueryRequest request = new PddDdkMemberAuthorityQueryRequest();
+            request.setPid(UnionMaps.promotion(pid));
+            request.setCustomParameters(custom(pid));
+            PddDdkMemberAuthorityQueryResponse response = SdkLog.exchange(
+                    "pdd", "member.authority", request, () -> client().syncInvoke(request));
+            if (response == null || response.getErrorResponse() != null || response.getAuthorityQueryResponse() == null) {
+                throw new PlatformCallException();
+            }
+            return Integer.valueOf(1).equals(response.getAuthorityQueryResponse().getBind());
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    /**
+     * 生成一条备案授权页。渠道类型 10 是授权页，不是商品推广。
+     *
+     * @param userId 当前用户
+     * @param pid 京东那条授权上的推广身份
+     * @return 给客户端打开的一条链接
+     */
+    public String authUrl(String userId, String pid) {
+        Upstream.call(clientId, clientSecret);
+        try {
+            PddDdkRpPromUrlGenerateRequest request = new PddDdkRpPromUrlGenerateRequest();
+            request.setChannelType(10);
+            request.setCustomParameters(custom(userId));
+            request.setGenerateSchemaUrl(true);
+            request.setGenerateShortUrl(true);
+            request.setPIdList(List.of(UnionMaps.promotion(pid)));
+            PddDdkRpPromUrlGenerateResponse response = SdkLog.exchange(
+                    "pdd", "rp.prom.url", request, () -> client().syncInvoke(request));
+            if (response == null || response.getErrorResponse() != null || response.getRpPromotionUrlGenerateResponse() == null) {
+                throw new PlatformCallException();
+            }
+            var list = response.getRpPromotionUrlGenerateResponse().getUrlList();
+            if (list == null || list.isEmpty()) {
+                throw new PlatformCallException();
+            }
+            PddDdkRpPromUrlGenerateResponse.RpPromotionUrlGenerateResponseUrlListItem item = list.get(0);
+            String url = UnionMaps.first(item.getMobileUrl(), item.getUrl(), item.getShortUrl(), item.getMobileShortUrl(), item.getSchemaUrl());
+            if (url == null) {
+                throw new PlatformCallException();
+            }
+            return url;
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
