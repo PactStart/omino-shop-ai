@@ -47,7 +47,7 @@ class OrderSyncMissingKeyTest {
         for (String platform : List.of("taobao", "jd", "pdd", "vip")) {
             assertNull(orders.cursor(platform).getLastSyncCreateTime());
             assertNull(orders.cursor(platform).getLastSyncUpdateTime());
-            assertEquals("上游失败", orders.cursor(platform).getLastError());
+            assertEquals("密钥未配置", orders.cursor(platform).getLastError());
             assertFalse(orders.cursor(platform).getLastError().contains("pid"));
         }
         assertEquals(0, SdkSessions.opened.get());
@@ -56,16 +56,16 @@ class OrderSyncMissingKeyTest {
     @Test
     void onePlatformFailureDoesNotSkipTheOthers() {
         MemoryOrders orders = new MemoryOrders();
-        IPlatformOrder source = (platform, cursor) -> {
+        IPlatformOrder source = (platform, cursor, created, updated) -> {
             if ("taobao".equals(platform)) {
-                throw new PlatformCallException();
+                throw new PlatformCallException("requestId can not be null");
             }
             return List.of();
         };
         OrderSyncService sync = new OrderSyncService(orders, source, orders, Clock.systemUTC(), "0.80");
         new OrderSyncJob(sync).run();
         assertNull(orders.cursor("taobao").getLastSyncCreateTime());
-        assertEquals("上游失败", orders.cursor("taobao").getLastError());
+        assertEquals("requestId can not be null", orders.cursor("taobao").getLastError());
         assertEquals(null, orders.cursor("jd").getLastError());
         org.junit.jupiter.api.Assertions.assertNotNull(orders.cursor("jd").getLastSyncCreateTime());
         org.junit.jupiter.api.Assertions.assertNotNull(orders.cursor("pdd").getLastSyncUpdateTime());

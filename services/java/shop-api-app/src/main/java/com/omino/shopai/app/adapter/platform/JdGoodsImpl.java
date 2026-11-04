@@ -169,19 +169,31 @@ public class JdGoodsImpl implements IPlatformGoods {
         }
     }
 
+    /**
+     * 按下单、更新各拉一段。空段跳过。页拉完才返回，页还满则本段失败。
+     *
+     * @param cursor 当前游标
+     * @param created 下单时间这一段
+     * @param updated 更新时间这一段
+     * @return 这两段里的订单
+     */
     @Override
-    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor, UnionMaps.Window created, UnionMaps.Window updated) {
         Upstream.call(appKey, appSecret);
         try {
             DefaultJdClient http = client();
             Map<String, IncomingOrderDto> merged = new LinkedHashMap<>();
-            pullAxis(http, 1, UnionMaps.window(cursor == null ? null : cursor.getLastSyncCreateTime()), merged);
-            pullAxis(http, 3, UnionMaps.window(cursor == null ? null : cursor.getLastSyncUpdateTime()), merged);
+            if (created != null) {
+                pullAxis(http, 1, created, merged);
+            }
+            if (updated != null) {
+                pullAxis(http, 3, updated, merged);
+            }
             return List.copyOf(merged.values());
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new PlatformCallException();
+            throw new PlatformCallException(ex);
         }
     }
 
@@ -200,7 +212,8 @@ public class JdGoodsImpl implements IPlatformGoods {
 
     private void pullAxis(DefaultJdClient http, int type, UnionMaps.Window window, Map<String, IncomingOrderDto> merged)
             throws Exception {
-        for (int page = 1; page <= 3; page++) {
+        boolean finished = false;
+        for (int page = 1; page <= UnionMaps.MAX_ORDER_PAGES; page++) {
             OrderRowReq req = new OrderRowReq();
             req.setType(type);
             req.setStartTime(UnionMaps.format(window.start()));
@@ -213,21 +226,30 @@ public class JdGoodsImpl implements IPlatformGoods {
                     "jd", "order.row", request, () -> http.execute(request));
             if (response == null || !"0".equals(response.getCode()) || response.getQueryResult() == null
                     || response.getQueryResult().getCode() != 200) {
-                throw new PlatformCallException();
+                var result = response == null ? null : response.getQueryResult();
+                throw new PlatformCallException(response == null
+                        ? "京东订单响应为空"
+                        : PlatformCallException.explain(
+                                response.getCode(),
+                                result == null ? null : Integer.toString(result.getCode()),
+                                result == null ? null : result.getMessage()));
             }
             OrderRowResp[] rows = response.getQueryResult().getData();
-            if (rows == null || rows.length == 0) {
-                return;
-            }
-            for (OrderRowResp row : rows) {
-                IncomingOrderDto order = order(row);
-                if (order != null) {
-                    merged.put(order.platformOrderId(), order);
+            if (rows != null) {
+                for (OrderRowResp row : rows) {
+                    IncomingOrderDto order = order(row);
+                    if (order != null) {
+                        merged.put(order.platformOrderId(), order);
+                    }
                 }
             }
-            if (rows.length < 50 || !Boolean.TRUE.equals(response.getQueryResult().getHasMore())) {
-                return;
+            if (rows == null || rows.length < 50 || !Boolean.TRUE.equals(response.getQueryResult().getHasMore())) {
+                finished = true;
+                break;
             }
+        }
+        if (!finished) {
+            throw new PlatformCallException("本段订单超过 40 页，水位不前进");
         }
     }
 

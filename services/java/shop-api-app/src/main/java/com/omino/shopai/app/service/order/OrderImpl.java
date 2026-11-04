@@ -59,18 +59,26 @@ public class OrderImpl implements IOrder {
         return blank;
     }
 
+    /**
+     * 只推进这次拉完的列。空参数保留库里的原水位，成功则清掉失败文案。
+     *
+     * @param platform 平台码
+     * @param createTo 下单水位的新值
+     * @param updateTo 更新水位的新值
+     */
     @Override
-    public void advance(String platform, OffsetDateTime now) {
+    public void advance(String platform, OffsetDateTime createTo, OffsetDateTime updateTo) {
+        OffsetDateTime now = OffsetDateTime.now();
         jdbc.update("""
                 INSERT INTO order_sync_cursor
                     (platform, last_sync_create_time, last_sync_update_time, last_error, updated_at)
                 VALUES (?, ?, ?, NULL, ?)
                 ON CONFLICT (platform) DO UPDATE SET
-                    last_sync_create_time = EXCLUDED.last_sync_create_time,
-                    last_sync_update_time = EXCLUDED.last_sync_update_time,
+                    last_sync_create_time = COALESCE(EXCLUDED.last_sync_create_time, order_sync_cursor.last_sync_create_time),
+                    last_sync_update_time = COALESCE(EXCLUDED.last_sync_update_time, order_sync_cursor.last_sync_update_time),
                     last_error = NULL,
                     updated_at = EXCLUDED.updated_at
-                """, platform, now, now, now);
+                """, platform, createTo, updateTo, now);
     }
 
     @Override

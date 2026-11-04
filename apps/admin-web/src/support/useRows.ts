@@ -2,12 +2,12 @@ import { ref } from 'vue'
 import { errorMessage } from '../api/http'
 import { readPage } from './format'
 
-export function useRows() {
+export function useRows(initialSize = 20) {
   const rows = ref<Record<string, unknown>[]>([])
   const error = ref('')
   const loading = ref(false)
   const page = ref(1)
-  const size = ref(20)
+  const size = ref(initialSize)
   const total = ref(0)
   const paged = ref(false)
 

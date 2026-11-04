@@ -132,14 +132,16 @@ public class AdminDirectory {
      *
      * @param userId 用户主键，可空
      * @param platform 平台码，可空
+     * @param platformOrderId 平台订单号，可空。精确匹配
      * @param orderStatus 订单状态，可空
      * @param settleStatus 结算状态，可空
      * @param page 页码
      * @param size 页大小
      * @return 订单页
      */
-    public PageDto<Map<String, Object>> orders(String userId, String platform, String orderStatus, String settleStatus, Integer page, Integer size) {
+    public PageDto<Map<String, Object>> orders(String userId, String platform, String platformOrderId, String orderStatus, String settleStatus, Integer page, Integer size) {
         Platform parsedPlatform = platform == null || platform.isBlank() ? null : Platform.fromCode(platform);
+        String platformOrder = platformOrderId == null ? "" : platformOrderId.trim();
         OrderStatus parsedOrder = orderStatus == null || orderStatus.isBlank() ? null : OrderStatus.fromCode(orderStatus);
         SettleStatus parsedSettle = settleStatus == null || settleStatus.isBlank() ? null : SettleStatus.fromCode(settleStatus);
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -148,6 +150,9 @@ public class AdminDirectory {
                 continue;
             }
             if (parsedPlatform != null && order.getPlatform() != parsedPlatform) {
+                continue;
+            }
+            if (!platformOrder.isEmpty() && !platformOrder.equals(order.getPlatformOrderId())) {
                 continue;
             }
             if (parsedOrder != null && order.getOrderStatus() != parsedOrder) {
@@ -461,6 +466,7 @@ public class AdminDirectory {
         row.put("platform", order.getPlatform() == null ? null : order.getPlatform().code());
         row.put("platformOrderId", order.getPlatformOrderId());
         row.put("goodsId", order.getGoodsId());
+        row.put("platformGoodsId", order.getPlatformGoodsId());
         row.put("goodsTitle", order.getGoodsTitle());
         row.put("goodsImageUrl", order.getGoodsImageUrl());
         row.put("payAmount", AdminPages.money(order.getPayAmount()));

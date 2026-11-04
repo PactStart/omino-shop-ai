@@ -1,6 +1,8 @@
 package com.omino.shopai.app.service.order;
 
 import com.omino.shopai.app.adapter.platform.IPlatformOrder;
+import com.omino.shopai.app.util.SdkLog;
+import com.omino.shopai.app.util.UnionMaps;
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.OrderStatus;
@@ -12,6 +14,8 @@ import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.WalletLedger;
 import com.omino.shopai.support.Ids;
 import com.omino.shopai.support.withdrawal.WalletMath;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionOperations;
@@ -19,8 +23,12 @@ import org.springframework.transaction.support.TransactionOperations;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 /**
  * OrderSyncService 编排用例，事务和校验放在这里。
  */
@@ -32,47 +40,134 @@ public class OrderSyncService {
     private final IPlatformOrder source;
     private final TransactionOperations tx;
     private final Clock clock;
+    private final Executor executor;
     private final BigDecimal rate;
-/**
- * 注入订单来源、事务和分成比例。比例必须在 0 到 1 之间。
- */
+    private final Set<String> running = ConcurrentHashMap.newKeySet();
 
+    /**
+     * 测试用。追赶在调用线程里做完。
+     *
+     * @param store 订单与游标
+     * @param source 平台订单
+     * @param tx 事务
+     * @param clock 本次请求时间
+     * @param shareRate 用户分成比例
+     */
     public OrderSyncService(
             IOrder store,
             IPlatformOrder source,
             TransactionOperations tx,
             Clock clock,
-            @Value("${commission.user-share-rate:0.80}") String shareRate) {
+            String shareRate) {
+        this(store, source, tx, clock, shareRate, Runnable::run);
+    }
+
+    /**
+     * 注入订单来源、事务、分成比例和追赶线程。比例必须在 0 到 1 之间。
+     *
+     * @param store 订单与游标
+     * @param source 平台订单
+     * @param tx 事务
+     * @param clock 本次请求时间
+     * @param shareRate 用户分成比例
+     * @param orderSyncExecutor 异步追赶用的线程
+     */
+    @Autowired
+    public OrderSyncService(
+            IOrder store,
+            IPlatformOrder source,
+            TransactionOperations tx,
+            Clock clock,
+            @Value("${commission.user-share-rate:0.80}") String shareRate,
+            @Qualifier("orderSyncExecutor") Executor orderSyncExecutor) {
         this.store = store;
         this.source = source;
         this.tx = tx;
         this.clock = clock;
+        this.executor = orderSyncExecutor;
         this.rate = new BigDecimal(shareRate);
         if (this.rate.compareTo(BigDecimal.ZERO) <= 0 || this.rate.compareTo(BigDecimal.ONE) > 0) {
             throw new IllegalArgumentException("commission.user-share-rate");
         }
     }
-/**
- * 整批订单和游标前进放在同一事务里，失败则下次重拉。
- */
 
-    public void sync(String platform) {
-        OrderSyncCursor cursor = store.cursor(platform);
-        List<IncomingOrderDto> batch = source.pull(platform, cursor);
-        tx.executeWithoutResult(status -> {
-            // 本批写库和游标前进同一事务。中途失败则游标不动，下次重拉。
-            for (IncomingOrderDto incoming : batch) {
-                upsert(platform, incoming);
+    /**
+     * 受理一次追赶并立刻返回。同一平台已在追赶时不再并行一轮。失败记下这次的原因。
+     *
+     * @param platform 平台码
+     */
+    public void submit(String platform) {
+        if (!running.add(platform)) {
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                sync(platform);
+            } catch (RuntimeException ex) {
+                noteFailure(platform, ex);
+            } finally {
+                running.remove(platform);
             }
-            store.advance(platform, OffsetDateTime.now(clock));
         });
     }
 
     /**
-     * 这一平台失败时只记固定文案。两列水位都不改。
+     * 按平台允许的跨度逐段拉到本次请求时间。一段的订单和水位前进在同一事务里，失败则这段不前进。
+     *
+     * @param platform 平台码
      */
-    public void noteFailure(String platform) {
-        store.fail(platform, "上游失败");
+    public void sync(String platform) {
+        OffsetDateTime requestedAt = OffsetDateTime.now(clock);
+        Duration span = UnionMaps.maxSpan(platform);
+        while (true) {
+            OrderSyncCursor cursor = store.cursor(platform);
+            UnionMaps.Window created = UnionMaps.slice(cursor.getLastSyncCreateTime(), requestedAt, span);
+            UnionMaps.Window updated = UnionMaps.slice(cursor.getLastSyncUpdateTime(), requestedAt, span);
+            if (created == null && updated == null) {
+                return;
+            }
+            List<IncomingOrderDto> batch = source.pull(platform, cursor, created, updated);
+            // 本段写库和水位前进同一事务。中途失败则这段水位不动，下次从这里重拉。
+            tx.executeWithoutResult(status -> {
+                for (IncomingOrderDto incoming : batch) {
+                    upsert(platform, incoming);
+                }
+                store.advance(
+                        platform,
+                        created == null ? null : created.end(),
+                        updated == null ? null : updated.end());
+            });
+        }
+    }
+
+    /**
+     * 这一平台失败时记下原因。两列水位都不改。
+     *
+     * @param platform 平台码
+     * @param error 这次失败
+     */
+    public void noteFailure(String platform, Throwable error) {
+        store.fail(platform, reason(error));
+    }
+
+    /**
+     * 取最内层的失败说明，去掉密钥，并截到游标列能放下的长度。
+     *
+     * @param error 这次失败
+     * @return 可写入 last_error 的原因
+     */
+    private static String reason(Throwable error) {
+        Throwable cursor = error;
+        String message = null;
+        while (cursor != null) {
+            if (cursor.getMessage() != null && !cursor.getMessage().isBlank()) {
+                message = cursor.getMessage();
+            }
+            Throwable next = cursor.getCause();
+            cursor = next == cursor ? null : next;
+        }
+        String cleaned = SdkLog.text(message == null || message.isBlank() ? "平台查询失败" : message);
+        return cleaned.length() <= 512 ? cleaned : cleaned.substring(0, 512);
     }
 /**
  * 已入账的订单只更新快照。未入账且已完成的才记返佣。
@@ -90,7 +185,8 @@ public class OrderSyncService {
 
         order.setUserId(blankToNull(incoming.userId()));
         order.setParentUserId(blankToNull(incoming.parentUserId()));
-        order.setGoodsId(blankToNull(incoming.goodsId()));
+        // 平台商品号长于 26。本系统商品 id 只在归因到快照后才有，同步不能把它盖掉。
+        order.setPlatformGoodsId(blankToNull(incoming.goodsId()));
         order.setGoodsTitle(incoming.goodsTitle() == null || incoming.goodsTitle().isBlank() ? "商品" : incoming.goodsTitle());
         order.setGoodsImageUrl(incoming.goodsImageUrl());
         order.setPayAmount(incoming.payAmount());

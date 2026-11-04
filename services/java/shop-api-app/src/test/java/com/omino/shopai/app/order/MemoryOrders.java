@@ -90,13 +90,36 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         return copy(stored);
     }
 
+    void seedCursor(String platform, OffsetDateTime create, OffsetDateTime update) {
+        OrderSyncCursor cursor = new OrderSyncCursor();
+        cursor.setPlatform(Platform.fromCode(platform));
+        cursor.setLastSyncCreateTime(create);
+        cursor.setLastSyncUpdateTime(update);
+        cursor.setUpdatedAt(create == null ? update : create);
+        committedCursors.put(platform, cursor);
+    }
+
+    /**
+     * 只推进这次拉完的列。空参数保留原来的水位。
+     *
+     * @param platform 平台码
+     * @param createTo 下单水位的新值
+     * @param updateTo 更新水位的新值
+     */
     @Override
-    public void advance(String platform, OffsetDateTime now) {
+    public void advance(String platform, OffsetDateTime createTo, OffsetDateTime updateTo) {
         OrderSyncCursor cursor = copy(cursor(platform));
-        cursor.setLastSyncCreateTime(now);
-        cursor.setLastSyncUpdateTime(now);
+        if (cursor.getPlatform() == null) {
+            cursor.setPlatform(Platform.fromCode(platform));
+        }
+        if (createTo != null) {
+            cursor.setLastSyncCreateTime(createTo);
+        }
+        if (updateTo != null) {
+            cursor.setLastSyncUpdateTime(updateTo);
+        }
         cursor.setLastError(null);
-        cursor.setUpdatedAt(now);
+        cursor.setUpdatedAt(createTo != null ? createTo : updateTo);
         cursors().put(platform, cursor);
         if (failAdvance) {
             throw new IllegalStateException("cursor");
@@ -264,6 +287,7 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         copy.setPlatform(source.getPlatform());
         copy.setPlatformOrderId(source.getPlatformOrderId());
         copy.setGoodsId(source.getGoodsId());
+        copy.setPlatformGoodsId(source.getPlatformGoodsId());
         copy.setGoodsTitle(source.getGoodsTitle());
         copy.setGoodsImageUrl(source.getGoodsImageUrl());
         copy.setPayAmount(scale(source.getPayAmount()));

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { apiGet, apiPatch, apiPost, errorMessage } from '../api/http'
 import { PLATFORMS, when } from '../support/format'
 
@@ -113,7 +114,7 @@ async function retry(platform: string): Promise<void> {
   busy.value = platform
   try {
     await apiPost(`/v1/order-sync/${platform}/retry`)
-    ElMessage.success('已发起重试')
+    ElMessage.success('已发起同步')
     await load()
   } catch (reason) {
     error.value = errorMessage(reason)
@@ -127,7 +128,10 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <h1>同步游标</h1>
+    <div class="head">
+      <h1>同步游标</h1>
+      <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
+    </div>
     <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
     <el-table v-loading="loading" :data="rows">
       <el-table-column prop="label" label="平台" width="120" />
@@ -142,7 +146,7 @@ onMounted(load)
       <el-table-column label="操作" width="160">
         <template #default="{ row }">
           <el-button type="primary" link @click="openEdit(row)">设置</el-button>
-          <el-button type="primary" link :loading="busy === row.platform" @click="retry(row.platform)">重试</el-button>
+          <el-button type="primary" link :loading="busy === row.platform" @click="retry(row.platform)">同步</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -166,6 +170,11 @@ onMounted(load)
 </template>
 
 <style scoped>
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .hint {
   margin: 0;
   color: var(--el-text-color-secondary);

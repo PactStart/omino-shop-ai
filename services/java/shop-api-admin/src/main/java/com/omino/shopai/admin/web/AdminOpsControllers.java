@@ -20,9 +20,6 @@ import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.entity.CreditOrder;
 import com.omino.shopai.entity.CreditPackage;
 import com.omino.shopai.entity.GoodsCollection;
-import com.omino.shopai.entity.GoodsCollectionItem;
-import com.omino.shopai.entity.GoodsFavorite;
-import com.omino.shopai.entity.UserEvent;
 import com.omino.shopai.entity.InboxMessage;
 import com.omino.shopai.entity.InvitePosterTemplate;
 import com.omino.shopai.support.withdrawal.PayoutViewDto;
@@ -109,7 +106,7 @@ class AdminUserController {
      */
     @Operation(summary = "查看用户浏览记录")
     @GetMapping("/{id}/goods/history")
-    ApiResponse<PageDto<UserEvent>> history(
+    ApiResponse<PageDto<Map<String, Object>>> history(
             @PathVariable String id,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size) {
@@ -126,7 +123,7 @@ class AdminUserController {
      */
     @Operation(summary = "查看用户收藏")
     @GetMapping("/{id}/goods/favorites")
-    ApiResponse<PageDto<GoodsFavorite>> favorites(
+    ApiResponse<PageDto<Map<String, Object>>> favorites(
             @PathVariable String id,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size) {
@@ -154,8 +151,25 @@ class AdminUserController {
      */
     @Operation(summary = "查看合集内商品")
     @GetMapping("/{id}/goods/collections/{cid}")
-    ApiResponse<List<GoodsCollectionItem>> collectionItems(@PathVariable String id, @PathVariable String cid) {
+    ApiResponse<List<Map<String, Object>>> collectionItems(@PathVariable String id, @PathVariable String cid) {
         return ApiResponse.ok(goods.collectionItems(id, cid));
+    }
+
+    /**
+     * 分页查看该用户邀请的人。手机已脱敏。
+     *
+     * @param id 邀请人主键
+     * @param page 页码
+     * @param size 页大小
+     * @return 邀请记录页
+     */
+    @Operation(summary = "查看用户邀请记录")
+    @GetMapping("/{id}/invites")
+    ApiResponse<PageDto<Map<String, Object>>> invites(
+            @PathVariable String id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        return ApiResponse.ok(goods.invites(id, page, size));
     }
 }
 /**
@@ -173,10 +187,11 @@ class AdminOrderController {
     }
 
     /**
-     * 按平台、订单状态、结算状态和用户分页查订单。
+     * 按平台、平台订单号、订单状态、结算状态和用户分页查订单。
      *
      * @param userId 用户主键
      * @param platform 平台码
+     * @param platformOrderId 平台订单号，精确匹配
      * @param orderStatus 订单状态
      * @param settleStatus 结算状态
      * @param page 页码
@@ -188,11 +203,12 @@ class AdminOrderController {
     ApiResponse<PageDto<Map<String, Object>>> list(
             @RequestParam(value = "userId", required = false) String userId,
             @RequestParam(value = "platform", required = false) String platform,
+            @RequestParam(value = "platformOrderId", required = false) String platformOrderId,
             @RequestParam(value = "orderStatus", required = false) String orderStatus,
             @RequestParam(value = "settleStatus", required = false) String settleStatus,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size) {
-        return ApiResponse.ok(directory.orders(userId, platform, orderStatus, settleStatus, page, size));
+        return ApiResponse.ok(directory.orders(userId, platform, platformOrderId, orderStatus, settleStatus, page, size));
     }
 
     /**

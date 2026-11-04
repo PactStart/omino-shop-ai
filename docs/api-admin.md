@@ -30,10 +30,11 @@
 | --- | --- | --- |
 | GET | `/api/admin/v1/users` | 分页。query：`keyword`（昵称）、`phone`、`inviteCode`、`id`、`status` |
 | GET | `/api/admin/v1/users/{id}` | 档案：`app_user`（含 `inviterId`，无邀请人为 `null`）+ identities + preference + installedApps + 钱包/积分摘要 + 邀请摘要 + 各平台授权状态（无 PID）+ 计数（会话/订单/工单/收藏） |
-| GET | `/api/admin/v1/users/{id}/goods/history` | 浏览分页 |
-| GET | `/api/admin/v1/users/{id}/goods/favorites` | 收藏分页 |
-| GET | `/api/admin/v1/users/{id}/goods/collections` | 合集列表（只读） |
-| GET | `/api/admin/v1/users/{id}/goods/collections/{cid}` | 合集内未移除商品 |
+| GET | `/api/admin/v1/users/{id}/goods/history` | 浏览分页。每行 `goodsId` `title` `imageUrl` `createdAt`。标题优先用浏览记录，没有则用商品快照。图来自快照，没有则为空。不下发 `payload` |
+| GET | `/api/admin/v1/users/{id}/goods/favorites` | 收藏分页。每行 `goodsId` `title` `imageUrl` `createdAt`。名称和图来自商品快照，没有快照时名称为空 |
+| GET | `/api/admin/v1/users/{id}/goods/collections` | 合集列表（只读）。每行含 `id` `title` `createdAt` |
+| GET | `/api/admin/v1/users/{id}/goods/collections/{cid}` | 合集内未移除商品。每行 `goodsId` `title` `imageUrl` `sort` `createdAt`。名称和图来自商品快照 |
+| GET | `/api/admin/v1/users/{id}/invites` | 该用户邀请的人，分页。每行 `inviteeId` `nickname` `phone`（脱敏）`status` `validAt` `createdAt`。按邀请时间倒序。用户不存在 `40400` |
 
 其它域（订单、会话、工单、钱包流水、积分流水/订单、站内信、提现）**复用既有 Admin 列表**，必须带 `userId`（与路径 id 一致）；未带则仍为全站查询。后台用户详情页一律带该参数。
 
@@ -87,13 +88,13 @@
 | --- | --- | --- |
 | GET | `/api/admin/v1/order-sync` | 固定四行。每行 `lastSyncCreateTime` `lastSyncUpdateTime` `lastError` `updatedAt` |
 | PATCH | `/api/admin/v1/order-sync/{platform}` | 设置该平台的下单水位和更新水位。body：`lastSyncCreateTime`、`lastSyncUpdateTime`，都可空。空或空串表示清掉这一列。时间必须是带时区的 ISO-8601，否则 `40001`。不改 `lastError`。没有这一行时插入。写入后记审计 `action=order.sync.cursor`，明细只有这两列的新值。平台不是这四个则 `40001` |
-| POST | `/api/admin/v1/order-sync/{platform}/retry` | 平台不是这四个则 `40001`，且不调用 APP。先写审计 `action=order.sync.retry`，再触发 APP 上一次该平台的既有增量。失败时 `lastError` 仍是固定文案，不含密钥 |
+| POST | `/api/admin/v1/order-sync/{platform}/retry` | 平台不是这四个则 `40001`，且不调用 APP。先写审计 `action=order.sync.retry`，再触发 APP。APP 受理后立刻返回，拉单在 APP 内异步把两列水位追平到本次请求时间。这个接口返回不代表水位已经追平。追赶失败时 `lastError` 是这次失败的原因，最长 512 字，不含密钥 |
 
 APP 侧触发路径只给这次重试用，**不**进入 [`api-internal.md`](./api-internal.md) 的工具白名单：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/internal/v1/order-sync/{platform}` | 仅内部令牌。调用现有单平台增量 |
+| POST | `/internal/v1/order-sync/{platform}` | 仅内部令牌。受理后立刻返回。APP 异步按平台允许的时间跨度循环拉单，直到两列水位到达本次请求时间。同一平台已在追赶时不再并行一轮 |
 
 ## 积分套餐
 
@@ -134,7 +135,7 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/admin/v1/orders` | 分页。query：`userId` `platform` `orderStatus` `settleStatus` `page` `size` |
+| GET | `/api/admin/v1/orders` | 分页。query：`userId` `platform` `platformOrderId` `orderStatus` `settleStatus` `page` `size`。`platformOrderId` 精确匹配，空白则不筛。行含 `goodsTitle` 与 `goodsImageUrl`（同步时的主图，没有则为空） |
 | GET | `/api/admin/v1/orders/{id}` | 单行全字段（运营可见列，见 [`data-model.md`](./data-model.md) §6.8） |
 
 结算只由订单同步写入钱包，本接口不提供「手动结算」。

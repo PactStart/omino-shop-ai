@@ -15,18 +15,12 @@ public class OrderSyncJob {
     public OrderSyncJob(OrderSyncService sync) {
         this.sync = sync;
     }
-/**
- * 按平台轮流拉增量。单个平台失败不影响其它平台。
- */
-
+    /**
+     * 每个平台受理一轮追赶后就返回。单个平台失败记在自己的水位上，不挡住别的平台。
+     */
     public void run() {
         for (Platform platform : Platform.values()) {
-            try {
-                sync.sync(platform.code());
-            } catch (RuntimeException ex) {
-                // 失败只记固定文案。水位留在失败前的位置，后面的平台继续拉。
-                sync.noteFailure(platform.code());
-            }
+            sync.submit(platform.code());
         }
     }
 }

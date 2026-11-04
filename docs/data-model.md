@@ -226,7 +226,8 @@
 | user_id                             | CHAR(26)       | 可空       | 未归因时为空                    |
 | platform                            | VARCHAR(16)    | NOT NULL | 下单平台                      |
 | platform_order_id                   | VARCHAR(64)    | NOT NULL | 平台订单号                     |
-| goods_id                            | CHAR(26)       | 可空       | 归因商品                      |
+| goods_id                            | CHAR(26)       | 可空       | 本系统商品 id。只有归因到 `goods_snapshot` 后才填。拉单不把平台商品号写进这一列 |
+| platform_goods_id                   | VARCHAR(512)   | 可空       | 平台商品号。淘宝字符串商品号、京东 itemId、拼多多 goods_sign 都会超过 64，这里留 512 |
 | goods_title                         | VARCHAR(512)   | NOT NULL | 同步时标题快照                   |
 | goods_image_url                     | VARCHAR(1024)  | 可空       | 同步时主图；列表/详情展示用，禁止存平台原始大图包 |
 | pay_amount                          | NUMERIC(12,2)  | 可空       | 实付（元）                     |
@@ -245,7 +246,7 @@
 | UNIQUE(platform, platform_order_id) |                |          | 平台订单号幂等                   |
 
 
-归因：转链写入 `click_event`，同步订单时按推广位/click 回填 `user_id`，并同时拷贝 `parent_user_id`。禁止把联盟原始 JSON 进业务库。
+归因：转链写入 `click_event`，同步订单时按推广位/click 回填 `user_id`，并同时拷贝 `parent_user_id`。平台商品号只进 `platform_goods_id`。`goods_id` 仍空着，直到能对上 `goods_snapshot.id`。再次同步不得用平台商品号覆盖已经归因的 `goods_id`。禁止把联盟原始 JSON 进业务库。
 
 原列 `status`、`commission_estimate` 删除，分别由 `order_status` 与 `media_commission` / `user_commission` 代替。`settled` 不再是订单状态。
 
@@ -273,11 +274,13 @@
 | platform              | VARCHAR(16)    | PK       | 一个平台一行游标         |
 | last_sync_create_time | TIMESTAMPTZ(3) | 可空       | 按下单时间增量拉取的水位     |
 | last_sync_update_time | TIMESTAMPTZ(3) | 可空       | 按更新时间增量拉取的水位     |
-| last_error            | VARCHAR(512)   | 可空       | 最近一次同步失败摘要，成功后清空 |
+| last_error            | VARCHAR(512)   | 可空       | 最近一次同步失败的原因。超过 512 字截断。成功后清空。不含密钥、PID、relationId、堆栈和 SQL |
 | updated_at            | TIMESTAMPTZ(3) | NOT NULL | 游标最后改动时间         |
 
 
-逻辑（参考 mall-guide）：每平台独立游标；按「创建时间 / 更新时间」两条增量拉单；写入统一 `app_order`。调度在 Java 的 Quartz，间隔默认 5 分钟。运营可在管理后台改这两列水位，下一次增量从新水位接着拉。两列都可空；空着时本次拉取只看最近一小时。同步成功后仍把两列推进到本次时间，并清空 `last_error`。只改水位时不动 `last_error`。
+逻辑：每平台独立游标；按「创建时间 / 更新时间」两条增量拉单；写入统一 `app_order`。调度在 Java 的 Quartz，间隔默认 5 分钟。运营可在管理后台改这两列水位，下一次增量从新水位接着拉。两列都可空；空着时本次只补最近一小时。
+
+管理端只负责触发。APP 受理后立刻返回，在进程内异步追平，不占着这次 HTTP。开始时记下本次请求时间。下单水位、更新水位各自按平台允许的最大跨度切段：淘宝一段不超过 3 小时，京东、唯品会、拼多多一段不超过 1 小时。一段里的页拉完，才把对应水位推到这段的结束时间，再拉下一段，直到两列都到达本次请求时间。唯品会每一次订单查询都带请求号。同一平台已有追赶时，再次触发不再并行一轮。某一段失败则停在该段之前，已成功的段保留，`last_error` 写入这次失败的原因：官方错误码和错误说明、密钥未配置，或数据库拒绝写入的原因。整次追赶完成才清空 `last_error`。只改水位时不动 `last_error`。
 
 ### 6.10 `click_event` 转链点击归因
 

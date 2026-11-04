@@ -185,7 +185,9 @@ class GoodsGateTest {
         }
 
         @Override
-        public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+        public List<IncomingOrderDto> pullOrders(
+                OrderSyncCursor cursor, com.omino.shopai.app.util.UnionMaps.Window created,
+                com.omino.shopai.app.util.UnionMaps.Window updated) {
             return List.of();
         }
     }

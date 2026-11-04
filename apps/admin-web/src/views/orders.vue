@@ -2,14 +2,15 @@
 import { onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/http'
-import { PLATFORMS, label, money, settleLabel, when } from '../support/format'
+import { PLATFORMS, label, money, settleLabel, text, when } from '../support/format'
 import { useRows } from '../support/useRows'
 
 const router = useRouter()
-const list = useRows()
+const list = useRows(10)
 const query = reactive({
   userId: '',
   platform: '',
+  platformOrderId: '',
   orderStatus: '',
   settleStatus: '',
 })
@@ -35,6 +36,7 @@ async function load(): Promise<void> {
       await apiGet('/v1/orders', {
         userId: query.userId.trim(),
         platform: query.platform,
+        platformOrderId: query.platformOrderId.trim(),
         orderStatus: query.orderStatus,
         settleStatus: query.settleStatus,
         page: list.page.value,
@@ -72,6 +74,7 @@ onMounted(load)
     <h1>电商订单</h1>
     <div class="filters">
       <el-input v-model="query.userId" placeholder="用户编号" clearable style="width: 200px" />
+      <el-input v-model="query.platformOrderId" placeholder="平台订单号" clearable style="width: 220px" />
       <el-select v-model="query.platform" placeholder="平台" clearable style="width: 140px">
         <el-option v-for="item in PLATFORMS" :key="item.code" :label="item.label" :value="item.code" />
       </el-select>
@@ -85,13 +88,20 @@ onMounted(load)
     </div>
     <el-alert v-if="list.error.value" :title="list.error.value" type="error" show-icon :closable="false" />
     <el-table v-loading="list.loading.value" :data="list.rows.value" @row-click="(row: Record<string, unknown>) => open(row.id)">
-      <el-table-column prop="id" label="订单" min-width="200" />
-      <el-table-column prop="userId" label="用户" min-width="180" />
       <el-table-column label="平台" width="100">
         <template #default="{ row }">{{ label(row.platform) }}</template>
       </el-table-column>
-      <el-table-column prop="platformOrderId" label="平台单号" min-width="160" />
-      <el-table-column prop="goodsTitle" label="商品" min-width="200" />
+      <el-table-column prop="platformOrderId" label="平台单号" min-width="180" />
+      <el-table-column prop="userId" label="用户" min-width="180" />
+      <el-table-column label="商品" min-width="280">
+        <template #default="{ row }">
+          <div class="goods">
+            <img v-if="text(row.goodsImageUrl)" class="thumb" :src="text(row.goodsImageUrl)" alt="" />
+            <div v-else class="thumb empty">无图</div>
+            <span class="title">{{ text(row.goodsTitle) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="实付" width="100">
         <template #default="{ row }">{{ money(row.payAmount) }}</template>
       </el-table-column>
@@ -124,3 +134,32 @@ onMounted(load)
     />
   </div>
 </template>
+
+<style scoped>
+.goods {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.thumb {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+}
+.empty {
+  display: grid;
+  place-items: center;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+</style>

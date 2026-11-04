@@ -163,46 +163,66 @@ public class PddGoodsImpl implements IPlatformGoods {
         }
     }
 
+    /**
+     * 拼多多只有更新时间。下单段不请求。页拉完才返回，页还满则本段失败。
+     *
+     * @param cursor 当前游标
+     * @param created 下单时间这一段，这里不使用
+     * @param updated 更新时间这一段
+     * @return 这一段里的订单
+     */
     @Override
-    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor, UnionMaps.Window created, UnionMaps.Window updated) {
         Upstream.call(clientId, clientSecret);
+        if (updated == null) {
+            return List.of();
+        }
         try {
             PopHttpClient http = client();
-            UnionMaps.Window window = UnionMaps.window(cursor == null ? null : cursor.getLastSyncUpdateTime());
             List<IncomingOrderDto> found = new ArrayList<>();
-            for (int page = 1; page <= 3; page++) {
+            boolean finished = false;
+            for (int page = 1; page <= UnionMaps.MAX_ORDER_PAGES; page++) {
                 PddDdkOrderListIncrementGetRequest request = new PddDdkOrderListIncrementGetRequest();
-                request.setStartUpdateTime(window.start().toEpochSecond());
-                request.setEndUpdateTime(window.end().toEpochSecond());
+                request.setStartUpdateTime(updated.start().toEpochSecond());
+                request.setEndUpdateTime(updated.end().toEpochSecond());
                 request.setPage(page);
                 request.setPageSize(50);
                 request.setReturnCount(false);
                 PddDdkOrderListIncrementGetResponse response = SdkLog.exchange(
                         "pdd", "order.increment", request, () -> http.syncInvoke(request));
                 if (response == null || response.getErrorResponse() != null) {
-                    throw new PlatformCallException();
+                    var err = response == null ? null : response.getErrorResponse();
+                    throw new PlatformCallException(response == null
+                            ? "拼多多订单响应为空"
+                            : PlatformCallException.explain(
+                                    err.getErrorCode() == null ? null : err.getErrorCode().toString(),
+                                    err.getErrorMsg(),
+                                    err.getSubMsg()));
                 }
                 var rows = response.getOrderListGetResponse() == null
                         ? null
                         : response.getOrderListGetResponse().getOrderList();
-                if (rows == null || rows.isEmpty()) {
-                    break;
-                }
-                for (var row : rows) {
-                    IncomingOrderDto order = order(row);
-                    if (order != null) {
-                        found.add(order);
+                if (rows != null) {
+                    for (var row : rows) {
+                        IncomingOrderDto order = order(row);
+                        if (order != null) {
+                            found.add(order);
+                        }
                     }
                 }
-                if (rows.size() < 50) {
+                if (rows == null || rows.size() < 50) {
+                    finished = true;
                     break;
                 }
+            }
+            if (!finished) {
+                throw new PlatformCallException("本段订单超过 40 页，水位不前进");
             }
             return found;
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new PlatformCallException();
+            throw new PlatformCallException(ex);
         }
     }
 

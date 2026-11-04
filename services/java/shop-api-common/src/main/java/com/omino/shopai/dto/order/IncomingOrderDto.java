@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
  * @param platformOrderId 平台订单号
  * @param userId 归属用户，认不出则为空
  * @param parentUserId 上级用户，可空
- * @param goodsId 平台商品号
+ * @param goodsId 平台商品号。写入 `platform_goods_id`，不写入本系统 26 位 `goods_id`
  * @param goodsTitle 商品标题
  * @param goodsImageUrl 商品图
  * @param payAmount 实付金额

@@ -32,12 +32,12 @@ public class InternalOrderSyncController {
     }
 
     /**
-     * 再拉一次这个平台的增量。失败时只记固定文案，不把异常原文返回。
+     * 受理这个平台的追赶并立刻返回。拉单在进程内异步进行，响应里不带上游原文。
      *
      * @param platform 平台码
      * @return 空
      */
-    @Operation(summary = "再拉一次该平台的订单增量")
+    @Operation(summary = "受理该平台的订单追赶")
     @PostMapping("/{platform}")
     public ApiResponse<Void> sync(@PathVariable String platform) {
         Platform value;
@@ -49,12 +49,7 @@ public class InternalOrderSyncController {
         if (value == null) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "平台不正确");
         }
-        try {
-            sync.sync(value.code());
-        } catch (RuntimeException ex) {
-            // 失败只留固定文案。水位停在失败前，响应里不带上游原文。
-            sync.noteFailure(value.code());
-        }
+        sync.submit(value.code());
         return ApiResponse.ok(null);
     }
 }

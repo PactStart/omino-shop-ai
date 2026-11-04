@@ -96,6 +96,7 @@ const LABELS: Record<string, string> = {
   open: '待处理',
   processing: '处理中',
   closed: '已关闭',
+  valid: '有效',
   active: '生效',
   retired: '已下架',
   draft: '草稿',

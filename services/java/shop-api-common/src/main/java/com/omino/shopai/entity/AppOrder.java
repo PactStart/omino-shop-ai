@@ -26,6 +26,7 @@ public class AppOrder {
     private Platform platform;
     private String platformOrderId;
     private String goodsId;
+    private String platformGoodsId;
     private String goodsTitle;
     private String goodsImageUrl;
     private BigDecimal payAmount;

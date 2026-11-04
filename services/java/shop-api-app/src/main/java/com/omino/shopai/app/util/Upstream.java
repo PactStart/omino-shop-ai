@@ -15,11 +15,11 @@ public final class Upstream {
      */
     public static void call(String... secrets) {
         if (secrets == null) {
-            throw new PlatformCallException();
+            throw new PlatformCallException("密钥未配置");
         }
         for (String secret : secrets) {
             if (secret == null || secret.isBlank()) {
-                throw new PlatformCallException();
+                throw new PlatformCallException("密钥未配置");
             }
         }
     }

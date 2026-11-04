@@ -15,7 +15,14 @@ public interface IOrder {
 
     OrderSyncCursor cursor(String platform);
 
-    void advance(String platform, OffsetDateTime now);
+    /**
+     * 把拉完的那段水位推上去，并清掉失败文案。空的那一列保持原值。
+     *
+     * @param platform 平台码
+     * @param createTo 下单水位的新值；空表示这一列本次没拉
+     * @param updateTo 更新水位的新值；空表示这一列本次没拉
+     */
+    void advance(String platform, OffsetDateTime createTo, OffsetDateTime updateTo);
 
     /** 只写失败文案，不改两列水位。 */
     void fail(String platform, String message);

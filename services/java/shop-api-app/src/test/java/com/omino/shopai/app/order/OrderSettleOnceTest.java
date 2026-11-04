@@ -53,7 +53,7 @@ class OrderSettleOnceTest {
     void completedOrderCreditsBuyerOnceAndHidesMediaCommission() throws Exception {
         MemoryOrders orders = new MemoryOrders();
         orders.seedWallet(BUYER);
-        IPlatformOrder source = (platform, cursor) -> List.of(sample());
+        IPlatformOrder source = (platform, cursor, created, updated) -> List.of(sample());
         OrderSyncService sync = sync(orders, source, "0.80");
 
         orders.failAdvance = true;

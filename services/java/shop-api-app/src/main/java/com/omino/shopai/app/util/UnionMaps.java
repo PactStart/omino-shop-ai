@@ -6,6 +6,7 @@ import com.omino.shopai.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -20,6 +21,8 @@ import java.util.regex.Pattern;
 public final class UnionMaps {
 
     public static final int TIMEOUT_MS = 10_000;
+    /** 一段里最多翻这么多页。页还满则本段失败，避免水位跨过没拉到的订单。 */
+    public static final int MAX_ORDER_PAGES = 40;
     public static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter OFFICIAL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final Pattern USER_ID = Pattern.compile("[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}");
@@ -108,12 +111,41 @@ public final class UnionMaps {
         return null;
     }
 
-    /** 查询窗口。没有水位时只看最近一小时，避免第一次就扫全历史。 */
-    public static Window window(OffsetDateTime cursor) {
-        OffsetDateTime end = OffsetDateTime.now(SHANGHAI);
-        OffsetDateTime start = cursor == null ? end.minusHours(1) : cursor;
+    /**
+     * 这个平台一段查询允许的最长时间。淘宝日常 3 小时，其余平台 1 小时。
+     *
+     * @param platform 平台码
+     * @return 一段的最大跨度
+     */
+    public static Duration maxSpan(String platform) {
+        if ("taobao".equals(platform)) {
+            return Duration.ofHours(3);
+        }
+        return Duration.ofHours(1);
+    }
+
+    /**
+     * 从水位到本次请求时间之间，切出下一段。没有水位时只补最近一小时。已经追上则没有下一段。
+     *
+     * @param cursor 这一列的水位；空表示还没拉过
+     * @param until 本次请求时间，循环期间不再往后挪
+     * @param max 这一段允许的最大跨度
+     * @return 下一段；不需要再拉时为空
+     */
+    public static Window slice(OffsetDateTime cursor, OffsetDateTime until, Duration max) {
+        if (until == null || max == null || max.isZero() || max.isNegative()) {
+            return null;
+        }
+        OffsetDateTime start = cursor == null ? until.minusHours(1) : cursor;
+        if (!start.isBefore(until)) {
+            return null;
+        }
+        OffsetDateTime end = start.plus(max);
+        if (end.isAfter(until)) {
+            end = until;
+        }
         if (!start.isBefore(end)) {
-            start = end.minusMinutes(1);
+            return null;
         }
         return new Window(start, end);
     }
