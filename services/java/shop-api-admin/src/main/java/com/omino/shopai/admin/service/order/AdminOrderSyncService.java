@@ -1,5 +1,6 @@
 package com.omino.shopai.admin.service.order;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AdminAuditLog;
 import com.omino.shopai.entity.OrderSyncCursor;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.DateTimeException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -112,6 +114,44 @@ public class AdminOrderSyncService {
     }
 
     /**
+     * 改一个平台的两条水位。没有这一行时插入。不改最近错误。写入成功后记审计。
+     *
+     * @param platform 平台码
+     * @param lastSyncCreateTime 下单水位，空或空串表示清掉
+     * @param lastSyncUpdateTime 更新水位，空或空串表示清掉
+     * @param ssoSub 操作人
+     */
+    public void saveCursor(String platform, String lastSyncCreateTime, String lastSyncUpdateTime, String ssoSub) {
+        String code = requirePlatform(platform);
+        OffsetDateTime create = time(lastSyncCreateTime);
+        OffsetDateTime update = time(lastSyncUpdateTime);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Platform value = Platform.fromCode(code);
+        // set 会把空水位写成 NULL。updateById 会跳过空字段，清不掉已有水位。
+        int changed = cursors.update(null, new UpdateWrapper<OrderSyncCursor>()
+                .eq("platform", code)
+                .set("last_sync_create_time", create)
+                .set("last_sync_update_time", update)
+                .set("updated_at", now));
+        if (changed == 0) {
+            OrderSyncCursor row = new OrderSyncCursor();
+            row.setPlatform(value);
+            row.setLastSyncCreateTime(create);
+            row.setLastSyncUpdateTime(update);
+            row.setUpdatedAt(now);
+            cursors.insert(row);
+        }
+        AdminAuditLog log = new AdminAuditLog();
+        log.setId(Ids.ulid());
+        log.setSsoSub(ssoSub == null ? "admin" : ssoSub);
+        log.setAction("order.sync.cursor");
+        log.setResource(code);
+        log.setDetail(cursorDetail(create, update));
+        log.setCreatedAt(now);
+        audits.accept(log);
+    }
+
+    /**
      * 只接受四个平台码。
      *
      * @param platform 调用方传入的平台
@@ -127,6 +167,44 @@ public class AdminOrderSyncService {
         } catch (IllegalArgumentException ex) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "平台不正确");
         }
+    }
+
+    /**
+     * 把请求里的时间还原成带时区的时刻。空串视为清掉。
+     *
+     * @param raw 请求里的时间
+     * @return 水位；空请求返回 null
+     */
+    private static OffsetDateTime time(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return OffsetDateTime.parse(raw.trim());
+        } catch (DateTimeException ex) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "水位时间不正确");
+        }
+    }
+
+    /**
+     * 审计明细只放两条新水位，方便事后核对改到了哪里。
+     *
+     * @param create 下单水位
+     * @param update 更新水位
+     * @return JSON 对象文本
+     */
+    private static String cursorDetail(OffsetDateTime create, OffsetDateTime update) {
+        return "{\"lastSyncCreateTime\":" + jsonTime(create) + ",\"lastSyncUpdateTime\":" + jsonTime(update) + "}";
+    }
+
+    /**
+     * 把一个时刻写成 JSON 字符串。空水位写成 null。
+     *
+     * @param time 水位
+     * @return JSON 值
+     */
+    private static String jsonTime(OffsetDateTime time) {
+        return time == null ? "null" : "\"" + time + "\"";
     }
 
     private static void post(String appBaseUrl, String token, String platform) {

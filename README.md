@@ -43,7 +43,7 @@
 | 服务          | 地址                      | 说明                                                |
 | ----------- | ----------------------- | ------------------------------------------------- |
 | APP API     | `http://127.0.0.1:8181` | 上下文 `/api/app`                                    |
-| Admin API   | `http://127.0.0.1:8082` | 上下文 `/api/admin`                                  |
+| Admin API   | `http://127.0.0.1:8182` | 上下文 `/api/admin`                                  |
 | Agent       | `http://127.0.0.1:8190` | 只监听本机                                             |
 | 管理后台（dev）   | `http://localhost:5183` | `apps/admin-web`                                  |
 | 官网（dev）     | `http://localhost:5175` | `apps/www`                                        |
@@ -83,12 +83,12 @@ make up           # Postgres、Redis、Nacos、Langfuse
 
 ```bash
 make app          # http://127.0.0.1:8181/api/app
-make admin        # 另一个终端：http://127.0.0.1:8082/api/admin
+make admin        # 另一个终端：http://127.0.0.1:8182/api/admin
 ```
 
 两条命令都会先加载 `local.infra.env`，再加载 `local.app.env` 或 `local.admin.env`。不经过 make、也不导出这些文件就直接跑 `mvn`，会连到 yml 默认端口上的库。
 
-Admin 的 `SSO_ISSUER` 指向本机 omino-sso 的 `http://127.0.0.1:8080`。回调必须与 IdP 里登记的完全一致，例如 `http://127.0.0.1:8082/api/admin/v1/auth/callback`。
+Admin 的 `SSO_ISSUER` 指向本机 omino-sso 的 `http://127.0.0.1:8080`。回调必须与 IdP 里登记的完全一致，例如 `http://127.0.0.1:8182/api/admin/v1/auth/callback`。
 
 ### 5.3 启动 Agent
 
@@ -109,17 +109,23 @@ make land         # http://localhost:5176
 make h5           # http://localhost:5177
 ```
 
+### 5.5 停止与重启
 
+```bash
+make stop-app && make restart-app    # :8181。admin、agent、admin-web、h5、www、land 同样有 stop-* 与 restart-*
+```
+
+按该应用的默认端口停掉这次启动的进程。端口上不是本应用时不杀。重启会占住当前终端。基础设施用 `make down`。
 
 ## 6. 验证
 
 ```bash
 curl -s http://127.0.0.1:8181/api/app/actuator/health
-curl -s http://127.0.0.1:8082/api/admin/actuator/health
+curl -s http://127.0.0.1:8182/api/admin/actuator/health
 curl -s http://127.0.0.1:8190/health
 ```
 
-接口文档：[http://127.0.0.1:8181/api/app/swagger-ui.html](http://127.0.0.1:8181/api/app/swagger-ui.html)、[http://127.0.0.1:8082/api/admin/swagger-ui.html](http://127.0.0.1:8082/api/admin/swagger-ui.html)。
+接口文档：[http://127.0.0.1:8181/api/app/swagger-ui.html](http://127.0.0.1:8181/api/app/swagger-ui.html)、[http://127.0.0.1:8182/api/admin/swagger-ui.html](http://127.0.0.1:8182/api/admin/swagger-ui.html)。
 
 `make test` 跑 Java 与 Agent 测试。
 
@@ -146,7 +152,7 @@ apps/www           # 官网
 apps/land          # 邀请落地页
 apps/android       # Kotlin + Compose
 apps/ios           # SwiftUI
-services/java      # shop-api-app（8181）与 shop-api-admin（8082）
+services/java      # shop-api-app（8181）与 shop-api-admin（8182）
 services/agent     # 本机 8190
 deploy/            # 本地编排与四份 env 示例
 docs/              # 契约、数据模型、页面、阶段

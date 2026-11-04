@@ -28,7 +28,7 @@ public class AdminOAuth2Config {
             @Value("${SSO_ISSUER:http://127.0.0.1:8080}") String issuer,
             @Value("${SSO_CLIENT_ID:shop-admin}") String clientId,
             @Value("${SSO_CLIENT_SECRET:local-only-placeholder-secret}") String secret,
-            @Value("${SSO_REDIRECT_URI:http://127.0.0.1:8082/api/admin/v1/auth/callback}") String redirect) {
+            @Value("${SSO_REDIRECT_URI:http://127.0.0.1:8182/api/admin/v1/auth/callback}") String redirect) {
         ClientRegistration registration = ClientRegistration.withRegistrationId("omino")
                 .clientId(clientId)
                 .clientSecret(secret)

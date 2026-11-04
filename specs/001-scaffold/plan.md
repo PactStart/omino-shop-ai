@@ -6,7 +6,7 @@
 
 ## Summary
 
-搭一套能在本机空跑的骨架：编排拉起商品主库、Redis、Nacos 和 Langfuse；两个 Java 进程分别在 8181 与 8082 报健康并完成只含 pgvector 扩展的迁移；Agent 只在本机 8190 报健康；四个 Web 空壳和两个原生工程能启动或打开。不实现登录、对话、联盟、SSO，Java 不读 Nacos，Agent 不上报 trace。
+搭一套能在本机空跑的骨架：编排拉起商品主库、Redis、Nacos 和 Langfuse；两个 Java 进程分别在 8181 与 8182 报健康并完成只含 pgvector 扩展的迁移；Agent 只在本机 8190 报健康；四个 Web 空壳和两个原生工程能启动或打开。不实现登录、对话、联盟、SSO，Java 不读 Nacos，Agent 不上报 trace。
 
 技术选择见 [research.md](research.md)。Langfuse 服务端用官方主版本镜像 `langfuse/langfuse:2`，以匹配已锁定的 Python 客户端 `2.57.0` 和权威启动命令里的两个服务名。
 

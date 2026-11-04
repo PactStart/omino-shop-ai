@@ -51,7 +51,7 @@
 | `finance` | 财务 | 对账和出款 | 能看三本账和佣金两列，能打款、拒绝提现、改套餐、调账、标模型单价。不能看完整手机和会话正文，不能开用户视角 |
 | `growth` | 增长 | 投放和素材 | 能看漏斗和用户列表（手机打码），能改海报、公告、推荐问题。不能发私信、不能发版 |
 | `analyst` | 分析 | 只看数的人 | 工作台、漏斗、三本账、订单、钱包、积分、提现列表、审计。没有任何写操作，不能打款，不能标单价 |
-| `engineer` | 工程 | 对话和同步排障 | 能改提示词、模型分流和密钥、知识库、推荐问题，能看会话和订单状态，能重试同步。不能看资金页、完整手机，不能打款和调账 |
+| `engineer` | 工程 | 对话和同步排障 | 能改提示词、模型分流和密钥、知识库、推荐问题，能看会话和订单状态，能改同步水位并重试同步。不能看资金页、完整手机，不能打款和调账 |
 | `releaser` | 发版 | 客户端开发 | 能看版本和特殊配置，能发布渠道包、改版本说明、打开强制更新。不能改特殊配置，也没有其他菜单 |
 
 不要把「只看数」的人放进 `finance`。`finance` 带打款。客户端开发发版用 `releaser`，不要为此把 `release:write` 加进 `engineer`。
@@ -91,6 +91,7 @@
 | `order:read` | 看订单 | `group:trade` | 电商订单 | `GET /v1/orders`、`GET /v1/orders/{id}`。没有 `stats:money` 时去掉 `mediaCommission`、`parentUserId`、`walletLedgerId` |
 | `sync:read` | 看同步 | `group:trade` | 同步游标 | `GET /v1/order-sync` |
 | `sync:retry` | 重试同步 | `group:trade` | 重试按钮 | `POST /v1/order-sync/{platform}/retry` |
+| `sync:write` | 改水位 | `group:trade` | 设置下单水位和更新水位 | `PATCH /v1/order-sync/{platform}` |
 | `user:read` | 看用户 | `group:people` | 用户列表、用户详情 | `GET /v1/users`、`GET /v1/users/{id}`。列表手机保持打码 |
 | `user:phone` | 看完整手机 | `group:people` | 详情里的手机号 | 详情接口的手机字段。没有本权限时详情也打码，和列表同一规则 |
 | `user:live` | 打开用户视角 | `group:people` | 用户视角 | `POST /v1/god-view/tokens`。还要 `GOD_VIEW_ENABLED=true`，否则仍是 `40303` |
@@ -155,6 +156,7 @@
 | `order:read` | 有 | 有 | 有 | 有 | | 有 | 有 | |
 | `sync:read` | 有 | | | 有 | | | 有 | |
 | `sync:retry` | 有 | | | | | | 有 | |
+| `sync:write` | 有 | | | | | | 有 | |
 | `user:read` | 有 | 有 | 有 | | 有 | | | |
 | `user:phone` | 有 | 有 | 有 | | | | | |
 | `user:live` | 有 | | | | | | | |

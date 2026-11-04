@@ -102,7 +102,7 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | `shop-api-admin` | `/api/admin`                        | `/api/admin/v1/**` |
 
 
-禁止两个产出物监听同一端口。本地默认 APP `8181`、Admin `8082`。Agent `8190`，管理后台 `5183`，Redis 宿主机 `6381`。这些值避开同机的 omino-sso：IdP `8080`、管理 API `8081`、门户 `5173`、后台 `5174`、一体化后台容器 `8090`、Redis 宿主机 `6380`。
+禁止两个产出物监听同一端口。本地默认 APP `8181`、Admin `8182`。Agent `8190`，管理后台 `5183`，Redis 宿主机 `6381`。这些值避开同机的 omino-sso：IdP `8080`、管理 API `8081`、门户 `5173`、后台 `5174`、一体化后台容器 `8090`、Redis 宿主机 `6380`。
 
 ### 2.2 Agent（Python）
 
@@ -684,14 +684,23 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 make help
 make up          # PostgreSQL+pgvector / Redis / Nacos / Langfuse
 make app         # APP API，默认 :8181
-make admin       # Admin API，默认 :8082
+make admin       # Admin API，默认 :8182
 make agent       # Agent，默认 :8190，仅监听本机
 make test
 make admin-web   # :5183
 make h5          # :5177
 make www         # :5175
 make land        # :5176
+make stop-app && make restart-app
+make stop-admin && make restart-admin
+make stop-agent && make restart-agent
+make stop-admin-web && make restart-admin-web
+make stop-h5 && make restart-h5
+make stop-www && make restart-www
+make stop-land && make restart-land
 ```
+
+`stop-*` 按上表默认端口找到监听进程，连同这次启动的父进程一起停。命令行对不上该应用时不杀，没在跑则直接成功。`restart-*` 先停再执行原来的启动命令，启动仍占着当前终端。基础设施仍用 `make down`。Android / iOS 不是常驻进程，没有 stop。
 
 Makefile 实际执行的命令：
 
@@ -744,7 +753,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `deploy/env/local.agent.env` | `make agent` 在 infra 之后加载 | `OPENAI_*`、`JAVA_APP_INTERNAL_URL`。Langfuse 与内网令牌用 infra 里的值 |
 | `apps/<应用>/.env` | 该 Vite / 原生工程 | §9.5。不进 `deploy/env` |
 
-不要在四份里设置 `SERVER_PORT`。APP 默认 `8181`，Admin 默认 `8082`。
+不要在四份里设置 `SERVER_PORT`。APP 默认 `8181`，Admin 默认 `8182`。
 
 ### 9.1 公共 / 数据
 
@@ -800,7 +809,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 
 | 变量                     | 说明                                 |
 | ---------------------- | ---------------------------------- |
-| `SERVER_PORT`          | 默认 `8082`                          |
+| `SERVER_PORT`          | 默认 `8182`                          |
 | `SSO_ISSUER`           | 如 `https://sso.example.com`        |
 | `SSO_CLIENT_ID`        | omino-sso 应用 ID                    |
 | `SSO_CLIENT_SECRET`    | 密钥；token 端点用 `client_secret_basic` |

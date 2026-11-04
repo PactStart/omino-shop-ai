@@ -72,7 +72,7 @@
 | `userDetail` | 用户详情 | `/users/:id` | 看该用户全部运营可见信息 | 左用户视角菜单+右内容 | 见 §3.4；无 JWT/密钥/PID |
 | `orders` | 电商订单 | `/orders` | 按平台/订单状态/结算状态/用户查 | 筛选+表 | 无联盟原始 JSON；表上同时能看媒体返佣与用户分成 |
 | `orderDetail` | 订单详情 | `/orders/:id` | 看一单 | 描述列表 | 无物流写未知；已结算行显示钱包流水 ID |
-| `orderSync` | 同步游标 | `/orders/sync` | 看水位、重试 | 四行平台 | 重试写审计；无美团 |
+| `orderSync` | 同步游标 | `/orders/sync` | 看水位、改水位、重试 | 四行平台 | 每行可改下单水位和更新水位，可清空。改水位和重试都写审计；无美团 |
 | `conversations` | 会话 | `/conversations` | 观测对话 | 表 | 只读；无密钥 |
 | `conversationDetail` | 会话消息 | `/conversations/:id` | 看消息 | 时间线 | 不改用户话 |
 | `tickets` | 工单 | `/tickets` | 处理反馈 | 筛选+表 | 改状态必须出 log |
@@ -82,7 +82,7 @@
 | `creditOrders` | 积分支付单 | `/credits/orders` | 对账 | 表 | 无支付密钥 |
 | `creditLedger` | 积分流水 | `/credits/ledger` | 全站流水 | 表+调账对话框 | 调账必填备注+审计 |
 | `creditRate` | Token 比例 | 套餐页只读条 | 看 Nacos 当前值 | 文案 | 改去 Nacos |
-| `invitePosters` | 海报模板 | `/invite-posters` | 上传模板、框二维码区、生效期 | 左表右预览 | **预览在浏览器贴码**；无服务端合成 |
+| `invitePosters` | 海报模板 | `/invite-posters` | 上传模板、框二维码区、生效期 | 列表或卡片，可按状态筛 | 列表含模板链接和生效时间。卡片一行四张，图下是名称、状态、生效时间和编辑。**预览在编辑页用浏览器贴码**；无服务端合成 |
 | `invitePosterEdit` | 编辑模板 | `/invite-posters/:id` | 标定矩形 | 画布+数字框+日期 | `startsAt`/`endsAt` 可空 |
 | `releases` | 版本 | `/releases` | 发渠道包 | 表；Android 一行一渠道 | `versionCode` 输入 `yyyyMMdd`。说明可选纯文本或有限富文本，对应 `format` |
 | `runtimeConfigs` | 特殊配置 | `/runtime-configs` | 渠道/端/版本行为 | 表+JSON 表单 | 只允许已锁 payload 键 |
@@ -99,7 +99,10 @@
 
 - 上传模板原图；叠加半透明矩形，拖改 `qrX/Y/W/H`，右侧同步数字。
 - 预览：用占位邀请 URL 在 **浏览器 Canvas** 贴码，与消费者端算法一致。
-- 生效：`el-date-picker` 日期时间范围，可清空。列表用 Tag 显示「未开始 / 生效中 / 已过期 / 已下架」。
+- 生效：`el-date-picker` 日期时间范围，可清空。列表和卡片用 Tag 显示「未开始 / 生效中 / 已过期 / 已下架」。
+- 列表列：名称、模板链接、状态、生效时间范围、排序、编辑。模板链接取 `imageObjectKey`；`http` / `https` 可点开，对象键只显示文字。生效时间空的一侧写「不限」，两侧都空则整段为「不限」。
+- 状态筛选在本页完成，选项与四个 Tag 相同，清空后看全部。不另打接口。
+- 同一批数据可切成卡片，固定一行四张。卡片直接显示模板图；图下是名称、状态、生效时间和编辑。图区宽高比 `9:16`，与默认画布 `750×1334` 相同。没有可显示的图片地址时，图区写「无预览」。
 
 ### 3.3 版本发布（重点）
 

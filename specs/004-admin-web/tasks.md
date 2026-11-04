@@ -45,7 +45,7 @@ description: "Task list for 004-admin-web"
 **⚠️ CRITICAL**: 用户故事开始前必须完成本阶段
 
 - [X] T004 把 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/dto/PageDto.java` 移到 `services/java/shop-api-common/src/main/java/com/omino/shopai/dto/PageDto.java`。字段保持 `list`、`page`、`size`、`total`，`page` 从 1 起。改掉 app 模块里的 import。Admin 不得再定义第二个分页类型，也不得依赖 `shop-api-app`
-- [X] T005 [P] 在 `apps/admin-web/vite.config.ts` 把 `/api/admin` 反代到 `http://127.0.0.1:8082`，开发端口保持 `5183`
+- [X] T005 [P] 在 `apps/admin-web/vite.config.ts` 把 `/api/admin` 反代到 `http://127.0.0.1:8182`，开发端口保持 `5183`
 - [X] T006 [P] 新增 `apps/admin-web/src/api/http.ts`：axios 的 baseURL 为 `/api/admin`，`withCredentials: true`。不设置 `Authorization`，不读取 Cookie
 - [X] T007 在 `services/java/shop-api-admin/src/main/resources/application-local.yml` 增加非密钥默认值：管理前端源 `http://127.0.0.1:5183`，APP 根 `http://127.0.0.1:8181`。内部令牌继续用环境里已有的 `AGENT_INTERNAL_TOKEN`，不写进 yml
 

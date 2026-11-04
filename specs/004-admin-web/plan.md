@@ -20,7 +20,7 @@
 
 **Testing**: 新的管理用例用 JUnit 5：推荐问题读回与第 13 条上架、工单回复不关单、知识库下架后检索不命中、同步重试拒绝第五个平台且审计不含密钥。页面按 [quickstart.md](quickstart.md) 在浏览器里走一遍。不为本功能另加前端测试框架。
 
-**Target Platform**: 管理前端 `http://127.0.0.1:5183`，Admin API `:8082` 前缀 `/api/admin`。同步执行仍在 APP `:8181`。
+**Target Platform**: 管理前端 `http://127.0.0.1:5183`，Admin API `:8182` 前缀 `/api/admin`。同步执行仍在 APP `:8181`。
 
 **Project Type**: 现有 Vite 后台补齐页面，并在 `shop-api-admin` 补齐页面所依赖的 HTTP。两个 Java 产出物不互相 import。
 
@@ -67,7 +67,7 @@ specs/004-admin-web/
 
 ```text
 apps/admin-web/
-├── vite.config.ts                 # 把 /api/admin 反代到 8082
+├── vite.config.ts                 # 把 /api/admin 反代到 8182
 └── src/
     ├── api/http.ts                # axios，withCredentials，相对 /api/admin
     ├── router/index.ts            # 路由 ID 对齐 admin-ui

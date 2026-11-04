@@ -4,8 +4,8 @@
 
 ## 登录仍由 Java 交换授权码
 
-- Decision: 浏览器只打开 Admin API 的登录地址，授权码仍由现有 OIDC 客户端在 Java 里交换。成功后重定向到管理前端源（本地默认 `http://127.0.0.1:5183/`），不再停在 `/v1/users`。前端 axios `withCredentials: true`，开发时由 Vite 把 `/api/admin` 反代到 `127.0.0.1:8082`，页面和接口同一来源。不在浏览器里做 PKCE，不读 Cookie。
-- Rationale: 契约要求 Java 作 BFF，Cookie 名已是 `sid_admin`。前端在 `5183`、接口在 `8082`，若浏览器跨端口直接调接口，Lax Cookie 不会带到另一来源。反代后登录跳转、会话和业务请求都走前端源。
+- Decision: 浏览器只打开 Admin API 的登录地址，授权码仍由现有 OIDC 客户端在 Java 里交换。成功后重定向到管理前端源（本地默认 `http://127.0.0.1:5183/`），不再停在 `/v1/users`。前端 axios `withCredentials: true`，开发时由 Vite 把 `/api/admin` 反代到 `127.0.0.1:8182`，页面和接口同一来源。不在浏览器里做 PKCE，不读 Cookie。
+- Rationale: 契约要求 Java 作 BFF，Cookie 名已是 `sid_admin`。前端在 `5183`、接口在 `8182`，若浏览器跨端口直接调接口，Lax Cookie 不会带到另一来源。反代后登录跳转、会话和业务请求都走前端源。
 - Alternatives considered:
   - 在 Vue 里用 `oidc-client-ts` 换 token：浏览器会持有 access_token，规格禁止。
   - 自建账号密码：宪章禁止。

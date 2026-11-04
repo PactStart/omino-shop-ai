@@ -277,7 +277,7 @@
 | updated_at            | TIMESTAMPTZ(3) | NOT NULL | 游标最后改动时间         |
 
 
-逻辑（参考 mall-guide）：每平台独立游标；按「创建时间 / 更新时间」两条增量拉单；写入统一 `app_order`。调度在 Java 的 Quartz，间隔默认 5 分钟。
+逻辑（参考 mall-guide）：每平台独立游标；按「创建时间 / 更新时间」两条增量拉单；写入统一 `app_order`。调度在 Java 的 Quartz，间隔默认 5 分钟。运营可在管理后台改这两列水位，下一次增量从新水位接着拉。两列都可空；空着时本次拉取只看最近一小时。同步成功后仍把两列推进到本次时间，并清空 `last_error`。只改水位时不动 `last_error`。
 
 ### 6.10 `click_event` 转链点击归因
 

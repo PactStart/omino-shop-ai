@@ -4,7 +4,7 @@
 
 ## 会话
 
-浏览器只访问 Admin 进程。授权码在 Java 内交换。响应与日志不出现 access_token、refresh_token、id_token。Cookie 名 `sid_admin`，`HttpOnly`、`SameSite=Lax`，生产 `Secure`。不要用 `sid`。令牌只留在服务端会话。`SSO_REDIRECT_URI` 必须包含上下文路径，例如 `http://127.0.0.1:8082/api/admin/v1/auth/callback`。
+浏览器只访问 Admin 进程。授权码在 Java 内交换。响应与日志不出现 access_token、refresh_token、id_token。Cookie 名 `sid_admin`，`HttpOnly`、`SameSite=Lax`，生产 `Secure`。不要用 `sid`。令牌只留在服务端会话。`SSO_REDIRECT_URI` 必须包含上下文路径，例如 `http://127.0.0.1:8182/api/admin/v1/auth/callback`。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -86,6 +86,7 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/admin/v1/order-sync` | 固定四行。每行 `lastSyncCreateTime` `lastSyncUpdateTime` `lastError` `updatedAt` |
+| PATCH | `/api/admin/v1/order-sync/{platform}` | 设置该平台的下单水位和更新水位。body：`lastSyncCreateTime`、`lastSyncUpdateTime`，都可空。空或空串表示清掉这一列。时间必须是带时区的 ISO-8601，否则 `40001`。不改 `lastError`。没有这一行时插入。写入后记审计 `action=order.sync.cursor`，明细只有这两列的新值。平台不是这四个则 `40001` |
 | POST | `/api/admin/v1/order-sync/{platform}/retry` | 平台不是这四个则 `40001`，且不调用 APP。先写审计 `action=order.sync.retry`，再触发 APP 上一次该平台的既有增量。失败时 `lastError` 仍是固定文案，不含密钥 |
 
 APP 侧触发路径只给这次重试用，**不**进入 [`api-internal.md`](./api-internal.md) 的工具白名单：

@@ -97,7 +97,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 
 做：
 - deploy/docker-compose.local.yml + deploy/env/local.env.example：PostgreSQL 16 + pgvector、Redis 7.4。不要 MySQL。
-- services/java：Maven parent、Boot 3.4.11、JDK 21；shop-api-common / shop-api-app / shop-api-admin。APP /api/app 端口 8181，Admin /api/admin 端口 8082。Actuator health。Flyway 能跑空迁移或扩展迁移。
+- services/java：Maven parent、Boot 3.4.11、JDK 21；shop-api-common / shop-api-app / shop-api-admin。APP /api/app 端口 8181，Admin /api/admin 端口 8182。Actuator health。Flyway 能跑空迁移或扩展迁移。
 - 统一响应信封骨架：code/message/data/traceId/ts。
 - services/agent：uv、锁定版本的 FastAPI，GET /health，只监听本机。
 - apps/admin-web、apps/h5、apps/www、apps/land：Vite 空壳能 npm run dev。apps/android 能 assembleDebug，apps/ios 工程能打开。包名 com.omino.shopai。

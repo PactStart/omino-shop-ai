@@ -43,7 +43,7 @@
 **Acceptance Scenarios**:
 
 1. **Given** 基础设施已启动且本地允许不连接配置中心，**When** 启动 APP 进程，**Then** `GET /api/app/actuator/health` 在端口 8181 上成功。
-2. **Given** 同上，**When** 启动 Admin 进程，**Then** `GET /api/admin/actuator/health` 在端口 8082 上成功。
+2. **Given** 同上，**When** 启动 Admin 进程，**Then** `GET /api/admin/actuator/health` 在端口 8182 上成功。
 3. **Given** 仓库源码，**When** 编译两个 Java 模块，**Then** 编译成功，且两个模块没有互相引用。
 4. **Given** 任一进程返回 JSON 业务响应，**When** 查看信封，**Then** 含 `code`、`message`、`data`、`traceId`、`ts`。业务成功时 `code` 为 `0`。
 5. **Given** 空库，**When** 进程启动并执行迁移，**Then** 迁移成功，且不创建权威数据模型里的全部业务表。
@@ -114,7 +114,7 @@
 
 - **FR-001**: 本地编排 MUST 启动 `postgres`、`redis`、`nacos`、`langfuse-web`、`langfuse-db`。PostgreSQL MUST 为 16 并带 pgvector。Redis MUST 为 7.4。Nacos MUST 使用镜像 `nacos/nacos-server:v2.4.3`，只做配置中心，MUST NOT 做服务发现。Langfuse Web MUST 在 `http://127.0.0.1:3100` 返回 HTTP 响应，其数据库只服务 Langfuse。MUST NOT 提供 MySQL。环境示例放在 `deploy/env/local.env.example`，并给出 `NACOS_SERVER_ADDR` 与 `LANGFUSE_HOST` 的上述本地值。示例 MAY 包含仅用于本机启动的占位值。占位值不是生产密钥。真实密钥不得写入 Git，也不得明文写入 Nacos。验收只要求上述两个地址返回 HTTP 响应，不要求登录，不要求 Java 或 Agent 连接它们。
 - **FR-002**: Java 父工程 MUST 使用权威文档锁定的 JDK 21、Maven 与 Spring Boot 版本，并拆成 `shop-api-common`、`shop-api-app`、`shop-api-admin`。APP 与 Admin MUST NOT 互相 import。
-- **FR-003**: APP 进程 MUST 使用上下文路径 `/api/app`、端口 8181。Admin 进程 MUST 使用 `/api/admin`、端口 8082。二者健康检查路径分别为 `GET /api/app/actuator/health` 与 `GET /api/admin/actuator/health`。
+- **FR-003**: APP 进程 MUST 使用上下文路径 `/api/app`、端口 8181。Admin 进程 MUST 使用 `/api/admin`、端口 8182。二者健康检查路径分别为 `GET /api/app/actuator/health` 与 `GET /api/admin/actuator/health`。
 - **FR-004**: 业务 JSON 响应 MUST 使用信封字段 `code`、`message`、`data`、`traceId`、`ts`。本功能只要求骨架存在，不要求实现登录、对话或联盟的业务错误码。
 - **FR-005**: 迁移工具 MUST 能在空库上成功执行。迁移内容只允许为空，或只创建运行所需扩展。MUST NOT 建齐权威数据模型中的全部业务表。
 - **FR-006**: Agent MUST 使用权威文档锁定的 Python 与 FastAPI 版本，只监听 `127.0.0.1:8190`，并提供 `GET /health`。MUST NOT 对公网或对 APP 提供对话接口。

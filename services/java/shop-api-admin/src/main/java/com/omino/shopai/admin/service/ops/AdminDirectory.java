@@ -204,22 +204,32 @@ public class AdminDirectory {
         return AdminPages.of(rows, page, size);
     }
 
+    /**
+     * 列出全部积分套餐。
+     *
+     * @return 套餐列表
+     */
     public List<CreditPackage> packages() {
         return packages.selectList(null);
     }
-/**
- * 保存修改。
- */
 
+    /**
+     * 新建或修改积分套餐。新建时同时写入创建时间和更新时间，修改时推进更新时间。
+     *
+     * @param pack 套餐；没有 id 时新建
+     * @return 已保存的套餐
+     */
     public CreditPackage savePackage(CreditPackage pack) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (pack.getId() == null) {
             pack.setId(Ids.ulid());
-            pack.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+            pack.setCreatedAt(now);
+            pack.setUpdatedAt(now);
             packages.insert(pack);
         } else {
+            pack.setUpdatedAt(now);
             packages.updateById(pack);
         }
-        pack.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         return pack;
     }
 

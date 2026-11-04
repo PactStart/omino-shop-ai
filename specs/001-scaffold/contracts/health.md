@@ -13,7 +13,7 @@
 ## Admin
 
 - Method: `GET`
-- URL: `http://127.0.0.1:8082/api/admin/actuator/health`
+- URL: `http://127.0.0.1:8182/api/admin/actuator/health`
 - Auth: 无
 - Success: HTTP 200，正文表明进程为 UP
 - 两个进程不得监听同一端口
