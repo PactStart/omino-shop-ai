@@ -3,14 +3,15 @@ package com.omino.shopai.app.credit;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.adapter.pay.AlipayNotifyImpl;
 import com.omino.shopai.app.adapter.pay.WechatPayNotifyImpl;
-import com.omino.shopai.app.service.chat.ChatCancelService;
+import com.omino.shopai.app.service.chat.ChatCancelServiceImpl;
+import com.omino.shopai.app.service.chat.ChatEventServiceImpl;
 import com.omino.shopai.app.service.chat.ChatEvents;
-import com.omino.shopai.app.service.chat.ChatTurnService;
-import com.omino.shopai.app.service.chat.IConversation;
-import com.omino.shopai.app.service.chat.IRunEventLog;
+import com.omino.shopai.app.service.chat.ChatTurnServiceImpl;
+import com.omino.shopai.app.service.chat.IChatCancelService;
+import com.omino.shopai.app.service.chat.IChatWorker;
+import com.omino.shopai.app.service.chat.ICreditGate;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
-import com.omino.shopai.app.service.credit.CreditBillingImpl;
-import com.omino.shopai.app.service.credit.CreditPurchaseService;
+import com.omino.shopai.app.service.credit.ICreditPurchaseService;
 import com.omino.shopai.app.web.app.CreditController;
 import com.omino.shopai.entity.Conversation;
 import com.omino.shopai.support.Ids;
@@ -46,14 +47,15 @@ class CreditBoundaryTest {
 
     @Test
     void lowBalanceStillReturnsRunAndEndsWithCreditExhausted() {
-        MemoryEvents events = new MemoryEvents();
+        MemoryEvents store = new MemoryEvents();
+        MemoryEventService events = new MemoryEventService(store);
         MemoryCredits books = new MemoryCredits();
-        CreditBillingImpl billing = new CreditBillingImpl(books, events, true, "1000");
+        MemoryBilling billing = new MemoryBilling(books, events, true);
         QueuedExecutor executor = new QueuedExecutor();
         AtomicInteger workerCalls = new AtomicInteger();
-        ChatTurnService turns = new ChatTurnService(
+        ChatTurnServiceImpl turns = new MemoryTurns(
                 new MemoryConversations(),
-                new ChatCancelService(events),
+                new ChatCancelServiceImpl(events),
                 run -> workerCalls.incrementAndGet(),
                 executor,
                 Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneId.of("UTC")),
@@ -75,12 +77,11 @@ class CreditBoundaryTest {
         assertFalse(source.contains("withdraw"));
         assertFalse(source.contains("to-wallet"));
         MemoryCredits books = new MemoryCredits();
-        CreditPurchaseService purchases = new CreditPurchaseService(books, Clock.systemUTC());
-        CreditBillingImpl billing = new CreditBillingImpl(books, new MemoryEvents(), false, "1000");
+        ICreditPurchaseService purchases = new MemoryPurchase(books, Clock.systemUTC());
+        MemoryBilling billing = new MemoryBilling(books, new MemoryEventService(new MemoryEvents()), false);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new CreditController(
                         purchases,
                         billing,
-                        books,
                         new WechatPayNotifyImpl("", "", ""),
                         new AlipayNotifyImpl("")))
                 .setControllerAdvice(new ApiExceptionHandler())
@@ -93,8 +94,14 @@ class CreditBoundaryTest {
         assertFalse(convert.contains("\"code\":0"));
     }
 
-    private static final class MemoryConversations implements IConversation {
-        @Override
+    private static final class MemoryConversations {
+        /**
+         * 建一条只活在内存里的会话。
+         *
+         * @param userId 用户主键
+         * @param title 会话标题
+         * @return 会话
+         */
         public Conversation create(String userId, String title) {
             Conversation conversation = new Conversation();
             conversation.setId(Ids.ulid());
@@ -103,18 +110,116 @@ class CreditBoundaryTest {
             return conversation;
         }
 
-        @Override
+        /**
+         * 这条测试不回放已有会话。
+         *
+         * @param conversationId 会话主键
+         * @param userId 用户主键
+         * @return 空
+         */
         public Optional<Conversation> findOwned(String conversationId, String userId) {
             return Optional.empty();
         }
 
-        @Override
+        /**
+         * 开 run 会写消息。这条测试不核对消息正文。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @param text 用户文本
+         * @param runId 这一轮的编号
+         */
         public void insertUserMessage(String conversationId, String clientMsgId, String text, String runId) {
         }
 
-        @Override
+        /**
+         * 这条测试不回放已受理的 run。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @return 空
+         */
         public Optional<String> findRunId(String conversationId, String clientMsgId) {
             return Optional.empty();
+        }
+    }
+
+    /**
+     * 开 run 仍走真实受理，会话表换成内存。
+     */
+    private static final class MemoryTurns extends ChatTurnServiceImpl {
+        private final MemoryConversations conversations;
+
+        /**
+         * 绑定内存会话。
+         *
+         * @param conversations 内存会话
+         * @param cancels 取消与属主
+         * @param worker 工人
+         * @param executor 工人线程
+         * @param clock 截止时间
+         * @param timeout 这一轮允许跑多久
+         * @param credits 开 run 前的积分门
+         */
+        private MemoryTurns(
+                MemoryConversations conversations,
+                IChatCancelService cancels,
+                IChatWorker worker,
+                Executor executor,
+                Clock clock,
+                Duration timeout,
+                ICreditGate credits) {
+            super(null, null, null, cancels, worker, executor, clock, timeout, credits);
+            this.conversations = conversations;
+        }
+
+        /**
+         * 从内存会话新建。
+         *
+         * @param userId 用户主键
+         * @param title 会话标题
+         * @return 会话
+         */
+        @Override
+        protected Conversation createConversation(String userId, String title) {
+            return conversations.create(userId, title);
+        }
+
+        /**
+         * 从内存会话查找属主。
+         *
+         * @param conversationId 会话主键
+         * @param userId 用户主键
+         * @return 会话；没有则空
+         */
+        @Override
+        protected Optional<Conversation> findOwnedConversation(String conversationId, String userId) {
+            return conversations.findOwned(conversationId, userId);
+        }
+
+        /**
+         * 把用户消息交给内存会话。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @param text 用户文本
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void insertUserMessage(String conversationId, String clientMsgId, String text, String runId) {
+            conversations.insertUserMessage(conversationId, clientMsgId, text, runId);
+        }
+
+        /**
+         * 从内存会话找回 runId。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @return runId；没有则空
+         */
+        @Override
+        protected Optional<String> findRunId(String conversationId, String clientMsgId) {
+            return conversations.findRunId(conversationId, clientMsgId);
         }
     }
 
@@ -131,13 +236,12 @@ class CreditBoundaryTest {
         }
     }
 
-    private static final class MemoryEvents implements IRunEventLog {
+    private static final class MemoryEvents {
         private final Map<String, List<ChatEvents.Event>> streams = new HashMap<>();
         private final Map<String, Integer> sequences = new HashMap<>();
         private final Set<String> cancels = new HashSet<>();
         private final Map<String, String> owners = new HashMap<>();
 
-        @Override
         public ChatEvents.Event append(String runId, String event, String data) {
             ChatEvents.check(event);
             int next = sequences.merge(runId, 1, Integer::sum);
@@ -146,7 +250,6 @@ class CreditBoundaryTest {
             return item;
         }
 
-        @Override
         public List<ChatEvents.Event> after(String runId, String afterId) {
             long after = afterId == null || afterId.isBlank() ? 0 : Long.parseLong(afterId);
             return streams.getOrDefault(runId, List.of()).stream()
@@ -154,38 +257,137 @@ class CreditBoundaryTest {
                     .toList();
         }
 
-        @Override
         public void markCancel(String runId) {
             cancels.add(runId);
         }
 
-        @Override
         public boolean cancelled(String runId) {
             return cancels.contains(runId);
         }
 
-        @Override
         public boolean terminal(String runId) {
             return after(runId, null).stream().anyMatch(event -> ChatEvents.TERMINAL.contains(event.event()));
         }
 
-        @Override
         public void expire(String runId) {
         }
 
-        @Override
         public Duration ttl(String runId) {
             return null;
         }
 
-        @Override
         public void bind(String runId, String userId) {
             owners.put(runId, userId);
         }
 
-        @Override
         public Optional<String> owner(String runId) {
             return Optional.ofNullable(owners.get(runId));
+        }
+    }
+
+    /**
+     * 事件名校验仍走真实服务，流本身换成内存。
+     */
+    private static final class MemoryEventService extends ChatEventServiceImpl {
+        private final MemoryEvents events;
+
+        /**
+         * 绑定内存事件流。
+         *
+         * @param events 内存事件
+         */
+        private MemoryEventService(MemoryEvents events) {
+            super(null);
+            this.events = events;
+        }
+
+        /**
+         * 追加到内存流。
+         *
+         * @param runId 这一轮的编号
+         * @param event 事件名
+         * @param data 事件正文
+         * @return 已写入的事件
+         */
+        @Override
+        protected ChatEvents.Event appendEvent(String runId, String event, String data) {
+            return events.append(runId, event, data);
+        }
+
+        /**
+         * 从内存流续读。
+         *
+         * @param runId 这一轮的编号
+         * @param afterId 已读到的序号
+         * @return 序号更大的事件
+         */
+        @Override
+        protected List<ChatEvents.Event> readAfter(String runId, String afterId) {
+            return events.after(runId, afterId);
+        }
+
+        /**
+         * 在内存里记下取消。
+         *
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void writeCancel(String runId) {
+            events.markCancel(runId);
+        }
+
+        /**
+         * 读取内存里的取消标记。
+         *
+         * @param runId 这一轮的编号
+         * @return 已取消时为真
+         */
+        @Override
+        protected boolean readCancelled(String runId) {
+            return events.cancelled(runId);
+        }
+
+        /**
+         * 内存流不设过期。
+         *
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void expireRun(String runId) {
+            events.expire(runId);
+        }
+
+        /**
+         * 读取内存流的剩余时间。
+         *
+         * @param runId 这一轮的编号
+         * @return 剩余时间
+         */
+        @Override
+        protected Duration readTtl(String runId) {
+            return events.ttl(runId);
+        }
+
+        /**
+         * 在内存里记下属主。
+         *
+         * @param runId 这一轮的编号
+         * @param userId 用户主键
+         */
+        @Override
+        protected void bindOwner(String runId, String userId) {
+            events.bind(runId, userId);
+        }
+
+        /**
+         * 读取内存里的属主。
+         *
+         * @param runId 这一轮的编号
+         * @return 用户主键；没有则空
+         */
+        @Override
+        protected Optional<String> readOwner(String runId) {
+            return events.owner(runId);
         }
     }
 }

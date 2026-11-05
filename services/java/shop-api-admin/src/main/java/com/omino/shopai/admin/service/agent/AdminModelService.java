@@ -1,6 +1,5 @@
 package com.omino.shopai.admin.service.agent;
 
-import com.omino.shopai.admin.service.godview.IAdminAudit;
 import com.omino.shopai.admin.web.dto.LlmModelViewDto;
 import com.omino.shopai.enums.OnOff;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -8,6 +7,7 @@ import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AdminAuditLog;
 import com.omino.shopai.entity.LlmModel;
+import com.omino.shopai.mapper.AdminAuditLogMapper;
 import com.omino.shopai.mapper.LlmModelMapper;
 import com.omino.shopai.support.Ids;
 import com.omino.shopai.support.LlmKeyCipher;
@@ -27,16 +27,16 @@ public class AdminModelService {
 
     private final LlmModelMapper models;
     private final LlmKeyCipher cipher;
-    private final IAdminAudit audits;
+    private final AdminAuditLogMapper audits;
 
     /**
      * 注入模型目录、密钥材料和审计。响应里不出现明文 Key。
      *
      * @param models 模型表
      * @param cipher 密钥加密
-     * @param audits 审计
+     * @param audits 审计表
      */
-    public AdminModelService(LlmModelMapper models, LlmKeyCipher cipher, IAdminAudit audits) {
+    public AdminModelService(LlmModelMapper models, LlmKeyCipher cipher, AdminAuditLogMapper audits) {
         this.models = models;
         this.cipher = cipher;
         this.audits = audits;
@@ -112,7 +112,7 @@ public class AdminModelService {
         audit.setResource(id);
         audit.setDetail("{\"weightBefore\":" + weightBefore + ",\"weightAfter\":" + model.getWeight() + "}");
         audit.setCreatedAt(model.getUpdatedAt());
-        audits.write(audit);
+        audits.insertJson(audit);
         return model;
     }
 

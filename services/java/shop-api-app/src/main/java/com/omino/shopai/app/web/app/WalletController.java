@@ -6,7 +6,7 @@ import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.dto.WalletViewDto;
 import com.omino.shopai.app.web.app.dto.ApplyRequestDto;
 import com.omino.shopai.dto.PageDto;
-import com.omino.shopai.app.service.wallet.WithdrawalService;
+import com.omino.shopai.app.service.wallet.IWithdrawalService;
 import com.omino.shopai.app.dto.WithdrawalViewDto;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,9 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1")
 public class WalletController {
 
-    private final WithdrawalService withdrawals;
+    private final IWithdrawalService withdrawals;
 
-    public WalletController(WithdrawalService withdrawals) {
+    /**
+     * 注入提现用例。
+     *
+     * @param withdrawals 提现用例
+     */
+    public WalletController(IWithdrawalService withdrawals) {
         this.withdrawals = withdrawals;
     }
     /**

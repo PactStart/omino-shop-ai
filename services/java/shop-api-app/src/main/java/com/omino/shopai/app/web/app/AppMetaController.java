@@ -3,8 +3,7 @@ package com.omino.shopai.app.web.app;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.meta.AppReleaseService;
-import com.omino.shopai.app.service.meta.AppRuntimeConfigService;
+import com.omino.shopai.app.service.meta.IAppReleaseService;
 import com.omino.shopai.entity.Announcement;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -22,15 +21,15 @@ import java.util.Map;
 @RequestMapping("/v1")
 public class AppMetaController {
 
-    private final AppReleaseService releases;
-    private final AppRuntimeConfigService configs;
-/**
- * 版本、配置、公告和协议地址。控制器不拼渠道逻辑。
- */
+    private final IAppReleaseService releases;
 
-    public AppMetaController(AppReleaseService releases, AppRuntimeConfigService configs) {
+    /**
+     * 注入版本、配置、公告和协议地址。控制器不拼渠道逻辑。
+     *
+     * @param releases 版本用例
+     */
+    public AppMetaController(IAppReleaseService releases) {
         this.releases = releases;
-        this.configs = configs;
     }
     /**
      * 按端和渠道检查是否有新版本。
@@ -62,7 +61,7 @@ public class AppMetaController {
             @RequestHeader("X-Client-Type") String clientType,
             @RequestHeader("X-App-Channel") String channel,
             @RequestHeader("X-App-Version-Code") int versionCode) {
-        return ApiResponse.ok(configs.merge(clientType, channel, versionCode));
+        return ApiResponse.ok(releases.runtimeConfig(clientType, channel, versionCode));
     }
     /**
      * 列出当前端可见的公告。

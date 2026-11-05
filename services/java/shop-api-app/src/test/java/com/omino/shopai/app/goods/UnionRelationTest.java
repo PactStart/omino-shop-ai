@@ -9,8 +9,7 @@ import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
 import com.omino.shopai.exception.PlatformCallException;
 import com.omino.shopai.app.util.SdkSessions;
 import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
-import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.GoodsGateImpl;
+import com.omino.shopai.app.service.goods.GoodsServiceImpl;
 import com.omino.shopai.enums.Platform;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsPromotionUrlGenerateRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsSearchRequest;
@@ -79,20 +78,20 @@ class UnionRelationTest {
         Map<String, String> redis = new HashMap<>();
         redis.put("union:relation:" + USER + ":jd", "501");
         AtomicInteger loads = new AtomicInteger();
-        assertEquals("501", GoodsGateImpl.cached(USER, "jd", redis::get, redis::put, (userId, platform) -> {
+        assertEquals("501", GoodsServiceImpl.cached(USER, "jd", redis::get, redis::put, (userId, platform) -> {
             loads.incrementAndGet();
             return Optional.of("from-db");
         }).orElseThrow());
         assertEquals(0, loads.get());
 
         redis.clear();
-        assertEquals("from-db", GoodsGateImpl.cached(USER, "vip", redis::get, redis::put, (userId, platform) -> {
+        assertEquals("from-db", GoodsServiceImpl.cached(USER, "vip", redis::get, redis::put, (userId, platform) -> {
             loads.incrementAndGet();
             return Optional.of("from-db");
         }).orElseThrow());
         assertEquals(1, loads.get());
         assertEquals("from-db", redis.get("union:relation:" + USER + ":vip"));
-        assertEquals("from-db", GoodsGateImpl.cached(USER, "vip", redis::get, redis::put, (userId, platform) -> {
+        assertEquals("from-db", GoodsServiceImpl.cached(USER, "vip", redis::get, redis::put, (userId, platform) -> {
             loads.incrementAndGet();
             return Optional.of("from-db");
         }).orElseThrow());
@@ -103,13 +102,10 @@ class UnionRelationTest {
     void missingRelationFailsBeforeThePlatformCall() {
         SdkSessions.opened.set(0);
         MemoryGoods goods = new MemoryGoods();
-        GoodsQueryService query = new GoodsQueryService(
+        MemoryGoodsQuery query = new MemoryGoodsQuery(
                 goods,
                 List.of(new PddGoodsImpl("client", "secret")),
-                goods,
-                goods,
-                new ObjectMapper(),
-                goods);
+                new ObjectMapper());
         ApiBusinessException ex = assertThrows(ApiBusinessException.class,
                 () -> query.search(USER, "pdd", "耳机"));
         assertEquals(ErrorCodes.NEED_AUTH, ex.code());

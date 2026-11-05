@@ -1,7 +1,5 @@
 package com.omino.shopai.app.order;
 
-import com.omino.shopai.app.adapter.platform.IPlatformOrder;
-import com.omino.shopai.app.service.order.OrderSyncService;
 import com.omino.shopai.app.util.UnionMaps;
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.entity.AppOrder;
@@ -31,11 +29,11 @@ class OrderSyncCatchUpTest {
         MemoryOrders orders = new MemoryOrders();
         orders.seedCursor("jd", now.minusHours(3), now.minusHours(3));
         List<UnionMaps.Window> created = new ArrayList<>();
-        IPlatformOrder source = (platform, cursor, create, update) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> {
             created.add(create);
             return List.of();
         };
-        new OrderSyncService(orders, source, orders, clock, "0.80").sync("jd");
+        new MemoryOrderSync(orders, source, clock, "0.80").sync("jd");
         assertEquals(3, created.size());
         assertEquals(now.minusHours(3), created.get(0).start());
         assertEquals(now.minusHours(2), created.get(0).end());
@@ -52,11 +50,11 @@ class OrderSyncCatchUpTest {
         MemoryOrders orders = new MemoryOrders();
         orders.seedCursor("taobao", now.minusHours(6), now.minusHours(6));
         List<UnionMaps.Window> created = new ArrayList<>();
-        IPlatformOrder source = (platform, cursor, create, update) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> {
             created.add(create);
             return List.of();
         };
-        new OrderSyncService(orders, source, orders, clock, "0.80").sync("taobao");
+        new MemoryOrderSync(orders, source, clock, "0.80").sync("taobao");
         assertEquals(2, created.size());
         assertEquals(now.minusHours(3), created.get(0).end());
         assertEquals(now, created.get(1).end());
@@ -68,11 +66,11 @@ class OrderSyncCatchUpTest {
         OffsetDateTime now = OffsetDateTime.now(clock);
         MemoryOrders orders = new MemoryOrders();
         List<UnionMaps.Window> created = new ArrayList<>();
-        IPlatformOrder source = (platform, cursor, create, update) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> {
             created.add(create);
             return List.of();
         };
-        new OrderSyncService(orders, source, orders, clock, "0.80").sync("jd");
+        new MemoryOrderSync(orders, source, clock, "0.80").sync("jd");
         assertEquals(1, created.size());
         assertEquals(now.minusHours(1), created.get(0).start());
         assertEquals(now, created.get(0).end());
@@ -84,13 +82,13 @@ class OrderSyncCatchUpTest {
         OffsetDateTime now = OffsetDateTime.now(clock);
         MemoryOrders orders = new MemoryOrders();
         orders.seedCursor("jd", now.minusHours(3), now.minusHours(3));
-        IPlatformOrder source = (platform, cursor, create, update) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> {
             if (create.start().equals(now.minusHours(2))) {
                 throw new PlatformCallException("查询时间范围超过 1 小时");
             }
             return List.of();
         };
-        OrderSyncService sync = new OrderSyncService(orders, source, orders, clock, "0.80");
+        MemoryOrderSync sync = new MemoryOrderSync(orders, source, clock, "0.80");
         assertThrows(PlatformCallException.class, () -> sync.sync("jd"));
         assertEquals(now.minusHours(2), orders.cursor("jd").getLastSyncCreateTime());
 
@@ -104,10 +102,10 @@ class OrderSyncCatchUpTest {
         Clock clock = Clock.fixed(Instant.parse("2026-11-04T14:00:00Z"), ZoneOffset.UTC);
         MemoryOrders orders = new MemoryOrders();
         String secret = "app_secret=top-secret";
-        IPlatformOrder source = (platform, cursor, create, update) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> {
             throw new RuntimeException(secret, new IllegalStateException("value too long for type character(26)"));
         };
-        new OrderSyncService(orders, source, orders, clock, "0.80").submit("taobao");
+        new MemoryOrderSync(orders, source, clock, "0.80").submit("taobao");
         String error = orders.cursor("taobao").getLastError();
         assertEquals("value too long for type character(26)", error);
         assertFalse(error.contains("top-secret"));
@@ -130,8 +128,8 @@ class OrderSyncCatchUpTest {
                 OrderStatus.PENDING_SHIP,
                 OffsetDateTime.now(clock),
                 null);
-        IPlatformOrder source = (platform, cursor, create, update) -> List.of(incoming);
-        OrderSyncService sync = new OrderSyncService(orders, source, orders, clock, "0.80");
+        MemoryOrderSync.Pull source = (platform, cursor, create, update) -> List.of(incoming);
+        MemoryOrderSync sync = new MemoryOrderSync(orders, source, clock, "0.80");
         sync.sync("taobao");
         AppOrder saved = orders.findByPlatformOrder("taobao", "3317160864126018693");
         assertNull(saved.getGoodsId());

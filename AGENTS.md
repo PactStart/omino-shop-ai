@@ -415,26 +415,24 @@ omino-shop-ai/
 │   │   │       │   │   ├── InternalTicketController.java
 │   │   │       │   │   └── InternalKbController.java
 │   │   │       │   ├── service/                       # 用例编排，无 HTTP 类型
-│   │   │       │   │   ├── chat/ChatTurnService.java      # POST 开 run
+│   │   │       │   │   ├── chat/ChatTurnServiceImpl.java  # POST 开 run
 │   │   │       │   ├── chat/ChatWorkerImpl.java        # 调 Agent，XADD Redis
 │   │   │       │   ├── chat/ChatEventPump.java        # ≤100ms 读 Redis → SSE
-│   │   │       │   ├── chat/ChatCancelService.java    # SET cancel 键；不假设 Worker 在本机
-│   │   │       │   │   ├── goods/GoodsQueryService.java
-│   │   │       │   │   ├── goods/GoodsConvertLinkService.java
+│   │   │       │   ├── chat/ChatCancelServiceImpl.java # SET cancel 键；不假设 Worker 在本机
+│   │   │       │   │   ├── goods/GoodsServiceImpl.java
 │   │   │       │   │   ├── goods/GoodsCollectionService.java
 │   │   │       │   │   ├── goods/GoodsFavoriteService.java
 │   │   │       │   │   ├── auth/UnionAuthService.java
-│   │   │       │   │   ├── order/OrderQueryService.java
-│   │   │       │   │   ├── wallet/WalletService.java
-│   │   │       │   │   ├── ticket/TicketService.java
+│   │   │       │   │   ├── order/OrderQueryServiceImpl.java
+│   │   │       │   │   ├── wallet/WithdrawalServiceImpl.java
+│   │   │       │   │   ├── ticket/TicketServiceImpl.java
 │   │   │       │   │   ├── invite/AffiliateService.java
-│   │   │       │   │   ├── invite/InvitePosterService.java  # 只下发模板图与二维码矩形；禁止服务端合成成品
-│   │   │       │   │   ├── kb/KbSearchService.java
+│   │   │       │   │   ├── invite/InvitePosterServiceImpl.java # 只下发模板图与二维码矩形；禁止服务端合成成品
+│   │   │       │   │   ├── kb/KbSearchServiceImpl.java
 │   │   │       │   │   ├── credit/CreditBillingImpl.java
-│   │   │       │   │   ├── app/AppReleaseService.java
-│   │   │       │   │   ├── app/AppRuntimeConfigService.java
+│   │   │       │   │   ├── app/AppReleaseServiceImpl.java
 │   │   │       │   │   ├── app/AnnouncementService.java
-│   │   │       │   │   └── inbox/InboxService.java
+│   │   │       │   │   └── inbox/InboxServiceImpl.java
 │   │   │       │   ├── adapter/
 │   │   │       │   │   ├── agent/IAgentGateway.java    # WebClient SSE 调 Python
 │   │   │       │   │   ├── ocr/ImageParseClient.java
@@ -532,7 +530,7 @@ omino-shop-ai/
 | 层           | 包                                              | 允许                               | 禁止                                                               |
 | ----------- | ---------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
 | web         | `..web.app` / `..web.internal` / admin `..web` | 参数校验、鉴权上下文、调 service、SSE/HTTP 映射 | 写 SQL、调联盟 SDK、new Mapper                                         |
-| service     | `..service.<领域>`                               | 事务、用例、编排 adapter + mapper        | 依赖 Servlet/SseEmitter 类型（SSE 细节放 `support`）；跨模块 import admin↔app |
+| service     | `..service.<领域>`                               | 事务、用例、编排 adapter + mapper        | 依赖 Servlet/SseEmitter 类型（SSE 细节放 `support`）；跨模块 import admin↔app；再套只转发 Mapper 的接口或 `@Repository` |
 | mapper（DAO） | `com.omino.shopai.mapper`（在 **common**）        | MyBatis-Plus `BaseMapper` 与自定义查询 | 业务 if/else、调 HTTP、当 Repository 再套一层空转发                           |
 | entity      | `com.omino.shopai.entity`（在 **common**）        | 与 [`data-model.md`](docs/data-model.md) 表一一对应 | 当对外 API 用（对外用 `dto`）                                             |
 | dto         | `com.omino.shopai.dto`（在 **common**）           | 请求/响应/内部 Tool 入出参                | 混入 persistence 注解当实体                                             |
@@ -543,7 +541,10 @@ omino-shop-ai/
 
 命名与摆放：
 
-- 业务接口以 `I` 开头，其实现类以 `Impl` 结尾。`mapper` 是 DAO，保持 `XxxMapper`，不加 `I`。
+- 用例接口以 `I` 开头、以 `Service` 结尾，实现类以 `ServiceImpl` 结尾并加 `@Service`，直接注入 `XxxMapper`。一个用例只有这一对。旁边已经是单个 `XxxService`、没有存储口的，保持一个类，不要为了对称再拆接口。
+- `service` 包里不写 `@Repository`，也不再为 Mapper 包一层 `IXxx` + `XxxImpl`。口语里的 repository 就是 `mapper`。
+- 外部系统、缓存和多实现端口仍是 `IXxx` + `XxxImpl`，放 `adapter`（缓存可留在 `service`）。例如联盟商品 `IPlatformGoods`（搜品、转链、订单）、`IPayNotice`、`IPayout`、`IChatWorker`、`IAgentGateway`、`IGoodsDetailCache`。App 与 Admin 共用的端口留在 `common`，例如 `IWithdrawalAccount`。
+- `mapper` 是唯一 DAO，类名 `XxxMapper`，不加 `I`，不以 `Impl` 结尾。
 - 业务类禁止以 `Mybatis` 开头，禁止以 `Store` 结尾。
 - 异常放 `com.omino.shopai.exception`，类名以 `Exception` 结尾。
 - 对外的请求体、响应体放 `dto`（common 的 `com.omino.shopai.dto`，或仅 app 使用的 `com.omino.shopai.app.dto`）。类名以 `Dto` 结尾。只被一个 Controller 使用的请求记录放在该 Controller 所在目录的 `dto` 包，不写在 Controller 类里面。分页只有 `PageDto<T>`，字段仍是 `list`、`page`、`size`、`total`，不要再按资源各写一个分页记录。

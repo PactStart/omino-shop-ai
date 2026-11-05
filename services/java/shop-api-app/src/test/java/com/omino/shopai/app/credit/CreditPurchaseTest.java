@@ -3,7 +3,7 @@ package com.omino.shopai.app.credit;
 import com.omino.shopai.enums.CreditOrderStatus;
 import com.omino.shopai.app.adapter.pay.AlipayNotifyImpl;
 import com.omino.shopai.app.adapter.pay.WechatPayNotifyImpl;
-import com.omino.shopai.app.service.credit.CreditPurchaseService;
+import com.omino.shopai.app.service.credit.ICreditPurchaseService;
 import com.omino.shopai.entity.CreditOrder;
 import com.omino.shopai.entity.CreditPackage;
 import com.omino.shopai.entity.Wallet;
@@ -27,13 +27,13 @@ class CreditPurchaseTest {
     private static final String USER = "01USER0000000000000000000A";
 
     private MemoryCredits books;
-    private CreditPurchaseService service;
+    private ICreditPurchaseService service;
 
     @BeforeEach
     void setUp() {
         books = new MemoryCredits();
         books.seed(USER, "10.00");
-        service = new CreditPurchaseService(books, Clock.systemUTC());
+        service = new MemoryPurchase(books, Clock.systemUTC());
     }
 
     @Test

@@ -3,13 +3,10 @@ package com.omino.shopai.app.order;
 import com.omino.shopai.app.adapter.platform.JdGoodsImpl;
 import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
 import com.omino.shopai.exception.PlatformCallException;
-import com.omino.shopai.app.adapter.platform.IPlatformOrder;
-import com.omino.shopai.app.adapter.platform.PlatformOrderImpl;
 import com.omino.shopai.app.util.SdkSessions;
 import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
 import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.job.OrderSyncJob;
-import com.omino.shopai.app.service.order.OrderSyncService;
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.enums.OrderStatus;
 import org.junit.jupiter.api.Test;
@@ -28,14 +25,13 @@ class OrderSyncMissingKeyTest {
     void emptyKeysDoNotMoveCursorsOrOpenClients() {
         SdkSessions.opened.set(0);
         MemoryOrders orders = new MemoryOrders();
-        OrderSyncService sync = new OrderSyncService(
+        MemoryOrderSync sync = new MemoryOrderSync(
                 orders,
-                new PlatformOrderImpl(List.of(
+                List.of(
                         new TaobaoGoodsImpl("", ""),
                         new JdGoodsImpl("", ""),
                         new PddGoodsImpl("", ""),
-                        new VipGoodsImpl("", ""))),
-                orders,
+                        new VipGoodsImpl("", "")),
                 Clock.systemUTC(),
                 "0.80");
         assertThrows(PlatformCallException.class, () -> sync.sync("jd"));
@@ -56,13 +52,13 @@ class OrderSyncMissingKeyTest {
     @Test
     void onePlatformFailureDoesNotSkipTheOthers() {
         MemoryOrders orders = new MemoryOrders();
-        IPlatformOrder source = (platform, cursor, created, updated) -> {
+        MemoryOrderSync.Pull source = (platform, cursor, created, updated) -> {
             if ("taobao".equals(platform)) {
                 throw new PlatformCallException("requestId can not be null");
             }
             return List.of();
         };
-        OrderSyncService sync = new OrderSyncService(orders, source, orders, Clock.systemUTC(), "0.80");
+        MemoryOrderSync sync = new MemoryOrderSync(orders, source, Clock.systemUTC(), "0.80");
         new OrderSyncJob(sync).run();
         assertNull(orders.cursor("taobao").getLastSyncCreateTime());
         assertEquals("requestId can not be null", orders.cursor("taobao").getLastError());

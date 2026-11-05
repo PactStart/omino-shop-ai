@@ -3,7 +3,7 @@ package com.omino.shopai.app.web.app;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.meta.InboxService;
+import com.omino.shopai.app.service.meta.IInboxService;
 import com.omino.shopai.entity.InboxMessage;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,9 +23,14 @@ import java.util.Map;
 @RequestMapping("/v1/inbox")
 public class InboxController {
 
-    private final InboxService inbox;
+    private final IInboxService inbox;
 
-    public InboxController(InboxService inbox) {
+    /**
+     * 注入站内信用例。
+     *
+     * @param inbox 站内信用例
+     */
+    public InboxController(IInboxService inbox) {
         this.inbox = inbox;
     }
     /**

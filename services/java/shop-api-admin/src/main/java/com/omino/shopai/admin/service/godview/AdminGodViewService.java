@@ -4,6 +4,7 @@ import com.omino.shopai.admin.security.GodViewIssuer;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.entity.AdminAuditLog;
+import com.omino.shopai.mapper.AdminAuditLogMapper;
 import com.omino.shopai.support.Ids;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,25 +20,35 @@ import java.time.ZoneOffset;
 public class AdminGodViewService {
 
     private final GodViewIssuer issuer;
-    private final IAdminAudit audit;
+    private final AdminAuditLogMapper audits;
     private final boolean enabled;
 
+    /**
+     * 用环境里的密钥和开关构造签发器。
+     *
+     * @param secret 访问令牌密钥
+     * @param audits 审计表
+     * @param enabled 是否允许签发
+     */
     @Autowired
     public AdminGodViewService(
             @Value("${JWT_ACCESS_SECRET:0123456789abcdef0123456789abcdef}") String secret,
-            IAdminAudit audit,
+            AdminAuditLogMapper audits,
             @Value("${GOD_VIEW_ENABLED:false}") boolean enabled) {
         this.issuer = new GodViewIssuer(secret);
-        this.audit = audit;
+        this.audits = audits;
         this.enabled = enabled;
     }
-/**
- * 注入签发器和审计。关闭时由调用方拒绝。
- */
-
-    public AdminGodViewService(GodViewIssuer issuer, IAdminAudit audit, boolean enabled) {
+    /**
+     * 注入签发器和审计表。关闭时签发直接拒绝。
+     *
+     * @param issuer 短时凭证签发
+     * @param audits 审计表
+     * @param enabled 是否允许签发
+     */
+    public AdminGodViewService(GodViewIssuer issuer, AdminAuditLogMapper audits, boolean enabled) {
         this.issuer = issuer;
-        this.audit = audit;
+        this.audits = audits;
         this.enabled = enabled;
     }
 /**
@@ -59,7 +70,16 @@ public class AdminGodViewService {
         row.setResource(userId);
         row.setDetail("{\"gv\":1}");
         row.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        audit.write(row);
+        writeAudit(row);
         return token;
+    }
+
+    /**
+     * 把签发动作写入审计表。
+     *
+     * @param row 审计行
+     */
+    protected void writeAudit(AdminAuditLog row) {
+        audits.insertJson(row);
     }
 }

@@ -1,7 +1,7 @@
 package com.omino.shopai.app.web.internal;
 
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.order.OrderSyncService;
+import com.omino.shopai.app.service.order.IOrderSyncService;
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ErrorCodes;
@@ -20,14 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/internal/v1/order-sync")
 public class InternalOrderSyncController {
 
-    private final OrderSyncService sync;
+    private final IOrderSyncService sync;
 
     /**
      * 注入已有的订单增量。
      *
      * @param sync 单平台同步
      */
-    public InternalOrderSyncController(OrderSyncService sync) {
+    public InternalOrderSyncController(IOrderSyncService sync) {
         this.sync = sync;
     }
 

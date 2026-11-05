@@ -4,8 +4,9 @@ import com.omino.shopai.enums.UserStatus;
 import com.omino.shopai.enums.ActiveStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.service.invite.IInviteCatalog;
-import com.omino.shopai.app.service.invite.InvitePosterService;
+import com.omino.shopai.app.dto.PosterViewDto;
+import com.omino.shopai.app.service.invite.IInvitePosterService;
+import com.omino.shopai.app.service.invite.InvitePosterServiceImpl;
 import com.omino.shopai.app.web.app.InviteController;
 import com.omino.shopai.entity.AppUser;
 import com.omino.shopai.entity.InvitePosterTemplate;
@@ -36,11 +37,11 @@ class InvitePosterTest {
         catalog.posters.add(poster("01POST0000000000000000000B", "retired", "https://img.example/b.png", 2, null, null));
         catalog.posters.add(poster("01POST0000000000000000000C", "active", "https://img.example/c.png", 3, null,
                 OffsetDateTime.ofInstant(Instant.parse("2020-01-01T00:00:00Z"), ZoneOffset.UTC)));
-        InvitePosterService service = new InvitePosterService(
+        IInvitePosterService service = new MemoryInvitePosterService(
                 catalog,
                 Clock.fixed(Instant.parse("2026-10-29T00:00:00Z"), ZoneOffset.UTC),
                 "https://land.example");
-        List<InvitePosterService.PosterViewDto> posters = service.posters();
+        List<PosterViewDto> posters = service.posters();
         assertEquals(1, posters.size());
         assertEquals(12, posters.get(0).qrWidth());
         String json = new ObjectMapper().writeValueAsString(posters);
@@ -84,23 +85,92 @@ class InvitePosterTest {
         return row;
     }
 
-    private static final class MemoryCatalog implements IInviteCatalog {
+    /**
+     * 内存里的海报模板和用户。只提供读取，不筛选是否生效。
+     */
+    private static final class MemoryCatalog {
         private final List<InvitePosterTemplate> posters = new ArrayList<>();
         private final List<AppUser> users = new ArrayList<>();
 
-        @Override
+        /**
+         * 读出内存中的全部模板。
+         *
+         * @return 海报模板
+         */
         public List<InvitePosterTemplate> posters() {
             return posters;
         }
 
-        @Override
+        /**
+         * 按主键读取内存中的用户。
+         *
+         * @param id 用户主键
+         * @return 用户；没有则空
+         */
         public Optional<AppUser> findById(String id) {
             return users.stream().filter(user -> id.equals(user.getId())).findFirst();
         }
 
-        @Override
+        /**
+         * 按邀请码读取内存中的用户。
+         *
+         * @param code 邀请码
+         * @return 用户；没有则空
+         */
         public Optional<AppUser> findByInviteCode(String code) {
             return users.stream().filter(user -> code.equals(user.getInviteCode())).findFirst();
+        }
+    }
+
+    /**
+     * 用内存目录替换表访问。生效判断和贴码矩形仍走真实实现。
+     */
+    private static final class MemoryInvitePosterService extends InvitePosterServiceImpl {
+
+        private final MemoryCatalog catalog;
+
+        /**
+         * 绑定同一份内存目录。表访问全部转给它。
+         *
+         * @param catalog 内存目录
+         * @param clock 判断模板是否生效的时钟
+         * @param landBase 落地页根地址
+         */
+        private MemoryInvitePosterService(MemoryCatalog catalog, Clock clock, String landBase) {
+            super(null, null, clock, landBase);
+            this.catalog = catalog;
+        }
+
+        /**
+         * 从内存目录读出模板。
+         *
+         * @return 海报模板
+         */
+        @Override
+        protected List<InvitePosterTemplate> loadPosters() {
+            return catalog.posters();
+        }
+
+        /**
+         * 从内存目录按主键读取用户。
+         *
+         * @param id 用户主键
+         * @return 用户；没有则空
+         */
+        @Override
+        protected Optional<AppUser> findById(String id) {
+            return catalog.findById(id);
+        }
+
+        /**
+         * 从内存目录按邀请码读取用户。
+         *
+         * @param code 邀请码
+         * @return 用户；没有则空
+         */
+        @Override
+        protected Optional<AppUser> findByInviteCode(String code) {
+            return catalog.findByInviteCode(code);
         }
     }
 }

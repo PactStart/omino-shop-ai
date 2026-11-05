@@ -1,7 +1,7 @@
 package com.omino.shopai.app.kb;
 
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
-import com.omino.shopai.app.service.kb.KbImpl;
+import com.omino.shopai.app.service.kb.KbSearchServiceImpl;
 import com.omino.shopai.entity.KbArticle;
 import com.omino.shopai.enums.PublishStatus;
 import com.omino.shopai.mapper.KbArticleMapper;
@@ -37,7 +37,32 @@ class KbPublishedTest {
             }
             return List.of(retired);
         });
-        List<KbArticle> found = new KbImpl(articles).published();
+        List<KbArticle> found = new PublishedProbe(articles).published();
         assertTrue(found.stream().noneMatch(article -> article.getStatus() == PublishStatus.RETIRED));
+    }
+
+    /**
+     * 把已发布文章查询暴露给测试。查询条件仍走真实实现。
+     */
+    private static final class PublishedProbe extends KbSearchServiceImpl {
+
+        /**
+         * 绑定被桩掉的文章表。
+         *
+         * @param articles 文章表
+         */
+        private PublishedProbe(KbArticleMapper articles) {
+            super(articles);
+        }
+
+        /**
+         * 读出已发布的知识库文章。
+         *
+         * @return 已发布的文章
+         */
+        @Override
+        public List<KbArticle> published() {
+            return super.published();
+        }
     }
 }

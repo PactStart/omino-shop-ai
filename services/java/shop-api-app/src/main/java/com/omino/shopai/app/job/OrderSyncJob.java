@@ -1,6 +1,6 @@
 package com.omino.shopai.app.job;
 
-import com.omino.shopai.app.service.order.OrderSyncService;
+import com.omino.shopai.app.service.order.IOrderSyncService;
 import com.omino.shopai.enums.Platform;
 import org.springframework.stereotype.Component;
 /**
@@ -10,9 +10,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderSyncJob {
 
-    private final OrderSyncService sync;
+    private final IOrderSyncService sync;
 
-    public OrderSyncJob(OrderSyncService sync) {
+    /**
+     * 注入订单追赶。
+     *
+     * @param sync 单平台同步
+     */
+    public OrderSyncJob(IOrderSyncService sync) {
         this.sync = sync;
     }
     /**

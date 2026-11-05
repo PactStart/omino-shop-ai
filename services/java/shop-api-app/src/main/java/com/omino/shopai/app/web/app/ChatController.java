@@ -3,10 +3,10 @@ package com.omino.shopai.app.web.app;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.chat.ChatCancelService;
 import com.omino.shopai.app.service.chat.ChatEventPump;
 import com.omino.shopai.app.service.chat.ChatEvents;
-import com.omino.shopai.app.service.chat.ChatTurnService;
+import com.omino.shopai.app.service.chat.IChatCancelService;
+import com.omino.shopai.app.service.chat.IChatTurnService;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
 import com.omino.shopai.app.web.app.dto.TurnRequestDto;
 import org.springframework.http.MediaType;
@@ -32,14 +32,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequestMapping("/v1/chat")
 public class ChatController {
 
-    private final ChatTurnService turns;
+    private final IChatTurnService turns;
     private final ChatEventPump pump;
-    private final ChatCancelService cancels;
-/**
- * 开 run、泵 SSE、取消。断开连接不在这里取消生成。
- */
-
-    public ChatController(ChatTurnService turns, ChatEventPump pump, ChatCancelService cancels) {
+    private final IChatCancelService cancels;
+    /**
+     * 开 run、泵 SSE、取消。断开连接不在这里取消生成。
+     *
+     * @param turns 受理一轮对话
+     * @param pump 把事件写成 SSE
+     * @param cancels 核对属主并取消
+     */
+    public ChatController(IChatTurnService turns, ChatEventPump pump, IChatCancelService cancels) {
         this.turns = turns;
         this.pump = pump;
         this.cancels = cancels;

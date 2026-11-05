@@ -5,16 +5,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.service.chat.IAgentGateway;
 import com.omino.shopai.exception.AgentUnavailableException;
-import com.omino.shopai.app.service.chat.ChatCancelService;
+import com.omino.shopai.app.service.chat.ChatCancelServiceImpl;
 import com.omino.shopai.app.service.chat.ChatEventPump;
+import com.omino.shopai.app.service.chat.ChatEventServiceImpl;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatRun;
+import com.omino.shopai.app.service.chat.ChatTurnServiceImpl;
 import com.omino.shopai.app.service.chat.ChatWorkerImpl;
-import com.omino.shopai.app.service.chat.ChatTurnService;
-import com.omino.shopai.app.service.chat.IConversation;
+import com.omino.shopai.app.service.chat.IChatCancelService;
+import com.omino.shopai.app.service.chat.IChatWorker;
 import com.omino.shopai.app.service.chat.FixtureChatWorkerImpl;
 import com.omino.shopai.app.service.chat.AgentGatewayImpl;
-import com.omino.shopai.app.service.chat.IRunEventLog;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
 import com.omino.shopai.app.web.app.ChatController;
 import com.omino.shopai.entity.Conversation;
@@ -54,26 +55,28 @@ class ChatRunTest {
     private static final String USER = "01USER00000000000000000001";
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private MemoryEventLog events;
+    private MemoryEventLog store;
+    private MemoryEvents events;
     private MemoryConversations conversations;
     private ScriptedGateway gateway;
     private QueuedExecutor executor;
     private MutableClock clock;
-    private ChatCancelService cancels;
-    private ChatTurnService turns;
+    private ChatCancelServiceImpl cancels;
+    private MemoryTurns turns;
     private ChatEventPump pump;
     private ChatWorkerImpl worker;
 
     @BeforeEach
     void setUp() {
-        events = new MemoryEventLog();
+        store = new MemoryEventLog();
+        events = new MemoryEvents(store);
         conversations = new MemoryConversations();
         gateway = new ScriptedGateway();
         executor = new QueuedExecutor();
         clock = new MutableClock(Instant.parse("2026-10-29T14:00:00Z"));
-        cancels = new ChatCancelService(events);
+        cancels = new ChatCancelServiceImpl(events);
         worker = new ChatWorkerImpl(events, gateway, clock, 30);
-        turns = new ChatTurnService(conversations, cancels, worker, executor, clock, Duration.ofSeconds(30));
+        turns = new MemoryTurns(conversations, cancels, worker, executor, clock, Duration.ofSeconds(30));
         pump = new ChatEventPump(events);
     }
 
@@ -93,7 +96,7 @@ class ChatRunTest {
                 .andExpect(jsonPath("$.data.clientMsgId").value("c1"))
                 .andExpect(jsonPath("$.data.runId").isNotEmpty());
         assertEquals(1, executor.pending());
-        assertTrue(events.streams.isEmpty());
+        assertTrue(store.streams.isEmpty());
     }
 
     @Test
@@ -242,14 +245,13 @@ class ChatRunTest {
         }
     }
 
-    private static final class MemoryEventLog implements IRunEventLog {
+    private static final class MemoryEventLog {
         private final Map<String, List<ChatEvents.Event>> streams = new HashMap<>();
         private final Map<String, Integer> sequences = new HashMap<>();
         private final Set<String> cancels = new HashSet<>();
         private final Map<String, String> owners = new HashMap<>();
         private final Map<String, Duration> ttls = new HashMap<>();
 
-        @Override
         public ChatEvents.Event append(String runId, String event, String data) {
             ChatEvents.check(event);
             int next = sequences.merge(runId, 1, Integer::sum);
@@ -258,7 +260,6 @@ class ChatRunTest {
             return item;
         }
 
-        @Override
         public List<ChatEvents.Event> after(String runId, String afterId) {
             long after = afterId == null || afterId.isBlank() ? 0 : Long.parseLong(afterId);
             return streams.getOrDefault(runId, List.of()).stream()
@@ -266,47 +267,145 @@ class ChatRunTest {
                     .toList();
         }
 
-        @Override
         public void markCancel(String runId) {
             cancels.add(runId);
         }
 
-        @Override
         public boolean cancelled(String runId) {
             return cancels.contains(runId);
         }
 
-        @Override
         public boolean terminal(String runId) {
             return after(runId, null).stream().anyMatch(event -> ChatEvents.TERMINAL.contains(event.event()));
         }
 
-        @Override
         public void expire(String runId) {
             ttls.put(runId, ChatEvents.TERMINAL_TTL);
         }
 
-        @Override
         public Duration ttl(String runId) {
             return ttls.get(runId);
         }
 
-        @Override
         public void bind(String runId, String userId) {
             owners.put(runId, userId);
         }
 
-        @Override
         public Optional<String> owner(String runId) {
             return Optional.ofNullable(owners.get(runId));
         }
     }
 
-    private static final class MemoryConversations implements IConversation {
+    /**
+     * 终态判断仍走真实事件服务，流本身换成内存。
+     */
+    private static final class MemoryEvents extends ChatEventServiceImpl {
+        private final MemoryEventLog events;
+
+        /**
+         * 绑定内存事件流。
+         *
+         * @param events 内存事件
+         */
+        private MemoryEvents(MemoryEventLog events) {
+            super(null);
+            this.events = events;
+        }
+
+        /**
+         * 追加到内存流。
+         *
+         * @param runId 这一轮的编号
+         * @param event 事件名
+         * @param data 事件正文
+         * @return 已写入的事件
+         */
+        @Override
+        protected ChatEvents.Event appendEvent(String runId, String event, String data) {
+            return events.append(runId, event, data);
+        }
+
+        /**
+         * 从内存流续读。
+         *
+         * @param runId 这一轮的编号
+         * @param afterId 已读到的序号
+         * @return 序号更大的事件
+         */
+        @Override
+        protected List<ChatEvents.Event> readAfter(String runId, String afterId) {
+            return events.after(runId, afterId);
+        }
+
+        /**
+         * 在内存里记下取消。
+         *
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void writeCancel(String runId) {
+            events.markCancel(runId);
+        }
+
+        /**
+         * 读取内存里的取消标记。
+         *
+         * @param runId 这一轮的编号
+         * @return 已取消时为真
+         */
+        @Override
+        protected boolean readCancelled(String runId) {
+            return events.cancelled(runId);
+        }
+
+        /**
+         * 给内存流记下终态过期时间。
+         *
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void expireRun(String runId) {
+            events.expire(runId);
+        }
+
+        /**
+         * 读取内存流的剩余时间。
+         *
+         * @param runId 这一轮的编号
+         * @return 剩余时间
+         */
+        @Override
+        protected Duration readTtl(String runId) {
+            return events.ttl(runId);
+        }
+
+        /**
+         * 在内存里记下属主。
+         *
+         * @param runId 这一轮的编号
+         * @param userId 用户主键
+         */
+        @Override
+        protected void bindOwner(String runId, String userId) {
+            events.bind(runId, userId);
+        }
+
+        /**
+         * 读取内存里的属主。
+         *
+         * @param runId 这一轮的编号
+         * @return 用户主键；没有则空
+         */
+        @Override
+        protected Optional<String> readOwner(String runId) {
+            return events.owner(runId);
+        }
+    }
+
+    private static final class MemoryConversations {
         private final Map<String, Conversation> conversations = new HashMap<>();
         private final Map<String, String> runs = new HashMap<>();
 
-        @Override
         public Conversation create(String userId, String title) {
             Conversation conversation = new Conversation();
             conversation.setId(Ids.ulid());
@@ -316,7 +415,6 @@ class ChatRunTest {
             return conversation;
         }
 
-        @Override
         public Optional<Conversation> findOwned(String conversationId, String userId) {
             Conversation conversation = conversations.get(conversationId);
             if (conversation == null || !userId.equals(conversation.getUserId())) {
@@ -325,14 +423,89 @@ class ChatRunTest {
             return Optional.of(conversation);
         }
 
-        @Override
         public void insertUserMessage(String conversationId, String clientMsgId, String text, String runId) {
             runs.put(conversationId + "\0" + clientMsgId, runId);
         }
 
-        @Override
         public Optional<String> findRunId(String conversationId, String clientMsgId) {
             return Optional.ofNullable(runs.get(conversationId + "\0" + clientMsgId));
+        }
+    }
+
+    /**
+     * 开 run 仍走真实受理，会话表换成内存。
+     */
+    private static final class MemoryTurns extends ChatTurnServiceImpl {
+        private final MemoryConversations conversations;
+
+        /**
+         * 绑定内存会话。积分门默认放行。
+         *
+         * @param conversations 内存会话
+         * @param cancels 取消与属主
+         * @param worker 工人
+         * @param executor 工人线程
+         * @param clock 截止时间
+         * @param timeout 这一轮允许跑多久
+         */
+        private MemoryTurns(
+                MemoryConversations conversations,
+                IChatCancelService cancels,
+                IChatWorker worker,
+                Executor executor,
+                Clock clock,
+                Duration timeout) {
+            super(null, null, null, cancels, worker, executor, clock, timeout);
+            this.conversations = conversations;
+        }
+
+        /**
+         * 从内存会话新建。
+         *
+         * @param userId 用户主键
+         * @param title 会话标题
+         * @return 会话
+         */
+        @Override
+        protected Conversation createConversation(String userId, String title) {
+            return conversations.create(userId, title);
+        }
+
+        /**
+         * 从内存会话查找属主。
+         *
+         * @param conversationId 会话主键
+         * @param userId 用户主键
+         * @return 会话；没有则空
+         */
+        @Override
+        protected Optional<Conversation> findOwnedConversation(String conversationId, String userId) {
+            return conversations.findOwned(conversationId, userId);
+        }
+
+        /**
+         * 把用户消息交给内存会话。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @param text 用户文本
+         * @param runId 这一轮的编号
+         */
+        @Override
+        protected void insertUserMessage(String conversationId, String clientMsgId, String text, String runId) {
+            conversations.insertUserMessage(conversationId, clientMsgId, text, runId);
+        }
+
+        /**
+         * 从内存会话找回 runId。
+         *
+         * @param conversationId 会话主键
+         * @param clientMsgId 客户端消息号
+         * @return runId；没有则空
+         */
+        @Override
+        protected Optional<String> findRunId(String conversationId, String clientMsgId) {
+            return conversations.findRunId(conversationId, clientMsgId);
         }
     }
 }

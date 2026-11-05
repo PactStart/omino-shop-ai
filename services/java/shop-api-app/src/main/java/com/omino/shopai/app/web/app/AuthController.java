@@ -6,7 +6,7 @@ import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.web.app.dto.SmsLoginRequestDto;
 import com.omino.shopai.app.web.app.dto.SmsSendRequestDto;
 import com.omino.shopai.app.dto.LoginSessionDto;
-import com.omino.shopai.app.service.auth.SmsAuthService;
+import com.omino.shopai.app.service.auth.ISmsAuthService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,9 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/auth/sms")
 public class AuthController {
 
-    private final SmsAuthService smsAuthService;
+    private final ISmsAuthService smsAuthService;
 
-    public AuthController(SmsAuthService smsAuthService) {
+    /**
+     * 注入短信登录用例。
+     *
+     * @param smsAuthService 短信登录
+     */
+    public AuthController(ISmsAuthService smsAuthService) {
         this.smsAuthService = smsAuthService;
     }
     /**

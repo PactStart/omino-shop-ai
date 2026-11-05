@@ -2,7 +2,6 @@ package com.omino.shopai.app.wallet;
 
 import com.omino.shopai.enums.WithdrawalStatus;
 import com.omino.shopai.enums.WalletLedgerType;
-import com.omino.shopai.app.service.wallet.IWithdrawal;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.WalletLedger;
 import com.omino.shopai.entity.Withdrawal;
@@ -25,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, TransactionOperations {
+public final class MemoryBooks implements IWithdrawalAccount, TransactionOperations {
 
     boolean rejectOnNextLockedRead;
 
@@ -80,7 +79,6 @@ public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, Trans
         }
     }
 
-    @Override
     public <T> T exclusively(String userId, Supplier<T> action) {
         synchronized (monitor(userId)) {
             return execute(status -> action.get());
@@ -112,7 +110,6 @@ public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, Trans
         wallets().put(wallet.getUserId(), copy(wallet));
     }
 
-    @Override
     public void insert(Withdrawal withdrawal) {
         withdrawals().add(copy(withdrawal));
     }
@@ -167,7 +164,6 @@ public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, Trans
         return count;
     }
 
-    @Override
     public List<Withdrawal> list(String userId, int page, int size) {
         List<Withdrawal> rows = new ArrayList<>();
         for (Withdrawal row : withdrawals()) {
@@ -185,7 +181,6 @@ public final class MemoryBooks implements IWithdrawal, IWithdrawalAccount, Trans
         return pageRows;
     }
 
-    @Override
     public long count(String userId) {
         return withdrawals().stream().filter(row -> userId.equals(row.getUserId())).count();
     }

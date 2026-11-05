@@ -3,7 +3,7 @@ package com.omino.shopai.app.wallet;
 import com.omino.shopai.enums.WithdrawalStatus;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.service.wallet.WithdrawalService;
+import com.omino.shopai.app.service.wallet.IWithdrawalService;
 import com.omino.shopai.app.dto.WithdrawalViewDto;
 import com.omino.shopai.app.web.app.WalletController;
 import com.omino.shopai.entity.Wallet;
@@ -45,7 +45,7 @@ class WithdrawalTest {
     private static final String OTHER = "01USER0000000000000000000B";
 
     private MemoryBooks books;
-    private WithdrawalService service;
+    private IWithdrawalService service;
     private WithdrawalWorkflow workflow;
     private ScriptedPayout port;
     private MockMvc mvc;
@@ -54,7 +54,7 @@ class WithdrawalTest {
     void setUp() {
         books = new MemoryBooks();
         books.seed(USER, "10.00");
-        service = new WithdrawalService(books, Clock.systemUTC());
+        service = new MemoryWithdrawalService(books);
         port = new ScriptedPayout();
         workflow = new WithdrawalWorkflow(books, port, Clock.systemUTC());
         mvc = MockMvcBuilders.standaloneSetup(new WalletController(service))

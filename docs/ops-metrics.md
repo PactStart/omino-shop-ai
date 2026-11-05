@@ -336,7 +336,7 @@ ON CONFLICT (user_id) DO NOTHING
 
 ### 6.2 对话终态
 
-`credit_exhausted` 今天只在 Redis Stream 里，终态后大约 30 分钟过期，汇总任务读不到。在 `RunEventLogImpl.append` 里，Redis 写入已经成功、且 `event` 属于 `done`、`error`、`cancelled`、`credit_exhausted` 时，再写 `stats_run_outcome`。
+`credit_exhausted` 今天只在 Redis Stream 里，终态后大约 30 分钟过期，汇总任务读不到。在 `ChatEventServiceImpl.append` 里，Redis 写入已经成功、且 `event` 属于 `done`、`error`、`cancelled`、`credit_exhausted` 时，再写 `stats_run_outcome`。
 
 - `user_id` 用现有的 `owner(runId)`。没有就写空。
 - `reason` 只在 `credit_exhausted` 时从 `data` JSON 取 `reason`，只接受 `INSUFFICIENT_START` 和 `EXHAUSTED_MID`。解析失败则 `reason` 为空，终态行仍然写入。
@@ -656,7 +656,7 @@ Java 不新增运行时依赖。汇总用 Spring 已有的 `JdbcTemplate` 和 `@
 4. **汇总任务**。实现 `StatsRollupJob` 的六步和咨询锁。用夹具数据跑一轮：插入一个用户、一条已结算订单、一笔佣金流水，断言 `platform_retain_settled`、`wallet_reconcile_diff` 和风险行。对账故意改错一分钱时，`balanced` 为 false。
 5. **只读接口**。四个 GET 与单价 PUT。Controller 不写 SQL。查询只打 `stats_*` 和分成配置。接口测试覆盖：没跑过汇总时 overview 的 `stale` 与空 `kpis`；漏斗跨度 91 天返回 `40001`。
 6. **页面**。按 §9 做四屏。菜单在收起状态下仍能悬停看到「漏斗」「三本账」「风险」。浏览器里走完：打开工作台、改日期看漏斗、看三本账对账标记、打开风险空态、保存一个模型单价后再看成本是否不再是未标价。
-7. **两处旁路**。`RunEventLogImpl.append` 与登录成功处按 §6.1、§6.2 接入。测试：Redis 终态写入成功后多一行 `stats_run_outcome`；旁路抛异常时登录和 SSE 仍成功。
+7. **两处旁路**。`ChatEventServiceImpl.append` 与登录成功处按 §6.1、§6.2 接入。测试：Redis 终态写入成功后多一行 `stats_run_outcome`；旁路抛异常时登录和 SSE 仍成功。
 8. **埋点接口**。§6.3 的两个 POST 与队列。单测队列满时请求仍 200。第一期不改 H5 / 落地页 / 原生页面。
 9. **文档指针**。确认 `data-model.md`、`api-admin.md`、`admin-ui.md` 仍然只链接到本文，没有第二套字段。
 

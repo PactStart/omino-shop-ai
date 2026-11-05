@@ -7,7 +7,7 @@ import com.omino.shopai.app.adapter.platform.PddGoodsImpl;
 import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
 import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.dto.UnionAuthDto;
-import com.omino.shopai.app.service.goods.IGoodsGate;
+import com.omino.shopai.app.service.goods.GoodsServiceImpl;
 import com.omino.shopai.entity.PlatformAuthorization;
 import com.omino.shopai.enums.AuthStatus;
 import com.omino.shopai.enums.Platform;
@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
+import java.util.Optional;
 
 /**
  * 消费者查询和取消联盟授权。京东不向官方询问。
@@ -38,7 +39,6 @@ public class UnionAuthService {
     private static final int STATE_TTL_SECONDS = 1800;
 
     private final PlatformAuthorizationMapper authorizations;
-    private final IGoodsGate gate;
     private final TaobaoGoodsImpl taobao;
     private final PddGoodsImpl pdd;
     private final VipGoodsImpl vip;
@@ -49,23 +49,20 @@ public class UnionAuthService {
      * 授权状态以本表为准，拼多多和唯品会再问官方。
      *
      * @param authorizations 授权表
-     * @param gate 推广身份缓存
      * @param taobao 淘宝授权链接和备案
      * @param pdd 拼多多备案查询和授权页
      * @param vip 唯品会授权检查、备案链接和解绑
-     * @param redis 淘宝授权码去重；测试可以不传
+     * @param redis 淘宝授权码去重，以及推广身份缓存；测试可以不传
      * @param stateSecret 给淘宝 state 签名，与访问令牌同一把密钥
      */
     public UnionAuthService(
             PlatformAuthorizationMapper authorizations,
-            IGoodsGate gate,
             TaobaoGoodsImpl taobao,
             PddGoodsImpl pdd,
             VipGoodsImpl vip,
             StringRedisTemplate redis,
             @Value("${JWT_ACCESS_SECRET:}") String stateSecret) {
         this.authorizations = authorizations;
-        this.gate = gate;
         this.taobao = taobao;
         this.pdd = pdd;
         this.vip = vip;
@@ -160,7 +157,7 @@ public class UnionAuthService {
      * @return 未备案时带授权链接
      */
     private UnionAuthDto pddStatus(String userId) {
-        String pid = gate.relationId(userId, Platform.JD.code())
+        String pid = relationId(userId, Platform.JD.code())
                 .filter(UnionAuthService::present)
                 .orElseThrow(() -> new ApiBusinessException(ErrorCodes.VALIDATION, "京东推广身份未配置"));
         if (pdd.bound(userId, pid)) {
@@ -309,7 +306,64 @@ public class UnionAuthService {
                 row.setRelationId(blankToNull(relationId));
             }
         }
-        gate.forgetRelation(userId, platform.code());
+        forgetRelation(userId, platform.code());
+    }
+
+    /**
+     * 当前用户在该平台的推广身份。先读缓存，没有再查表，查到才写入。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     * @return 非空的 relation_id；没有则空
+     */
+    protected Optional<String> relationId(String userId, String platform) {
+        return GoodsServiceImpl.cached(
+                userId,
+                platform,
+                key -> redis == null ? null : redis.opsForValue().get(key),
+                (key, value) -> {
+                    if (redis != null) {
+                        redis.opsForValue().set(key, value, Duration.ofMinutes(10));
+                    }
+                },
+                this::loadRelation);
+    }
+
+    /**
+     * 授权变更后丢掉推广身份缓存。下一次转链会重新读表。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     */
+    protected void forgetRelation(String userId, String platform) {
+        if (redis == null || userId == null || userId.isBlank() || platform == null || platform.isBlank()) {
+            return;
+        }
+        redis.delete("union:relation:" + userId + ":" + platform);
+    }
+
+    /**
+     * 从表里读推广身份。平台码非法或空白则空。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     * @return 非空 relation_id；没有则空
+     */
+    private Optional<String> loadRelation(String userId, String platform) {
+        Platform parsed;
+        try {
+            parsed = Platform.fromCode(platform);
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+        if (parsed == null || userId == null || userId.isBlank()) {
+            return Optional.empty();
+        }
+        PlatformAuthorization row = load(userId, parsed);
+        if (row == null || row.getRelationId() == null || row.getRelationId().isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(row.getRelationId());
     }
 
     /**

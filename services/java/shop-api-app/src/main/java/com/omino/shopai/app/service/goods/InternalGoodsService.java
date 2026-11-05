@@ -28,14 +28,18 @@ import java.util.Map;
 @Service
 public class InternalGoodsService {
 
-    private final GoodsQueryService goods;
+    private final IGoodsService goods;
     private final GoodsCollectionMapper collections;
     private final GoodsCollectionItemMapper items;
-/**
- * 给 Agent 工具用的搜品入口。联盟调用仍走适配器。
- */
 
-    public InternalGoodsService(GoodsQueryService goods, GoodsCollectionMapper collections, GoodsCollectionItemMapper items) {
+    /**
+     * 给 Agent 工具用的搜品入口。联盟调用仍走适配器。
+     *
+     * @param goods
+     * @param collections
+     * @param items
+     */
+    public InternalGoodsService(IGoodsService goods, GoodsCollectionMapper collections, GoodsCollectionItemMapper items) {
         this.goods = goods;
         this.collections = collections;
         this.items = items;
@@ -138,10 +142,12 @@ public class InternalGoodsService {
         }
         return null;
     }
-/**
- * 只保留数字，供和平台商品号对齐。
- */
 
+    /**
+     * 只保留数字，供和平台商品号对齐。
+     * @param url
+     * @return
+     */
     private static String digits(String url) {
         if (url == null) {
             return null;

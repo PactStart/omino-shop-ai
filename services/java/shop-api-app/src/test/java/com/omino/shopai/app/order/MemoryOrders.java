@@ -2,7 +2,6 @@ package com.omino.shopai.app.order;
 
 import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.WalletLedgerType;
-import com.omino.shopai.app.service.order.IOrder;
 import com.omino.shopai.entity.AppOrder;
 import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.entity.Wallet;
@@ -22,7 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class MemoryOrders implements IOrder, TransactionOperations {
+final class MemoryOrders implements TransactionOperations {
 
     boolean failAdvance;
 
@@ -79,7 +78,6 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         }
     }
 
-    @Override
     public OrderSyncCursor cursor(String platform) {
         OrderSyncCursor stored = cursors().get(platform);
         if (stored == null) {
@@ -106,7 +104,6 @@ final class MemoryOrders implements IOrder, TransactionOperations {
      * @param createTo 下单水位的新值
      * @param updateTo 更新水位的新值
      */
-    @Override
     public void advance(String platform, OffsetDateTime createTo, OffsetDateTime updateTo) {
         OrderSyncCursor cursor = copy(cursor(platform));
         if (cursor.getPlatform() == null) {
@@ -126,7 +123,6 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         }
     }
 
-    @Override
     public void fail(String platform, String message) {
         OrderSyncCursor cursor = copy(cursor(platform));
         if (cursor.getPlatform() == null) {
@@ -137,7 +133,6 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         cursors().put(platform, cursor);
     }
 
-    @Override
     public AppOrder findByPlatformOrder(String platform, String platformOrderId) {
         for (AppOrder order : orders().values()) {
             if (platform.equals(order.getPlatform() == null ? null : order.getPlatform().code()) && platformOrderId.equals(order.getPlatformOrderId())) {
@@ -147,23 +142,19 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         return null;
     }
 
-    @Override
     public void save(AppOrder order) {
         orders().put(order.getId(), copy(order));
     }
 
-    @Override
     public Wallet lockWallet(String userId) {
         Wallet stored = wallets().get(userId);
         return stored == null ? null : copy(stored);
     }
 
-    @Override
     public void saveWallet(Wallet wallet) {
         wallets().put(wallet.getUserId(), copy(wallet));
     }
 
-    @Override
     public WalletLedger findCommissionByOrder(String orderId) {
         for (WalletLedger ledger : ledgers()) {
             if (WalletLedgerType.COMMISSION == ledger.getType() && orderId.equals(ledger.getOrderId())) {
@@ -173,7 +164,6 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         return null;
     }
 
-    @Override
     public void insertLedger(WalletLedger ledger) {
         if (WalletLedgerType.COMMISSION == ledger.getType() && findCommissionByOrder(ledger.getOrderId()) != null) {
             throw new IllegalStateException("commission");
@@ -181,14 +171,12 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         ledgers().add(copy(ledger));
     }
 
-    @Override
     public int commissionCount(String userId) {
         return ledgers(userId).size() == 0 ? 0 : (int) ledgers().stream()
                 .filter(ledger -> userId.equals(ledger.getUserId()) && WalletLedgerType.COMMISSION == ledger.getType())
                 .count();
     }
 
-    @Override
     public List<AppOrder> list(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
         List<AppOrder> rows = filtered(userId, platform, orderStatus, settleStatus);
         int from = Math.min((page - 1) * size, rows.size());
@@ -200,12 +188,10 @@ final class MemoryOrders implements IOrder, TransactionOperations {
         return pageRows;
     }
 
-    @Override
     public long count(String userId, String platform, String orderStatus, String settleStatus) {
         return filtered(userId, platform, orderStatus, settleStatus).size();
     }
 
-    @Override
     public AppOrder findById(String id) {
         AppOrder stored = orders().get(id);
         return stored == null ? null : copy(stored);
