@@ -8,10 +8,10 @@ import com.omino.shopai.app.service.auth.InternalAccountService;
 import com.omino.shopai.app.service.credit.CreditBillingImpl;
 import com.omino.shopai.app.dto.OrderDetailDto;
 import com.omino.shopai.app.dto.OrderViewDto;
-import com.omino.shopai.app.dto.PageDto;
-import com.omino.shopai.app.service.order.OrderQueryService;
+import com.omino.shopai.dto.PageDto;
+import com.omino.shopai.app.service.order.IOrderQueryService;
 import com.omino.shopai.app.dto.WalletViewDto;
-import com.omino.shopai.app.service.wallet.WithdrawalService;
+import com.omino.shopai.app.service.wallet.IWithdrawalService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,8 +35,8 @@ import java.util.Map;
 public class InternalAccountController {
 
     private final InternalAccountService accounts;
-    private final OrderQueryService orders;
-    private final WithdrawalService wallet;
+    private final IOrderQueryService orders;
+    private final IWithdrawalService wallet;
     private final CreditBillingImpl credits;
 /**
  * Agent 工具的账号入口。调用方必须带当前用户。
@@ -44,8 +44,8 @@ public class InternalAccountController {
 
     public InternalAccountController(
             InternalAccountService accounts,
-            OrderQueryService orders,
-            WithdrawalService wallet,
+            IOrderQueryService orders,
+            IWithdrawalService wallet,
             CreditBillingImpl credits) {
         this.accounts = accounts;
         this.orders = orders;

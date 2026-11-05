@@ -305,7 +305,7 @@ Java **不要**每轮把全量向量塞进 invoke body。
 
 | 操作 | 何时 | 谁执行 |
 |---|---|---|
-| 写 `browse` | 用户打开详情成功 | **Java** `GoodsQueryService`（不经 Agent） |
+| 写 `browse` | 用户打开详情成功 | **Java** `IGoodsService`（不经 Agent） |
 | 写 `click` | `goods/convert-link` 成功 | **Java**（同时写 `click_event`） |
 | 写 `order` | 订单同步归因到用户 | **Java** Quartz |
 | 写 `auth_grant` / `auth_revoke` | 授权回调或 revoke 成功 | **Java** |

@@ -3,7 +3,8 @@ package com.omino.shopai.app.web.internal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.kb.KbSearchService;
+import com.omino.shopai.app.dto.KbHitDto;
+import com.omino.shopai.app.service.kb.IKbSearchService;
 import com.omino.shopai.app.web.internal.dto.KbSearchRequestDto;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/internal/v1/kb")
 public class InternalKbController {
 
-    private final KbSearchService search;
+    private final IKbSearchService search;
 
-    public InternalKbController(KbSearchService search) {
+    public InternalKbController(IKbSearchService search) {
         this.search = search;
     }
     /**
@@ -32,7 +33,7 @@ public class InternalKbController {
      */
     @Operation(summary = "检索知识库")
     @PostMapping("/search")
-    public ApiResponse<KbSearchService.KbHitDto> search(@RequestBody KbSearchRequestDto request) {
+    public ApiResponse<KbHitDto> search(@RequestBody KbSearchRequestDto request) {
         return ApiResponse.ok(search.search(request.query()));
     }
 }

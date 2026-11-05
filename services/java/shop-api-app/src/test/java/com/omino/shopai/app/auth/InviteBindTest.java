@@ -3,7 +3,7 @@ package com.omino.shopai.app.auth;
 import com.omino.shopai.enums.InviteStatus;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.app.service.auth.AppJwtIssuer;
-import com.omino.shopai.app.service.auth.SmsAuthService;
+import com.omino.shopai.app.service.auth.ISmsAuthService;
 import com.omino.shopai.entity.AppInvite;
 import com.omino.shopai.entity.AppUser;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,13 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class InviteBindTest {
 
     private MemoryAccounts accounts;
-    private SmsAuthService service;
+    private ISmsAuthService service;
 
     @BeforeEach
     void setUp() {
         accounts = new MemoryAccounts();
-        service = new SmsAuthService(
-                accounts, accounts, accounts,
+        service = new MemorySmsAuth(
+                accounts,
                 new AppJwtIssuer("0123456789abcdef0123456789abcdef", 1800),
                 "local", "mock");
     }

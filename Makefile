@@ -17,7 +17,10 @@ COMPOSE := docker compose -f $(ROOT)/deploy/docker-compose.local.yml --env-file 
 MVN ?= mvn
 INFRA := postgres redis nacos langfuse-web langfuse-db
 
-.PHONY: help env require-infra require-app require-admin require-agent up down logs app admin agent test java-test agent-test accept admin-web www land h5 android ios
+.PHONY: help env require-infra require-app require-admin require-agent up down logs \
+	app admin agent test java-test agent-test accept admin-web www land h5 android ios \
+	stop-app stop-admin stop-agent stop-admin-web stop-www stop-land stop-h5 \
+	restart-app restart-admin restart-agent restart-admin-web restart-www restart-land restart-h5
 
 help:
 	@printf '%s\n' \
@@ -26,7 +29,7 @@ help:
 		'make down        停掉上面这些容器' \
 		'make logs        看基础设施日志' \
 		'make app         APP API，默认 :8181，先读 infra 再读 app env' \
-		'make admin       Admin API，默认 :8082，先读 infra 再读 admin env' \
+		'make admin       Admin API，默认 :8182，先读 infra 再读 admin env' \
 		'make agent       Agent，默认 :8190，只监听本机，先读 infra 再读 agent env' \
 		'make test        Java 与 Agent 测试，不出网' \
 		'make java-test   只跑 Java 测试' \
@@ -37,7 +40,10 @@ help:
 		'make www         官网空壳，:5175，读 apps/www/.env' \
 		'make land        邀请落地空壳，:5176，读 apps/land/.env' \
 		'make android     打 Android debug 包' \
-		'make ios         用 Xcode 打开 iOS 工程'
+		'make ios         用 Xcode 打开 iOS 工程' \
+		'make stop-app         停掉 APP API（:8181）。admin :8182、agent :8190 同样有 stop-*' \
+		'make stop-admin-web   停掉管理后台（:5183）。www :5175、land :5176、h5 :5177 同样有 stop-*' \
+		'make restart-app      停掉后再启动，仍占当前终端。其余应用把 app 换成自己的名字'
 
 define copy_if_missing
 	@if [ ! -f "$(2)" ]; then cp "$(1)" "$(2)"; echo "已复制 $(2)"; else echo "已有 $(2)"; fi
@@ -125,3 +131,47 @@ android:
 ios:
 	$(call ensure_dotenv,$(ROOT)/apps/ios)
 	open "$(ROOT)/apps/ios/App.xcodeproj"
+
+# 按默认端口停掉这次启动的进程。命令行对不上该应用时不杀。
+stop-app:
+	bash "$(ROOT)/scripts/dev-stop.sh" 8181 'AppApiApplication|shop-api-app' 'APP API'
+
+stop-admin:
+	bash "$(ROOT)/scripts/dev-stop.sh" 8182 'AdminApiApplication|shop-api-admin' 'Admin API'
+
+stop-agent:
+	bash "$(ROOT)/scripts/dev-stop.sh" 8190 'app\.main:app' 'Agent'
+
+stop-admin-web:
+	bash "$(ROOT)/scripts/dev-stop.sh" 5183 'apps/admin-web' '管理后台'
+
+stop-www:
+	bash "$(ROOT)/scripts/dev-stop.sh" 5175 'apps/www' '官网'
+
+stop-land:
+	bash "$(ROOT)/scripts/dev-stop.sh" 5176 'apps/land' '落地页'
+
+stop-h5:
+	bash "$(ROOT)/scripts/dev-stop.sh" 5177 'apps/h5' '消费者 H5'
+
+# 先停再起。recipe 里再调 make，避免和 stop 并行。
+restart-app: stop-app
+	$(MAKE) app
+
+restart-admin: stop-admin
+	$(MAKE) admin
+
+restart-agent: stop-agent
+	$(MAKE) agent
+
+restart-admin-web: stop-admin-web
+	$(MAKE) admin-web
+
+restart-www: stop-www
+	$(MAKE) www
+
+restart-land: stop-land
+	$(MAKE) land
+
+restart-h5: stop-h5
+	$(MAKE) h5

@@ -9,7 +9,8 @@ import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
 import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.goods.MemoryGoods;
-import com.omino.shopai.app.service.goods.GoodsQueryService;
+import com.omino.shopai.app.goods.MemoryGoodsQuery;
+import com.omino.shopai.app.service.goods.IGoodsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +40,7 @@ class PlatformClientTest {
     @Test
     void missingKeysFailAs50010WithoutOpeningOfficialClients() {
         SdkSessions.opened.set(0);
-        GoodsQueryService missing = query(List.of(
+        IGoodsService missing = query(List.of(
                 new TaobaoGoodsImpl("", ""),
                 new JdGoodsImpl("", ""),
                 new PddGoodsImpl("", ""),
@@ -52,7 +53,7 @@ class PlatformClientTest {
 
     @Test
     void meituanIsRejected() {
-        GoodsQueryService query = query(List.of(
+        IGoodsService query = query(List.of(
                 new TaobaoGoodsImpl("", ""),
                 new JdGoodsImpl("", ""),
                 new PddGoodsImpl("", ""),
@@ -68,14 +69,14 @@ class PlatformClientTest {
 
     @Test
     void queryServiceDoesNotConstructUnionSdks() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/omino/shopai/app/service/goods/GoodsQueryService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/omino/shopai/app/service/goods/GoodsServiceImpl.java"));
         assertFalse(source.contains("new Taobao"));
         assertFalse(source.contains("new Jd"));
         assertFalse(source.contains("new Pdd"));
         assertFalse(source.contains("new Vip"));
     }
 
-    private static void assertUpstream(GoodsQueryService query, String platform) {
+    private static void assertUpstream(IGoodsService query, String platform) {
         ApiBusinessException search = assertThrows(ApiBusinessException.class,
                 () -> query.search("01USER0000000000000000000A", platform, "耳机"));
         ApiBusinessException detail = assertThrows(ApiBusinessException.class,
@@ -86,13 +87,13 @@ class PlatformClientTest {
         assertFalse(detail.getMessage().contains(SECRET));
     }
 
-    private static GoodsQueryService query(List<IPlatformGoods> clients) {
+    private static IGoodsService query(List<IPlatformGoods> clients) {
         MemoryGoods goods = new MemoryGoods();
         String userId = "01USER0000000000000000000A";
         goods.relation(userId, "taobao", "authorized", "1");
         goods.relation(userId, "jd", "authorized", "1");
         goods.relation(userId, "pdd", "authorized", "1");
         goods.relation(userId, "vip", "authorized", "1");
-        return new GoodsQueryService(goods, clients, goods, goods, new ObjectMapper(), goods);
+        return new MemoryGoodsQuery(goods, clients, new ObjectMapper());
     }
 }

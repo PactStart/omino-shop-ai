@@ -3,7 +3,7 @@ package com.omino.shopai.app.web.internal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.ticket.TicketService;
+import com.omino.shopai.app.service.ticket.ITicketService;
 import com.omino.shopai.entity.Ticket;
 import com.omino.shopai.app.web.internal.dto.CreateRequestDto;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,9 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/internal/v1/tickets")
 public class InternalTicketController {
 
-    private final TicketService tickets;
+    private final ITicketService tickets;
 
-    public InternalTicketController(TicketService tickets) {
+    /**
+     * 注入工单用例。
+     *
+     * @param tickets 建单用例
+     */
+    public InternalTicketController(ITicketService tickets) {
         this.tickets = tickets;
     }
     /**

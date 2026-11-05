@@ -170,19 +170,31 @@ public class VipGoodsImpl implements IPlatformGoods {
         }
     }
 
+    /**
+     * 按下单、更新各拉一段。空段跳过。每次查询都带请求号。页拉完才返回。
+     *
+     * @param cursor 当前游标
+     * @param created 下单时间这一段
+     * @param updated 更新时间这一段
+     * @return 这两段里的订单
+     */
     @Override
-    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor, UnionMaps.Window created, UnionMaps.Window updated) {
         Upstream.call(appKey, appSecret);
         try {
             UnionOrderV2ServiceHelper.UnionOrderV2ServiceClient http = orderClient();
             Map<String, IncomingOrderDto> merged = new LinkedHashMap<>();
-            pullAxis(http, true, UnionMaps.window(cursor == null ? null : cursor.getLastSyncCreateTime()), merged);
-            pullAxis(http, false, UnionMaps.window(cursor == null ? null : cursor.getLastSyncUpdateTime()), merged);
+            if (created != null) {
+                pullAxis(http, true, created, merged);
+            }
+            if (updated != null) {
+                pullAxis(http, false, updated, merged);
+            }
             return List.copyOf(merged.values());
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new PlatformCallException();
+            throw new PlatformCallException(ex);
         }
     }
 
@@ -296,8 +308,10 @@ public class VipGoodsImpl implements IPlatformGoods {
             boolean byCreate,
             UnionMaps.Window window,
             Map<String, IncomingOrderDto> merged) throws Exception {
-        for (int page = 1; page <= 3; page++) {
+        boolean finished = false;
+        for (int page = 1; page <= UnionMaps.MAX_ORDER_PAGES; page++) {
             OrderQueryModel request = new OrderQueryModel();
+            request.setRequestId(Ids.ulid());
             request.setPage(page);
             request.setPageSize(50);
             request.setChanTag("default_pid");
@@ -310,21 +324,24 @@ public class VipGoodsImpl implements IPlatformGoods {
             }
             var response = SdkLog.exchange("vip", "order.list", request, () -> http.orderList(request));
             if (response == null) {
-                throw new PlatformCallException();
+                throw new PlatformCallException("唯品会订单响应为空");
             }
             var rows = response.getOrderInfoList();
-            if (rows == null || rows.isEmpty()) {
-                return;
-            }
-            for (var row : rows) {
-                IncomingOrderDto order = order(row);
-                if (order != null) {
-                    merged.put(order.platformOrderId(), order);
+            if (rows != null) {
+                for (var row : rows) {
+                    IncomingOrderDto order = order(row);
+                    if (order != null) {
+                        merged.put(order.platformOrderId(), order);
+                    }
                 }
             }
-            if (rows.size() < 50) {
-                return;
+            if (rows == null || rows.size() < 50) {
+                finished = true;
+                break;
             }
+        }
+        if (!finished) {
+            throw new PlatformCallException("本段订单超过 40 页，水位不前进");
         }
     }
 

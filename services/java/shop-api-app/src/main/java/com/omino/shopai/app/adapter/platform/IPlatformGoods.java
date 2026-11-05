@@ -1,6 +1,7 @@
 package com.omino.shopai.app.adapter.platform;
 
 import com.omino.shopai.app.dto.PromotionLinkDto;
+import com.omino.shopai.app.util.UnionMaps;
 
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -53,10 +54,12 @@ public interface IPlatformGoods {
     PromotionLinkDto convert(GoodsSnapshot goods, boolean openInApp, String userId, String promotionId);
 
     /**
-     * 按游标拉增量。官方空列表是成功的空批次，失败则抛出且不前进游标。
+     * 只拉给出的这两段。官方空列表是成功的空批次，失败则抛出且不前进游标。
      *
      * @param cursor 该平台的水位
-     * @return 本批订单
+     * @param created 下单时间这一段；空表示跳过
+     * @param updated 更新时间这一段；空表示跳过
+     * @return 这两段里的订单
      */
-    List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor);
+    List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor, UnionMaps.Window created, UnionMaps.Window updated);
 }

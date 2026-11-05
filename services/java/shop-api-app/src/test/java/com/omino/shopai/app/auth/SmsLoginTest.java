@@ -6,7 +6,7 @@ import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.security.AppJwtFilter;
 import com.omino.shopai.app.service.auth.AppJwtIssuer;
 import com.omino.shopai.app.dto.LoginSessionDto;
-import com.omino.shopai.app.service.auth.SmsAuthService;
+import com.omino.shopai.app.service.auth.ISmsAuthService;
 import com.omino.shopai.app.web.app.AuthController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,14 +29,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SmsLoginTest {
 
     private MemoryAccounts accounts;
-    private SmsAuthService service;
+    private ISmsAuthService service;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         accounts = new MemoryAccounts();
         AppJwtIssuer tokens = new AppJwtIssuer("0123456789abcdef0123456789abcdef", 1800);
-        service = new SmsAuthService(accounts, accounts, accounts, tokens, "local", "mock");
+        service = new MemorySmsAuth(accounts, tokens, "local", "mock");
         mvc = MockMvcBuilders.standaloneSetup(new AuthController(service), new PrivateProbe())
                 .setControllerAdvice(new ApiExceptionHandler())
                 .addFilters(new AppJwtFilter(tokens, new ObjectMapper()))
@@ -76,8 +76,8 @@ class SmsLoginTest {
 
     @Test
     void prodRejectsMockProvider() {
-        SmsAuthService prod = new SmsAuthService(
-                accounts, accounts, accounts,
+        ISmsAuthService prod = new MemorySmsAuth(
+                accounts,
                 new AppJwtIssuer("0123456789abcdef0123456789abcdef", 1800),
                 "prod", "mock");
         assertThrows(IllegalStateException.class, () -> prod.login("13800000003", "888888", null));

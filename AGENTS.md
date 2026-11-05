@@ -71,6 +71,7 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | JSON                     | `com.fasterxml.jackson.core:jackson-databind`                 | 随 Boot          | 禁止再引入 Fastjson                                                                     |
 | 校验                       | `spring-boot-starter-validation`                              | 随 Boot          |                                                                                    |
 | OpenAPI                  | `org.springdoc:springdoc-openapi-starter-webmvc-ui`           | `2.8.5`         | 两个产出物都要能打开文档：`/api/app/v3/api-docs`、`/api/app/swagger-ui.html` 与 Admin 对应路径。Controller 的每个映射方法必须有 `@Operation`，类上有 `@Tag`。文档路径不要求登录 |
+| HTML 清洗 | `org.jsoup:jsoup` | `1.21.1` | 只清洗公告、站内信、版本说明的有限 HTML。不用它抓网页。MIT。放 `shop-api-common` |
 | 安全（APP）                  | `spring-boot-starter-security` + Nimbus JWT                   | 随 Boot / `9.47` | APP JWT                                                                            |
 | 安全（Admin）                | Spring Security OAuth2 Client                                 | 随 Boot          | 对接 omino-sso                                                                       |
 | 迁移                       | `org.flywaydb:flyway-core` + `flyway-database-postgresql`     | `11.3.1`        | 唯一 schema 变更方式                                                                     |
@@ -101,7 +102,7 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | `shop-api-admin` | `/api/admin`                        | `/api/admin/v1/**` |
 
 
-禁止两个产出物监听同一端口。本地默认 APP `8181`、Admin `8082`。Agent `8190`，管理后台 `5183`，Redis 宿主机 `6381`。这些值避开同机的 omino-sso：IdP `8080`、管理 API `8081`、门户 `5173`、后台 `5174`、一体化后台容器 `8090`、Redis 宿主机 `6380`。
+禁止两个产出物监听同一端口。本地默认 APP `8181`、Admin `8182`。Agent `8190`，管理后台 `5183`，Redis 宿主机 `6381`。这些值避开同机的 omino-sso：IdP `8080`、管理 API `8081`、门户 `5173`、后台 `5174`、一体化后台容器 `8090`、Redis 宿主机 `6380`。
 
 ### 2.2 Agent（Python）
 
@@ -182,7 +183,8 @@ Sign in with Apple 用 AuthenticationServices。微信为开放平台 **iOS 应�
 | 请求  | `axios`                   | `1.7.9`  | `withCredentials: true`（Admin Cookie 会话）                                    |
 | UI  | `element-plus`            | `2.9.1`  | 全局注册允许（独立 admin 应用）                                                         |
 | 图标  | `@element-plus/icons-vue` | `2.3.1`  |                                                                             |
-| SSO | `oidc-client-ts`          | `3.1.0`  | 仅当走纯 SPA 时；**推荐 BFF**：浏览器只打 Admin API，由 Java 完成 code 交换（与 omino-sso 接入指南一致） |
+| SSO | `oidc-client-ts`          | `3.1.0`  | 仅当走纯 SPA 时；**推荐 BFF**：浏览器只打 Admin API，由 Java 完成 code 交换（与 omino-sso 接入指南一致）。本阶段不引入 |
+| 二维码 | `qrcode`                  | `1.5.4`  | 只用 Canvas 把占位邀请地址画进海报矩形。不向服务端要合成图。MIT。不引入第二个二维码库 |
 
 
 Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁止自建管理员账号密码表。
@@ -242,7 +244,7 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 | 放哪                      | 内容                                                                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `application-{env}.yml` | 端口、`context-path`、数据源/Redis **地址形态**、Flyway、线程池、OpenAPI 开关、日志级别默认、JWT TTL、Quartz 是否启用。profile 名与 `APP_ENV` 一致：`local` / `test` / `prod`                                                                                                          |
-| Nacos Config            | 须热更新的运营项：`credit.tokens-per-credit`、`credit.enforce`、`commission.user-share-rate`（用户分成比例，默认 `0.80`）、限流阈值、对话 run 超时、订单同步间隔、各联盟适配器 enable、购积分卡文案开关、邀请 lookup 限流、`app.channels` 渠道白名单等。DataId：`shop-api-app-{env}.yaml` / `shop-api-admin-{env}.yaml`；Group：`OMINO_SHOP_AI`。`INVITE_LAND_BASE_URL`、协议 URL 随环境发版，放 yml 不放 Nacos。提示词与模型分流在库表，不放 Nacos |
+| Nacos Config            | 须热更新的运营项：`credit.tokens-per-credit`、`credit.enforce`、`commission.user-share-rate`（用户分成比例，默认 `0.80`）、联盟出站频率 `union.limit.qps`（键 `taobao` 是该平台每秒合计，键 `taobao:order.details` 是单个接口；缺省或 `0` 不在本地限流）、对话 run 超时 `chat.run-timeout-seconds`（默认 `120`）、订单同步间隔、各联盟适配器 enable、购积分卡文案开关、邀请 lookup 限流、`app.channels` 渠道白名单。后四项还没有配置键，示例里不写。可粘贴示例：`shop-api-app/src/main/resources/nacos-shop-api-app.yaml.example`、`shop-api-admin/src/main/resources/nacos-shop-api-admin.yaml.example`。DataId：`shop-api-app-{env}.yaml` / `shop-api-admin-{env}.yaml`；Group：`OMINO_SHOP_AI`。`INVITE_LAND_BASE_URL`、协议 URL 随环境发版，放 yml 不放 Nacos。提示词与模型分流在库表，不放 Nacos |
 | 环境变量（§9）                | 密钥与连接口令：`PG_PASSWORD`、JWT、联盟、支付、SSO、`NACOS_SERVER_ADDR`。**禁止**写入 Git 中的 yml，**禁止** Nacos 明文存密钥                                                                                                                                                   |
 
 
@@ -413,26 +415,24 @@ omino-shop-ai/
 │   │   │       │   │   ├── InternalTicketController.java
 │   │   │       │   │   └── InternalKbController.java
 │   │   │       │   ├── service/                       # 用例编排，无 HTTP 类型
-│   │   │       │   │   ├── chat/ChatTurnService.java      # POST 开 run
+│   │   │       │   │   ├── chat/ChatTurnServiceImpl.java  # POST 开 run
 │   │   │       │   ├── chat/ChatWorkerImpl.java        # 调 Agent，XADD Redis
 │   │   │       │   ├── chat/ChatEventPump.java        # ≤100ms 读 Redis → SSE
-│   │   │       │   ├── chat/ChatCancelService.java    # SET cancel 键；不假设 Worker 在本机
-│   │   │       │   │   ├── goods/GoodsQueryService.java
-│   │   │       │   │   ├── goods/GoodsConvertLinkService.java
+│   │   │       │   ├── chat/ChatCancelServiceImpl.java # SET cancel 键；不假设 Worker 在本机
+│   │   │       │   │   ├── goods/GoodsServiceImpl.java
 │   │   │       │   │   ├── goods/GoodsCollectionService.java
 │   │   │       │   │   ├── goods/GoodsFavoriteService.java
 │   │   │       │   │   ├── auth/UnionAuthService.java
-│   │   │       │   │   ├── order/OrderQueryService.java
-│   │   │       │   │   ├── wallet/WalletService.java
-│   │   │       │   │   ├── ticket/TicketService.java
+│   │   │       │   │   ├── order/OrderQueryServiceImpl.java
+│   │   │       │   │   ├── wallet/WithdrawalServiceImpl.java
+│   │   │       │   │   ├── ticket/TicketServiceImpl.java
 │   │   │       │   │   ├── invite/AffiliateService.java
-│   │   │       │   │   ├── invite/InvitePosterService.java  # 只下发模板图与二维码矩形；禁止服务端合成成品
-│   │   │       │   │   ├── kb/KbSearchService.java
+│   │   │       │   │   ├── invite/InvitePosterServiceImpl.java # 只下发模板图与二维码矩形；禁止服务端合成成品
+│   │   │       │   │   ├── kb/KbSearchServiceImpl.java
 │   │   │       │   │   ├── credit/CreditBillingImpl.java
-│   │   │       │   │   ├── app/AppReleaseService.java
-│   │   │       │   │   ├── app/AppRuntimeConfigService.java
+│   │   │       │   │   ├── app/AppReleaseServiceImpl.java
 │   │   │       │   │   ├── app/AnnouncementService.java
-│   │   │       │   │   └── inbox/InboxService.java
+│   │   │       │   │   └── inbox/InboxServiceImpl.java
 │   │   │       │   ├── adapter/
 │   │   │       │   │   ├── agent/IAgentGateway.java    # WebClient SSE 调 Python
 │   │   │       │   │   ├── ocr/ImageParseClient.java
@@ -448,6 +448,7 @@ omino-shop-ai/
 │   │   │           ├── application-local.yml
 │   │   │           ├── application-test.yml
 │   │   │           ├── application-prod.yml
+│   │   │           ├── nacos-shop-api-app.yaml.example
 │   │   │           └── db/migration/            # Flyway，PG
 │   │   └── shop-api-admin/
 │   │       ├── pom.xml
@@ -456,6 +457,7 @@ omino-shop-ai/
 │   │           ├── resources/application-local.yml
 │   │           ├── resources/application-test.yml
 │   │           ├── resources/application-prod.yml
+│   │           ├── resources/nacos-shop-api-admin.yaml.example
 │   │           └── java/com/omino/shopai/admin/
 │   │               ├── AdminApiApplication.java
 │   │               ├── config/
@@ -530,7 +532,7 @@ omino-shop-ai/
 | 层           | 包                                              | 允许                               | 禁止                                                               |
 | ----------- | ---------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
 | web         | `..web.app` / `..web.internal` / admin `..web` | 参数校验、鉴权上下文、调 service、SSE/HTTP 映射 | 写 SQL、调联盟 SDK、new Mapper                                         |
-| service     | `..service.<领域>`                               | 事务、用例、编排 adapter + mapper        | 依赖 Servlet/SseEmitter 类型（SSE 细节放 `support`）；跨模块 import admin↔app |
+| service     | `..service.<领域>`                               | 事务、用例、编排 adapter + mapper        | 依赖 Servlet/SseEmitter 类型（SSE 细节放 `support`）；跨模块 import admin↔app；再套只转发 Mapper 的接口或 `@Repository` |
 | mapper（DAO） | `com.omino.shopai.mapper`（在 **common**）        | MyBatis-Plus `BaseMapper` 与自定义查询 | 业务 if/else、调 HTTP、当 Repository 再套一层空转发                           |
 | entity      | `com.omino.shopai.entity`（在 **common**）        | 与 [`data-model.md`](docs/data-model.md) 表一一对应 | 当对外 API 用（对外用 `dto`）                                             |
 | dto         | `com.omino.shopai.dto`（在 **common**）           | 请求/响应/内部 Tool 入出参                | 混入 persistence 注解当实体                                             |
@@ -541,7 +543,10 @@ omino-shop-ai/
 
 命名与摆放：
 
-- 业务接口以 `I` 开头，其实现类以 `Impl` 结尾。`mapper` 是 DAO，保持 `XxxMapper`，不加 `I`。
+- 用例接口以 `I` 开头、以 `Service` 结尾，实现类以 `ServiceImpl` 结尾并加 `@Service`，直接注入 `XxxMapper`。一个用例只有这一对。旁边已经是单个 `XxxService`、没有存储口的，保持一个类，不要为了对称再拆接口。
+- `service` 包里不写 `@Repository`，也不再为 Mapper 包一层 `IXxx` + `XxxImpl`。口语里的 repository 就是 `mapper`。
+- 外部系统、缓存和多实现端口仍是 `IXxx` + `XxxImpl`，放 `adapter`（缓存可留在 `service`）。例如联盟商品 `IPlatformGoods`（搜品、转链、订单）、`IPayNotice`、`IPayout`、`IChatWorker`、`IAgentGateway`、`IGoodsDetailCache`。App 与 Admin 共用的端口留在 `common`，例如 `IWithdrawalAccount`。
+- `mapper` 是唯一 DAO，类名 `XxxMapper`，不加 `I`，不以 `Impl` 结尾。
 - 业务类禁止以 `Mybatis` 开头，禁止以 `Store` 结尾。
 - 异常放 `com.omino.shopai.exception`，类名以 `Exception` 结尾。
 - 对外的请求体、响应体放 `dto`（common 的 `com.omino.shopai.dto`，或仅 app 使用的 `com.omino.shopai.app.dto`）。类名以 `Dto` 结尾。只被一个 Controller 使用的请求记录放在该 Controller 所在目录的 `dto` 包，不写在 Controller 类里面。分页只有 `PageDto<T>`，字段仍是 `list`、`page`、`size`、`total`，不要再按资源各写一个分页记录。
@@ -570,6 +575,8 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 | [`docs/data-model.md`](docs/data-model.md) | PostgreSQL 表 |
 | [`docs/app-ui.md`](docs/app-ui.md) | 消费者页面 |
 | [`docs/admin-ui.md`](docs/admin-ui.md) | 管理后台页面 |
+| [`docs/ops-metrics.md`](docs/ops-metrics.md) | 运营指标口径、汇总表、只读接口与后台页面。指标表与字段只写在这一份 |
+| [`docs/admin-access.md`](docs/admin-access.md) | 管理后台角色、权限点、菜单与操作的可见范围。不在本仓库建权限表 |
 
 交叉字段只在一处写死，其它文档链接过去。改行为先改对应文档，再改代码。
 
@@ -680,14 +687,23 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 make help
 make up          # PostgreSQL+pgvector / Redis / Nacos / Langfuse
 make app         # APP API，默认 :8181
-make admin       # Admin API，默认 :8082
+make admin       # Admin API，默认 :8182
 make agent       # Agent，默认 :8190，仅监听本机
 make test
 make admin-web   # :5183
 make h5          # :5177
 make www         # :5175
 make land        # :5176
+make stop-app && make restart-app
+make stop-admin && make restart-admin
+make stop-agent && make restart-agent
+make stop-admin-web && make restart-admin-web
+make stop-h5 && make restart-h5
+make stop-www && make restart-www
+make stop-land && make restart-land
 ```
+
+`stop-*` 按上表默认端口找到监听进程，连同这次启动的父进程一起停。命令行对不上该应用时不杀，没在跑则直接成功。`restart-*` 先停再执行原来的启动命令，启动仍占着当前终端。基础设施仍用 `make down`。Android / iOS 不是常驻进程，没有 stop。
 
 Makefile 实际执行的命令：
 
@@ -740,7 +756,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `deploy/env/local.agent.env` | `make agent` 在 infra 之后加载 | `OPENAI_*`、`JAVA_APP_INTERNAL_URL`。Langfuse 与内网令牌用 infra 里的值 |
 | `apps/<应用>/.env` | 该 Vite / 原生工程 | §9.5。不进 `deploy/env` |
 
-不要在四份里设置 `SERVER_PORT`。APP 默认 `8181`，Admin 默认 `8082`。
+不要在四份里设置 `SERVER_PORT`。APP 默认 `8181`，Admin 默认 `8182`。
 
 ### 9.1 公共 / 数据
 
@@ -796,11 +812,12 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 
 | 变量                     | 说明                                 |
 | ---------------------- | ---------------------------------- |
-| `SERVER_PORT`          | 默认 `8082`                          |
+| `SERVER_PORT`          | 默认 `8182`                          |
 | `SSO_ISSUER`           | 如 `https://sso.example.com`        |
 | `SSO_CLIENT_ID`        | omino-sso 应用 ID                    |
 | `SSO_CLIENT_SECRET`    | 密钥；token 端点用 `client_secret_basic` |
 | `SSO_REDIRECT_URI`     | 必须事先在 IdP 注册                       |
+| `SSO_LOGIN_URL`        | 门户登录页，如 `http://localhost:5173/login`。登出只作废本应用会话，不结束统一身份会话，并打开该地址所在源的 `/account/apps`。空则不跳到 IdP |
 | `ADMIN_SESSION_SECRET` | Cookie 会话加密                        |
 | `GOD_VIEW_ENABLED`     | 上帝视角；`local` 默认可 `true`，`prod` 必须 `false` 除非书面开启 |
 

@@ -5,8 +5,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.dto.OrderDetailDto;
 import com.omino.shopai.app.dto.OrderViewDto;
-import com.omino.shopai.app.dto.PageDto;
-import com.omino.shopai.app.service.order.OrderQueryService;
+import com.omino.shopai.dto.PageDto;
+import com.omino.shopai.app.service.order.IOrderQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -23,9 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/orders")
 public class OrderController {
 
-    private final OrderQueryService orders;
+    private final IOrderQueryService orders;
 
-    public OrderController(OrderQueryService orders) {
+    /**
+     * 注入订单查询。
+     *
+     * @param orders 订单查询
+     */
+    public OrderController(IOrderQueryService orders) {
         this.orders = orders;
     }
     /**

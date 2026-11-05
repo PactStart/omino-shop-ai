@@ -5,11 +5,7 @@ import com.omino.shopai.enums.SettleStatus;
 import com.omino.shopai.enums.WalletLedgerType;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.job.OrderSyncJob;
-import com.omino.shopai.app.adapter.platform.IPlatformOrder;
-import com.omino.shopai.app.service.order.EmptyPlatformOrderImpl;
 import com.omino.shopai.dto.order.IncomingOrderDto;
-import com.omino.shopai.app.service.order.OrderQueryService;
-import com.omino.shopai.app.service.order.OrderSyncService;
 import com.omino.shopai.app.web.app.OrderController;
 import com.omino.shopai.entity.AppOrder;
 import com.omino.shopai.entity.OrderSyncCursor;
@@ -43,7 +39,7 @@ class OrderSettleOnceTest {
     @Test
     void emptyJobDoesNotCredit() {
         MemoryOrders orders = new MemoryOrders();
-        new OrderSyncJob(sync(orders, new EmptyPlatformOrderImpl(), "0.80")).run();
+        new OrderSyncJob(sync(orders, (platform, cursor, created, updated) -> List.of(), "0.80")).run();
         assertEquals(0, orders.commissionCount(BUYER));
         assertNotNull(orders.cursor("jd").getLastSyncUpdateTime());
         assertNotNull(orders.cursor("taobao").getLastSyncUpdateTime());
@@ -53,8 +49,8 @@ class OrderSettleOnceTest {
     void completedOrderCreditsBuyerOnceAndHidesMediaCommission() throws Exception {
         MemoryOrders orders = new MemoryOrders();
         orders.seedWallet(BUYER);
-        IPlatformOrder source = (platform, cursor) -> List.of(sample());
-        OrderSyncService sync = sync(orders, source, "0.80");
+        MemoryOrderSync.Pull source = (platform, cursor, created, updated) -> List.of(sample());
+        MemoryOrderSync sync = sync(orders, source, "0.80");
 
         orders.failAdvance = true;
         assertThrows(IllegalStateException.class, () -> sync.sync("jd"));
@@ -90,7 +86,7 @@ class OrderSettleOnceTest {
         assertEquals(0, new BigDecimal("80.00").compareTo(orders.lockWallet(BUYER).getAvailableAmount()));
         assertNotNull(orders.cursor("jd").getLastSyncUpdateTime());
 
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new OrderController(new OrderQueryService(orders)))
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new OrderController(new MemoryOrderQuery(orders)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
         MvcResult list = mvc.perform(get("/v1/orders").requestAttr("userId", BUYER))
@@ -122,8 +118,8 @@ class OrderSettleOnceTest {
         assertFalse(body.contains("100.00"));
     }
 
-    private static OrderSyncService sync(MemoryOrders orders, IPlatformOrder source, String rate) {
-        return new OrderSyncService(orders, source, orders, Clock.systemUTC(), rate);
+    private static MemoryOrderSync sync(MemoryOrders orders, MemoryOrderSync.Pull source, String rate) {
+        return new MemoryOrderSync(orders, source, Clock.systemUTC(), rate);
     }
 
     private static IncomingOrderDto sample() {

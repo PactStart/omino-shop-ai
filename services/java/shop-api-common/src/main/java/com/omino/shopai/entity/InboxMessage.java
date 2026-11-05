@@ -2,6 +2,7 @@ package com.omino.shopai.entity;
 
 import lombok.Getter;
 import lombok.Setter;
+import com.omino.shopai.enums.RichTextFormat;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -21,6 +22,7 @@ public class InboxMessage {
     private String userId;
     private String title;
     private String body;
+    private RichTextFormat format;
     private OffsetDateTime readAt;
     private OffsetDateTime createdAt;
 }

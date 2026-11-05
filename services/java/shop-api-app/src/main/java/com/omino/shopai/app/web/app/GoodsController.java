@@ -9,11 +9,10 @@ import com.omino.shopai.app.web.app.dto.DetailRequestDto;
 import com.omino.shopai.app.web.app.dto.FavoriteRequestDto;
 import com.omino.shopai.app.dto.ConvertedLinkDto;
 import com.omino.shopai.app.dto.GoodsCardDto;
-import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
 import com.omino.shopai.app.dto.GoodsDetailDto;
-import com.omino.shopai.app.service.goods.GoodsLibraryService;
-import com.omino.shopai.app.dto.PageDto;
-import com.omino.shopai.app.service.goods.GoodsQueryService;
+import com.omino.shopai.app.service.goods.IGoodsLibraryService;
+import com.omino.shopai.dto.PageDto;
+import com.omino.shopai.app.service.goods.IGoodsService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,16 +32,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/goods")
 public class GoodsController {
 
-    private final GoodsQueryService query;
-    private final GoodsConvertLinkService convert;
-    private final GoodsLibraryService library;
+    private final IGoodsService goods;
+    private final IGoodsLibraryService library;
 /**
- * 注入查询、转链和库。控制器不碰联盟 SDK。
+ * 注入商品用例和库。控制器不碰联盟 SDK。
  */
 
-    public GoodsController(GoodsQueryService query, GoodsConvertLinkService convert, GoodsLibraryService library) {
-        this.query = query;
-        this.convert = convert;
+    public GoodsController(IGoodsService goods, IGoodsLibraryService library) {
+        this.goods = goods;
         this.library = library;
     }
     /**
@@ -56,7 +53,7 @@ public class GoodsController {
     @PostMapping("/detail")
     public ApiResponse<GoodsDetailDto> detail(@RequestAttribute("userId") String userId, @RequestBody DetailRequestDto request) {
         return ApiResponse.ok(
-                query.detail(userId, request.goodsId(), request.platform(), request.platformGoodsId()));
+                goods.detail(userId, request.goodsId(), request.platform(), request.platformGoodsId()));
     }
     /**
      * 校验授权和推广身份后生成购买链接。
@@ -71,7 +68,7 @@ public class GoodsController {
             @RequestAttribute("userId") String userId,
             @RequestBody ConvertRequestDto request) {
         return ApiResponse.ok(
-                convert.convert(userId, request.goodsId(), request.platform(), request.platformGoodsId(), request.preferApp()));
+                goods.convert(userId, request.goodsId(), request.platform(), request.platformGoodsId(), request.preferApp()));
     }
     /**
      * 分页列出当前用户浏览过的商品。

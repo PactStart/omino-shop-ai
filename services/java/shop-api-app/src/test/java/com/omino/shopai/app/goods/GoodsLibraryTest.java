@@ -3,10 +3,7 @@ package com.omino.shopai.app.goods;
 import com.omino.shopai.enums.Platform;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ApiExceptionHandler;
-import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
-import com.omino.shopai.app.service.goods.GoodsLibraryService;
-import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.LinkIssuerImpl;
+import com.omino.shopai.app.service.goods.IGoodsLibraryService;
 import com.omino.shopai.app.web.app.GoodsController;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -30,7 +27,7 @@ class GoodsLibraryTest {
     private static final String OTHER = "01USER0000000000000000000B";
 
     private MemoryGoods goods;
-    private GoodsLibraryService library;
+    private IGoodsLibraryService library;
     private MockMvc mvc;
     private String goodsId;
     private String collectionId;
@@ -46,9 +43,9 @@ class GoodsLibraryTest {
         GoodsCollection collection = goods.seedCollection(OWNER, "纸巾推荐", snapshot);
         goodsId = snapshot.getId();
         collectionId = collection.getId();
-        library = new GoodsLibraryService(goods, goods);
-        GoodsQueryService query = new GoodsQueryService(goods, java.util.List.of(), goods, goods, new ObjectMapper(), goods);
-        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(java.util.List.of())), library))
+        library = new MemoryGoodsLibrary(goods);
+        MemoryGoodsQuery query = new MemoryGoodsQuery(goods, java.util.List.of(), new ObjectMapper());
+        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, library))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

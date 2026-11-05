@@ -3,7 +3,9 @@ package com.omino.shopai.app.web.app;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
-import com.omino.shopai.app.service.invite.InvitePosterService;
+import com.omino.shopai.app.dto.InviteViewDto;
+import com.omino.shopai.app.dto.PosterViewDto;
+import com.omino.shopai.app.service.invite.IInvitePosterService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,9 +23,9 @@ import java.util.Map;
 @RequestMapping("/v1/invite")
 public class InviteController {
 
-    private final InvitePosterService invites;
+    private final IInvitePosterService invites;
 
-    public InviteController(InvitePosterService invites) {
+    public InviteController(IInvitePosterService invites) {
         this.invites = invites;
     }
     /**
@@ -34,7 +36,7 @@ public class InviteController {
      */
     @Operation(summary = "读取我的邀请信息")
     @GetMapping
-    public ApiResponse<InvitePosterService.InviteViewDto> invite(@RequestAttribute("userId") String userId) {
+    public ApiResponse<InviteViewDto> invite(@RequestAttribute("userId") String userId) {
         return ApiResponse.ok(invites.invite(userId));
     }
     /**
@@ -44,7 +46,7 @@ public class InviteController {
      */
     @Operation(summary = "列出可用的邀请海报模板")
     @GetMapping("/posters")
-    public ApiResponse<List<InvitePosterService.PosterViewDto>> posters() {
+    public ApiResponse<List<PosterViewDto>> posters() {
         return ApiResponse.ok(invites.posters());
     }
     /**

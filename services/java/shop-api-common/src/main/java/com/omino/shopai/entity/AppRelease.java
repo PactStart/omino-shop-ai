@@ -5,6 +5,7 @@ import lombok.Setter;
 import com.omino.shopai.enums.OnOff;
 import com.omino.shopai.enums.PublishStatus;
 import com.omino.shopai.enums.ClientType;
+import com.omino.shopai.enums.RichTextFormat;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -28,6 +29,7 @@ public class AppRelease {
     private OnOff forceUpdate;
     private String title;
     private String changelog;
+    private RichTextFormat format;
     private String downloadUrl;
     private PublishStatus status;
     private OffsetDateTime publishedAt;

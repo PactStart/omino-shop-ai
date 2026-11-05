@@ -11,7 +11,7 @@ import com.omino.shopai.mapper.WithdrawalMapper;
 import com.omino.shopai.support.Ids;
 import com.omino.shopai.support.withdrawal.IWithdrawalAccount;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -21,7 +21,7 @@ import java.time.ZoneOffset;
  * 持久化边界。事务和状态判断由调用方负责。
  */
 
-@Repository
+@Component
 public class WithdrawalAccountImpl implements IWithdrawalAccount {
 
     private final WithdrawalMapper withdrawals;

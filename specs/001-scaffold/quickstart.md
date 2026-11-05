@@ -27,11 +27,11 @@ mvn -pl shop-api-app,shop-api-admin -am test
 mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-另开终端启动 Admin，端口 `8082`。期望：
+另开终端启动 Admin，端口 `8182`。期望：
 
 - 测试通过，其中包含信封字段测试
 - `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8181/api/app/actuator/health` 为 `200`
-- Admin 的 `http://127.0.0.1:8082/api/admin/actuator/health` 为 `200`
+- Admin 的 `http://127.0.0.1:8182/api/admin/actuator/health` 为 `200`
 - 两个模块的依赖里没有彼此
 
 ## 3. Agent

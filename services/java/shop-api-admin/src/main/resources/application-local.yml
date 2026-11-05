@@ -8,3 +8,8 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
   flyway:
     enabled: true
+
+shop:
+  admin-web-origin: http://127.0.0.1:5183
+  app-base-url: http://127.0.0.1:8181
+  sso-login-url: ${SSO_LOGIN_URL:http://localhost:5173/login}

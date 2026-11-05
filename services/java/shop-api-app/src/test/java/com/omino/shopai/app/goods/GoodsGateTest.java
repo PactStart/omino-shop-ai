@@ -11,9 +11,6 @@ import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.app.dto.PromotionLinkDto;
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.entity.OrderSyncCursor;
-import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
-import com.omino.shopai.app.service.goods.GoodsQueryService;
-import com.omino.shopai.app.service.goods.LinkIssuerImpl;
 import com.omino.shopai.app.web.app.GoodsController;
 import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.support.Ids;
@@ -52,9 +49,8 @@ class GoodsGateTest {
         goods.relation(USER, "taobao", "none", SECRET);
         ObjectMapper json = new ObjectMapper();
         JdCatalog catalog = new JdCatalog();
-        GoodsQueryService query = new GoodsQueryService(goods, List.of(catalog), goods, goods, json, goods);
-        GoodsConvertLinkService convert = new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(List.of(catalog)));
-        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, convert, new com.omino.shopai.app.service.goods.GoodsLibraryService(goods, goods)))
+        MemoryGoodsQuery query = new MemoryGoodsQuery(goods, List.of(catalog), json);
+        mvc = MockMvcBuilders.standaloneSetup(new GoodsController(query, new MemoryGoodsLibrary(goods)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
         logger = (Logger) LoggerFactory.getLogger("com.omino.shopai");
@@ -185,7 +181,9 @@ class GoodsGateTest {
         }
 
         @Override
-        public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+        public List<IncomingOrderDto> pullOrders(
+                OrderSyncCursor cursor, com.omino.shopai.app.util.UnionMaps.Window created,
+                com.omino.shopai.app.util.UnionMaps.Window updated) {
             return List.of();
         }
     }

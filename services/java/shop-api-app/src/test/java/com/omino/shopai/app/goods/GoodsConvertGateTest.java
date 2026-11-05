@@ -8,9 +8,7 @@ import com.omino.shopai.app.util.SdkSessions;
 import com.omino.shopai.app.adapter.platform.TaobaoGoodsImpl;
 import com.omino.shopai.app.adapter.platform.VipGoodsImpl;
 import com.omino.shopai.app.dto.ConvertedLinkDto;
-import com.omino.shopai.app.service.goods.GoodsConvertLinkService;
-import com.omino.shopai.app.service.goods.ILinkIssuer;
-import com.omino.shopai.app.service.goods.LinkIssuerImpl;
+import com.omino.shopai.app.service.goods.IGoodsService;
 import com.omino.shopai.entity.GoodsSnapshot;
 import com.omino.shopai.enums.Platform;
 import org.junit.jupiter.api.Test;
@@ -33,7 +31,7 @@ class GoodsConvertGateTest {
     void unauthorizedDoesNotConvertEvenWhenKeysExist() {
         MemoryGoods goods = new MemoryGoods();
         AtomicInteger calls = new AtomicInteger();
-        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, (snapshot, openInApp, userId, promotionId) -> {
+        IGoodsService service = new MemoryGoodsConvert(goods, List.of(), (snapshot, openInApp, userId, promotionId) -> {
             calls.incrementAndGet();
             return new ConvertedLinkDto(snapshot.getId(), "taobao", "https://example.test/buy", null, null, "https://example.test/buy", "2026-10-30T18:00:00+08:00");
         });
@@ -50,18 +48,18 @@ class GoodsConvertGateTest {
         MemoryGoods goods = seeded();
         goods.relation(USER, "taobao", "authorized", "2552715009");
         SdkSessions.opened.set(0);
-        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, new LinkIssuerImpl(List.of(
+        IGoodsService service = new MemoryGoodsConvert(goods, List.of(
                 new TaobaoGoodsImpl("", ""),
                 new JdGoodsImpl("", ""),
                 new PddGoodsImpl("", ""),
-                new VipGoodsImpl("", ""))));
+                new VipGoodsImpl("", "")));
         ApiBusinessException ex = assertThrows(ApiBusinessException.class,
                 () -> service.convert(USER, "g1", "taobao", "100", true));
         assertEquals(ErrorCodes.UPSTREAM_PLATFORM, ex.code());
         assertFalse(ex.getMessage().contains("SECRET"));
         assertEquals(0, goods.clicks(USER));
         assertEquals(0, SdkSessions.opened.get());
-        String issuer = Files.readString(Path.of("src/main/java/com/omino/shopai/app/service/goods/LinkIssuerImpl.java"));
+        String issuer = Files.readString(Path.of("src/main/java/com/omino/shopai/app/service/goods/GoodsServiceImpl.java"));
         assertFalse(issuer.contains("openapp."));
     }
 
@@ -69,9 +67,9 @@ class GoodsConvertGateTest {
     void successfulIssueWritesTheClick() {
         MemoryGoods goods = seeded();
         goods.relation(USER, "taobao", "authorized", "2552715009");
-        ILinkIssuer issuer = (snapshot, openInApp, userId, promotionId) -> new ConvertedLinkDto(
+        MemoryGoodsConvert.Stub issuer = (snapshot, openInApp, userId, promotionId) -> new ConvertedLinkDto(
                 snapshot.getId(), "taobao", "https://example.test/buy", null, null, "https://example.test/buy", "2026-10-30T18:00:00+08:00");
-        GoodsConvertLinkService service = new GoodsConvertLinkService(goods, goods, issuer);
+        IGoodsService service = new MemoryGoodsConvert(goods, List.of(), issuer);
         service.convert(USER, "g1", "taobao", "100", false);
         assertEquals(1, goods.clicks(USER));
     }

@@ -1,11 +1,8 @@
 package com.omino.shopai.app.goods;
 
-import com.omino.shopai.app.dto.PageDto;
+import com.omino.shopai.dto.PageDto;
 
 import com.omino.shopai.app.service.goods.IGoodsDetailCache;
-import com.omino.shopai.app.service.goods.IGoodsGate;
-import com.omino.shopai.app.service.goods.IGoodsLibrary;
-import com.omino.shopai.app.service.goods.IGoodsSnapshot;
 import com.omino.shopai.entity.GoodsCollection;
 import com.omino.shopai.entity.GoodsCollectionItem;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -19,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGoodsGate, IGoodsLibrary {
+public final class MemoryGoods implements IGoodsDetailCache {
 
     private final Map<String, GoodsSnapshot> byId = new HashMap<>();
     private final Map<String, GoodsSnapshot> byPlatform = new HashMap<>();
@@ -65,17 +62,14 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
         return collection;
     }
 
-    @Override
     public Optional<GoodsSnapshot> findById(String id) {
         return Optional.ofNullable(byId.get(id));
     }
 
-    @Override
     public Optional<GoodsSnapshot> findByPlatform(String platform, String platformGoodsId) {
         return Optional.ofNullable(byPlatform.get(platform + "\0" + platformGoodsId));
     }
 
-    @Override
     public GoodsSnapshot save(GoodsSnapshot snapshot) {
         if (snapshot.getId() == null || snapshot.getId().isBlank()) {
             snapshot.setId(Ids.ulid());
@@ -97,12 +91,10 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
         }
     }
 
-    @Override
     public boolean authorized(String userId, String platform) {
         return "authorized".equals(authStatus.get(userId + "\0" + platform));
     }
 
-    @Override
     public Optional<String> relationId(String userId, String platform) {
         String value = relations.get(userId + "\0" + platform);
         if (value == null || value.isBlank()) {
@@ -117,32 +109,26 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
      * @param userId 用户
      * @param platform 平台码
      */
-    @Override
     public void forgetRelation(String userId, String platform) {
         relations.remove(userId + "\0" + platform);
     }
 
-    @Override
     public boolean installed(String userId, String platform) {
         return Boolean.TRUE.equals(installs.get(userId + "\0" + platform));
     }
 
-    @Override
     public void click(String userId, String platform, String goodsId, String platformGoodsId) {
         clickUsers.add(userId);
     }
 
-    @Override
     public int clicks(String userId) {
         return (int) clickUsers.stream().filter(userId::equals).count();
     }
 
-    @Override
     public void browse(String userId, String goodsId, String platform, String platformGoodsId, String title) {
         browses.add(0, new Browse(userId, goodsId));
     }
 
-    @Override
     public PageDto<GoodsSnapshot> history(String userId, int page, int size) {
         List<GoodsSnapshot> matched = browses.stream()
                 .filter(row -> userId.equals(row.userId()))
@@ -152,22 +138,18 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
         return slice(matched, page, size);
     }
 
-    @Override
     public void favorite(String userId, String goodsId) {
         favorites.putIfAbsent(userId + "\0" + goodsId, Ids.ulid());
     }
 
-    @Override
     public void unfavorite(String userId, String goodsId) {
         favorites.remove(userId + "\0" + goodsId);
     }
 
-    @Override
     public int favoriteCount(String userId, String goodsId) {
         return favorites.containsKey(userId + "\0" + goodsId) ? 1 : 0;
     }
 
-    @Override
     public PageDto<GoodsSnapshot> favorites(String userId, int page, int size) {
         List<GoodsSnapshot> matched = favorites.keySet().stream()
                 .filter(key -> key.startsWith(userId + "\0"))
@@ -177,12 +159,10 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
         return slice(matched, page, size);
     }
 
-    @Override
     public Optional<GoodsCollection> collection(String id) {
         return Optional.ofNullable(collections.get(id));
     }
 
-    @Override
     public List<GoodsSnapshot> activeItems(String collectionId) {
         return items.stream()
                 .filter(item -> collectionId.equals(item.getCollectionId()) && item.getRemovedAt() == null)
@@ -191,7 +171,6 @@ public final class MemoryGoods implements IGoodsSnapshot, IGoodsDetailCache, IGo
                 .toList();
     }
 
-    @Override
     public boolean markRemoved(String collectionId, String goodsId) {
         for (GoodsCollectionItem item : items) {
             if (collectionId.equals(item.getCollectionId()) && goodsId.equals(item.getGoodsId())) {

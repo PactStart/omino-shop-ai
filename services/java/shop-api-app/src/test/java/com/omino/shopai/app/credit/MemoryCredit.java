@@ -2,7 +2,6 @@ package com.omino.shopai.app.credit;
 
 import com.omino.shopai.enums.ActiveStatus;
 import com.omino.shopai.enums.CreditLedgerType;
-import com.omino.shopai.app.service.credit.ICredit;
 import com.omino.shopai.app.wallet.MemoryBooks;
 import com.omino.shopai.entity.CreditAccount;
 import com.omino.shopai.entity.CreditLedger;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public final class MemoryCredit implements ICredit {
+public final class MemoryCredit {
 
     public final MemoryBooks books = new MemoryBooks();
     private final Map<String, CreditAccount> credits = new LinkedHashMap<>();
@@ -50,7 +49,6 @@ public final class MemoryCredit implements ICredit {
         return List.copyOf(walletLedgers);
     }
 
-    @Override
     public <T> T exclusively(String userId, Supplier<T> action) {
         return books.exclusively(userId, () -> {
             Map<String, CreditAccount> creditCopy = copyCredits();
@@ -73,42 +71,34 @@ public final class MemoryCredit implements ICredit {
         });
     }
 
-    @Override
     public Wallet wallet(String userId) {
         return books.wallet(userId);
     }
 
-    @Override
     public void saveWallet(Wallet wallet) {
         books.save(wallet);
     }
 
-    @Override
     public void insertWalletLedger(WalletLedger ledger) {
         walletLedgers.add(ledger);
     }
 
-    @Override
     public CreditAccount credit(String userId) {
         return credits.get(userId);
     }
 
-    @Override
     public void saveCredit(CreditAccount account) {
         credits.put(account.getUserId(), account);
     }
 
-    @Override
     public CreditPackage findPackage(String id) {
         return packages.get(id);
     }
 
-    @Override
     public List<CreditPackage> activePackages() {
         return packages.values().stream().filter(pack -> ActiveStatus.ACTIVE == pack.getStatus()).toList();
     }
 
-    @Override
     public CreditOrder findByClient(String userId, String clientOrderId) {
         for (CreditOrder order : orders.values()) {
             if (userId.equals(order.getUserId()) && clientOrderId.equals(order.getClientOrderId())) {
@@ -118,27 +108,22 @@ public final class MemoryCredit implements ICredit {
         return null;
     }
 
-    @Override
     public CreditOrder findOrder(String id) {
         return orders.get(id);
     }
 
-    @Override
     public void saveOrder(CreditOrder order) {
         orders.put(order.getId(), order);
     }
 
-    @Override
     public void insertLedger(CreditLedger ledger) {
         ledgers.add(ledger);
     }
 
-    @Override
     public boolean purchaseExists(String creditOrderId) {
         return ledgers.stream().anyMatch(row -> CreditLedgerType.PURCHASE == row.getType() && creditOrderId.equals(row.getCreditOrderId()));
     }
 
-    @Override
     public List<CreditLedger> ledger(String userId) {
         return ledgers.stream().filter(row -> userId.equals(row.getUserId())).toList();
     }

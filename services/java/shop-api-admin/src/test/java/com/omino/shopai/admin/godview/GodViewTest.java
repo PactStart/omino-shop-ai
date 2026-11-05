@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.SignedJWT;
 import com.omino.shopai.admin.security.AdminSessionFilter;
 import com.omino.shopai.admin.security.GodViewIssuer;
-import com.omino.shopai.admin.service.godview.IAdminAudit;
 import com.omino.shopai.admin.service.godview.AdminGodViewService;
 import com.omino.shopai.admin.web.AdminGodViewController;
 import com.omino.shopai.api.ApiExceptionHandler;
@@ -27,16 +26,18 @@ class GodViewTest {
     @Test
     void disabledGodViewIs40303AndEnabledTicketExpiresWithinAnHour() throws Exception {
         List<AdminAuditLog> audit = new ArrayList<>();
-        var denied = mvc(new AdminGodViewService(new GodViewIssuer(secret()), audit::add, false));
+        var denied = mvc(new MemoryGodView(new GodViewIssuer(secret()), audit, false));
         denied.perform(post("/v1/god-view/tokens")
+                        .sessionAttr("ssoSub", "ops")
                         .cookie(new Cookie("sid_admin", "session"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"01USER0000000000000000000A\"}"))
                 .andExpect(jsonPath("$.code").value(40303));
         assertEquals(0, audit.size());
 
-        var allowed = mvc(new AdminGodViewService(new GodViewIssuer(secret()), audit::add, true));
+        var allowed = mvc(new MemoryGodView(new GodViewIssuer(secret()), audit, true));
         String body = allowed.perform(post("/v1/god-view/tokens")
+                        .sessionAttr("ssoSub", "ops")
                         .cookie(new Cookie("sid_admin", "session"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":\"01USER0000000000000000000A\"}"))

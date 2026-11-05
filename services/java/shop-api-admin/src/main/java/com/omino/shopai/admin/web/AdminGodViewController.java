@@ -23,6 +23,11 @@ public class AdminGodViewController {
 
     private final AdminGodViewService godView;
 
+    /**
+     * 注入用户视角签发。
+     *
+     * @param godView 签发用例
+     */
     public AdminGodViewController(AdminGodViewService godView) {
         this.godView = godView;
     }

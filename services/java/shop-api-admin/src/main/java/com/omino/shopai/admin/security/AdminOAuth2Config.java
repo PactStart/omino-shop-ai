@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.security.web.SecurityFilterChain;
 /**
  * 对接 omino-sso 的授权码和 PKCE。不建管理员密码表。
@@ -27,7 +28,7 @@ public class AdminOAuth2Config {
             @Value("${SSO_ISSUER:http://127.0.0.1:8080}") String issuer,
             @Value("${SSO_CLIENT_ID:shop-admin}") String clientId,
             @Value("${SSO_CLIENT_SECRET:local-only-placeholder-secret}") String secret,
-            @Value("${SSO_REDIRECT_URI:http://127.0.0.1:8082/api/admin/v1/auth/callback}") String redirect) {
+            @Value("${SSO_REDIRECT_URI:http://127.0.0.1:8182/api/admin/v1/auth/callback}") String redirect) {
         ClientRegistration registration = ClientRegistration.withRegistrationId("omino")
                 .clientId(clientId)
                 .clientSecret(secret)
@@ -63,13 +64,27 @@ public class AdminOAuth2Config {
     SecurityFilterChain adminSecurity(
             HttpSecurity http,
             OAuth2AuthorizationRequestResolver adminPkce,
-            ObjectMapper objectMapper) throws Exception {
+            ObjectMapper objectMapper,
+            @Value("${shop.admin-web-origin:http://127.0.0.1:5183}") String webOrigin) throws Exception {
+        String origin = webOrigin.endsWith("/") ? webOrigin.substring(0, webOrigin.length() - 1) : webOrigin;
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .oauth2Login(oauth -> oauth
                         .authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(adminPkce))
-                        .redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/callback")))
+                        .redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/callback"))
+                        .successHandler((request, response, authentication) -> {
+                            // 只记下登录主体。重定向地址不带访问令牌。
+                            request.getSession(true).setAttribute("ssoSub", authentication.getName());
+                            response.sendRedirect(origin + "/");
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            HttpSession session = request.getSession(false);
+                            if (session != null) {
+                                session.invalidate();
+                            }
+                            response.sendRedirect(origin + "/login/callback");
+                        }))
                 .addFilterBefore(new AdminSessionFilter(objectMapper), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

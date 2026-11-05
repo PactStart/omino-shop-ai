@@ -20,6 +20,8 @@ import com.omino.shopai.entity.OrderSyncCursor;
 import com.omino.shopai.enums.OrderStatus;
 import com.omino.shopai.enums.Platform;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.math.BigDecimal;
 import com.taobao.api.AutoRetryTaobaoClient;
 import com.taobao.api.request.TbkDgGeneralLinkConvertRequest;
 import com.taobao.api.request.TbkDgMaterialOptionalUpgradeRequest;
@@ -205,27 +207,38 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
         }
     }
 
+    /**
+     * 按下单、更新各拉一段。空段跳过。页拉完才返回，页还满则本段失败。
+     *
+     * @param cursor 当前游标
+     * @param created 下单时间这一段
+     * @param updated 更新时间这一段
+     * @return 这两段里的订单
+     */
     @Override
-    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor) {
+    public List<IncomingOrderDto> pullOrders(OrderSyncCursor cursor, UnionMaps.Window created, UnionMaps.Window updated) {
         Upstream.call(appKey, appSecret);
         try {
             AutoRetryTaobaoClient http = client();
             Map<String, IncomingOrderDto> merged = new LinkedHashMap<>();
-            UnionMaps.Window created = UnionMaps.window(cursor == null ? null : cursor.getLastSyncCreateTime());
-            UnionMaps.Window updated = UnionMaps.window(cursor == null ? null : cursor.getLastSyncUpdateTime());
-            pullAxis(http, 1L, created, merged);
-            pullAxis(http, 4L, updated, merged);
+            if (created != null) {
+                pullAxis(http, 1L, created, merged);
+            }
+            if (updated != null) {
+                pullAxis(http, 4L, updated, merged);
+            }
             return List.copyOf(merged.values());
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new PlatformCallException();
+            throw new PlatformCallException(ex);
         }
     }
 
     private void pullAxis(AutoRetryTaobaoClient http, long queryType, UnionMaps.Window window, Map<String, IncomingOrderDto> merged)
             throws Exception {
-        for (long page = 1; page <= 3; page++) {
+        boolean finished = false;
+        for (long page = 1; page <= UnionMaps.MAX_ORDER_PAGES; page++) {
             TbkOrderDetailsGetRequest request = new TbkOrderDetailsGetRequest();
             request.setQueryType(queryType);
             request.setStartTime(UnionMaps.format(window.start()));
@@ -236,13 +249,24 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
             TbkOrderDetailsGetResponse response = SdkLog.exchange(
                     "taobao", "order.details", request, () -> http.execute(request));
             if (response == null || !response.isSuccess()) {
-                throw new PlatformCallException();
+                throw new PlatformCallException(response == null
+                        ? "淘宝订单响应为空"
+                        : PlatformCallException.explain(response.getSubCode(), response.getSubMsg(), response.getMsg()));
             }
             List<TbkOrderDetailsGetResponse.PublisherOrderDto> rows = response.getData() == null
                     ? List.of()
                     : response.getData().getResults();
-            if (rows == null || rows.isEmpty()) {
-                return;
+            if (rows == null || rows.isEmpty() || rows.size() < 50) {
+                if (rows != null) {
+                    for (TbkOrderDetailsGetResponse.PublisherOrderDto row : rows) {
+                        IncomingOrderDto order = order(row);
+                        if (order != null) {
+                            merged.put(order.platformOrderId(), order);
+                        }
+                    }
+                }
+                finished = true;
+                break;
             }
             for (TbkOrderDetailsGetResponse.PublisherOrderDto row : rows) {
                 IncomingOrderDto order = order(row);
@@ -250,9 +274,9 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
                     merged.put(order.platformOrderId(), order);
                 }
             }
-            if (rows.size() < 50) {
-                return;
-            }
+        }
+        if (!finished) {
+            throw new PlatformCallException("本段订单超过 40 页，水位不前进");
         }
     }
 
@@ -398,10 +422,29 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
                 row.getItemId(),
                 row.getItemTitle(),
                 UnionMaps.http(row.getItemImg()),
-                UnionMaps.money(row.getPayPrice()),
-                UnionMaps.money(row.getPubShareFee()),
+                amount(row.getPayPrice(), row.getAlipayTotalPrice()),
+                amount(row.getPubShareFee(), row.getPubSharePreFee()),
                 status,
                 orderedAt,
                 shippedAt);
+    }
+
+    /**
+     * 已付款但未结算时，淘宝的实付和结算佣金经常还是空或 0，金额在备用字段里。
+     *
+     * @param primary 平台主金额
+     * @param fallback 主金额还没有数时的备用金额
+     * @return 元，两位小数；都没有则为空
+     */
+    private static BigDecimal amount(String primary, String fallback) {
+        BigDecimal main = UnionMaps.money(primary);
+        if (main != null && main.signum() != 0) {
+            return main;
+        }
+        BigDecimal spare = UnionMaps.money(fallback);
+        if (spare != null && spare.signum() != 0) {
+            return spare;
+        }
+        return main != null ? main : spare;
     }
 }

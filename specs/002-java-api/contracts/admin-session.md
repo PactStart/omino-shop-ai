@@ -6,7 +6,7 @@
 
 Cookie 名 `sid_admin`。`HttpOnly`、`SameSite=Lax`。生产 `Secure`。不要用 `sid`，避免和 omino-sso 在同一主机上的会话互相覆盖。令牌只存在服务端会话里。
 
-IdP 注册的回调必须与 `SSO_REDIRECT_URI` 完全一致，包含上下文路径，例如 `http://127.0.0.1:8082/api/admin/v1/auth/callback`。
+IdP 注册的回调必须与 `SSO_REDIRECT_URI` 完全一致，包含上下文路径，例如 `http://127.0.0.1:8182/api/admin/v1/auth/callback`。
 
 | 方法 | 路径 | 作用 |
 | --- | --- | --- |

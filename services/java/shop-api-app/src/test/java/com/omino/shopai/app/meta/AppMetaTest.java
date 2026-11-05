@@ -6,9 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.exception.ApiBusinessException;
 import com.omino.shopai.api.ApiExceptionHandler;
 import com.omino.shopai.app.security.ClientHeaderFilter;
-import com.omino.shopai.app.service.meta.AppReleaseService;
-import com.omino.shopai.app.service.meta.InboxService;
-import com.omino.shopai.app.service.meta.IMeta;
+import com.omino.shopai.app.service.meta.AppReleaseServiceImpl;
+import com.omino.shopai.app.service.meta.IAppReleaseService;
+import com.omino.shopai.app.service.meta.IInboxService;
+import com.omino.shopai.app.service.meta.InboxServiceImpl;
 import com.omino.shopai.entity.Announcement;
 import com.omino.shopai.entity.AppRelease;
 import com.omino.shopai.entity.AppRuntimeConfig;
@@ -44,12 +45,11 @@ class AppMetaTest {
 
     @Test
     void inboxStaysWithItsUserAndReleaseCannotRepeat() {
-        MemoryMeta book = new MemoryMeta();
-        InboxService inbox = new InboxService(book, Clock.systemUTC());
+        IInboxService inbox = new MemoryInbox();
         inbox.send("01USER0000000000000000000A", "你好", "只给你");
         assertEquals(1, inbox.list("01USER0000000000000000000A").size());
         assertTrue(inbox.list("01USER0000000000000000000B").isEmpty());
-        AppReleaseService releases = new AppReleaseService(book, Clock.systemUTC(), "https://a.example", "https://p.example");
+        IAppReleaseService releases = new MemoryReleases();
         AppRelease release = new AppRelease();
         release.setClientType(ClientType.ANDROID);
         release.setChannel("official");
@@ -73,54 +73,129 @@ class AppMetaTest {
         }
     }
 
-    private static final class MemoryMeta implements IMeta {
-        private final List<AppRelease> releases = new ArrayList<>();
-        private final List<InboxMessage> inbox = new ArrayList<>();
+    /**
+     * 用内存列表替换站内信表访问。发送和列表仍走真实用例。
+     */
+    private static final class MemoryInbox extends InboxServiceImpl {
+        private final List<InboxMessage> rows = new ArrayList<>();
 
-        @Override
-        public void insertRelease(AppRelease release) {
-            releases.add(release);
+        /**
+         * 不接数据库。时钟用系统 UTC，和原来的测试相同。
+         */
+        private MemoryInbox() {
+            super(null, Clock.systemUTC());
         }
 
+        /**
+         * 把站内信放进内存列表。
+         *
+         * @param message 站内信
+         */
         @Override
-        public boolean releaseExists(String clientType, String channel, int versionCode) {
-            return releases.stream().anyMatch(row -> clientType.equals(row.getClientType() == null ? null : row.getClientType().code())
+        protected void insertInbox(InboxMessage message) {
+            rows.add(message);
+        }
+
+        /**
+         * 内存列表不回写。这条路径本测试不走到。
+         *
+         * @param message 站内信
+         */
+        @Override
+        protected void saveInbox(InboxMessage message) {
+        }
+
+        /**
+         * 从内存列表里筛出该用户的站内信。
+         *
+         * @param userId 接收人
+         * @return 该用户的站内信
+         */
+        @Override
+        protected List<InboxMessage> inbox(String userId) {
+            return rows.stream().filter(row -> userId.equals(row.getUserId())).toList();
+        }
+
+        /**
+         * 内存列表不按主键查找。这条路径本测试不走到。
+         *
+         * @param id 站内信主键
+         * @return 空
+         */
+        @Override
+        protected InboxMessage findInbox(String id) {
+            return null;
+        }
+    }
+
+    /**
+     * 用内存列表替换版本、配置和公告的表访问。发布校验仍走真实用例。
+     */
+    private static final class MemoryReleases extends AppReleaseServiceImpl {
+        private final List<AppRelease> rows = new ArrayList<>();
+
+        /**
+         * 不接数据库。协议地址用测试里原来的占位。
+         */
+        private MemoryReleases() {
+            super(null, null, null, Clock.systemUTC(), "https://a.example", "https://p.example");
+        }
+
+        /**
+         * 把版本放进内存列表。
+         *
+         * @param release 版本
+         */
+        @Override
+        protected void insertRelease(AppRelease release) {
+            rows.add(release);
+        }
+
+        /**
+         * 判断内存列表里是否已有同端同渠道同版本号。
+         *
+         * @param clientType 客户端类型码
+         * @param channel 渠道
+         * @param versionCode 版本号
+         * @return 已有该版本时为真
+         */
+        @Override
+        protected boolean releaseExists(String clientType, String channel, int versionCode) {
+            return rows.stream().anyMatch(row -> clientType.equals(row.getClientType() == null ? null : row.getClientType().code())
                     && channel.equals(row.getChannel())
                     && row.getVersionCode() == versionCode);
         }
 
+        /**
+         * 本测试不读已发布版本。
+         *
+         * @param clientType 客户端类型码
+         * @param channel 渠道
+         * @return 空列表
+         */
         @Override
-        public List<AppRelease> publishedReleases(String clientType, String channel) {
+        protected List<AppRelease> publishedReleases(String clientType, String channel) {
             return List.of();
         }
 
+        /**
+         * 本测试不读运行时配置。
+         *
+         * @return 空列表
+         */
         @Override
-        public List<AppRuntimeConfig> activeConfigs() {
+        protected List<AppRuntimeConfig> activeConfigs() {
             return List.of();
         }
 
+        /**
+         * 本测试不读公告。
+         *
+         * @return 空列表
+         */
         @Override
-        public List<Announcement> announcements() {
+        protected List<Announcement> announcements() {
             return List.of();
-        }
-
-        @Override
-        public void insertInbox(InboxMessage message) {
-            inbox.add(message);
-        }
-
-        @Override
-        public void saveInbox(InboxMessage message) {
-        }
-
-        @Override
-        public List<InboxMessage> inbox(String userId) {
-            return inbox.stream().filter(row -> userId.equals(row.getUserId())).toList();
-        }
-
-        @Override
-        public InboxMessage findInbox(String id) {
-            return null;
         }
     }
 }

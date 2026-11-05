@@ -97,7 +97,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 
 做：
 - deploy/docker-compose.local.yml + deploy/env/local.env.example：PostgreSQL 16 + pgvector、Redis 7.4。不要 MySQL。
-- services/java：Maven parent、Boot 3.4.11、JDK 21；shop-api-common / shop-api-app / shop-api-admin。APP /api/app 端口 8181，Admin /api/admin 端口 8082。Actuator health。Flyway 能跑空迁移或扩展迁移。
+- services/java：Maven parent、Boot 3.4.11、JDK 21；shop-api-common / shop-api-app / shop-api-admin。APP /api/app 端口 8181，Admin /api/admin 端口 8182。Actuator health。Flyway 能跑空迁移或扩展迁移。
 - 统一响应信封骨架：code/message/data/traceId/ts。
 - services/agent：uv、锁定版本的 FastAPI，GET /health，只监听本机。
 - apps/admin-web、apps/h5、apps/www、apps/land：Vite 空壳能 npm run dev。apps/android 能 assembleDebug，apps/ios 工程能打开。包名 com.omino.shopai。
@@ -282,7 +282,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 1. 确认 constitution 已不是模板；若仍是，先改完再开 feat 1。
 2. 新对话，贴 §0 开场，加上「开始 feat 1」，再执行 §1 的命令序列。
 3. 审 spec / plan 时看范围有没有串 feat：feat 2 写页面、feat 4 或 feat 5 去接官方 SDK、feat 5 直连联盟，都是失败。真实出站只在 feat 3。
-4. feat 1 和 feat 2 已合并到 main。下一步开 feat 3。feat 3 完成后再开 feat 4 和 feat 5。feat 6 等 feat 5。feat 7 等页面契约在 H5 上走过一遍。feat 8 的官网可以在 feat 1 之后就做。
+4. feat 1、feat 2、feat 3 已合并到 main。当前是 feat 4。feat 4 审完并实现前，不要并行开 feat 5。feat 6 等 feat 5。feat 7 等页面契约在 H5 上走过一遍。feat 8 的官网可以在 feat 1 之后就做。
 5. 同一功能不要再跑 `/opsx-propose`。
 
-feat 1、feat 2 已在 main。**下一个 `/speckit-specify` 是 feat 3。**
+feat 1、feat 2、feat 3 已在 main。**当前 `/speckit-specify` 是 feat 4。**

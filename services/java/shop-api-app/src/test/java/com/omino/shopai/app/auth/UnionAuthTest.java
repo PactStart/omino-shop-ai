@@ -192,7 +192,59 @@ class UnionAuthTest {
             PddGoodsImpl pdd,
             VipGoodsImpl vip,
             StringRedisTemplate redis) {
-        return new UnionAuthService(mapper, goods, taobao, pdd, vip, redis, SECRET);
+        return new MemoryUnionAuth(mapper, goods, taobao, pdd, vip, redis);
+    }
+
+    /**
+     * 推广身份仍从内存商品读，授权行仍走假的 Mapper。
+     */
+    private static final class MemoryUnionAuth extends UnionAuthService {
+
+        private final MemoryGoods goods;
+
+        /**
+         * 绑定内存商品上的推广身份。
+         *
+         * @param mapper 授权表
+         * @param goods 内存商品
+         * @param taobao 淘宝适配器
+         * @param pdd 拼多多适配器
+         * @param vip 唯品会适配器
+         * @param redis 授权码缓存，可空
+         */
+        private MemoryUnionAuth(
+                PlatformAuthorizationMapper mapper,
+                MemoryGoods goods,
+                TaobaoGoodsImpl taobao,
+                PddGoodsImpl pdd,
+                VipGoodsImpl vip,
+                StringRedisTemplate redis) {
+            super(mapper, taobao, pdd, vip, redis, SECRET);
+            this.goods = goods;
+        }
+
+        /**
+         * 从内存商品读取推广身份。
+         *
+         * @param userId 当前用户
+         * @param platform 平台码
+         * @return 推广身份；没有则空
+         */
+        @Override
+        protected java.util.Optional<String> relationId(String userId, String platform) {
+            return goods.relationId(userId, platform);
+        }
+
+        /**
+         * 从内存商品丢掉推广身份。
+         *
+         * @param userId 当前用户
+         * @param platform 平台码
+         */
+        @Override
+        protected void forgetRelation(String userId, String platform) {
+            goods.forgetRelation(userId, platform);
+        }
     }
 
     @SuppressWarnings("unchecked")

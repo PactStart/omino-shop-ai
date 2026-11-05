@@ -9,8 +9,7 @@ import com.omino.shopai.api.ErrorCodes;
 import com.omino.shopai.app.adapter.pay.AlipayNotifyImpl;
 import com.omino.shopai.app.adapter.pay.WechatPayNotifyImpl;
 import com.omino.shopai.app.service.credit.CreditBillingImpl;
-import com.omino.shopai.app.service.credit.ICredit;
-import com.omino.shopai.app.service.credit.CreditPurchaseService;
+import com.omino.shopai.app.service.credit.ICreditPurchaseService;
 import com.omino.shopai.entity.CreditLedger;
 import com.omino.shopai.entity.CreditOrder;
 import com.omino.shopai.entity.CreditPackage;
@@ -34,24 +33,25 @@ import java.util.Map;
 @RequestMapping("/v1")
 public class CreditController {
 
-    private final CreditPurchaseService purchases;
+    private final ICreditPurchaseService purchases;
     private final CreditBillingImpl billing;
-    private final ICredit book;
     private final WechatPayNotifyImpl wechat;
     private final AlipayNotifyImpl alipay;
-/**
- * 积分查询和下单。回调先验签再入账。
- */
-
+    /**
+     * 积分查询和下单。回调先验签再入账。
+     *
+     * @param purchases 下单、入账、流水和订单
+     * @param billing 余额和可购套餐
+     * @param wechat 微信支付验签
+     * @param alipay 支付宝验签
+     */
     public CreditController(
-            CreditPurchaseService purchases,
+            ICreditPurchaseService purchases,
             CreditBillingImpl billing,
-            ICredit book,
             WechatPayNotifyImpl wechat,
             AlipayNotifyImpl alipay) {
         this.purchases = purchases;
         this.billing = billing;
-        this.book = book;
         this.wechat = wechat;
         this.alipay = alipay;
     }
@@ -75,7 +75,7 @@ public class CreditController {
     @Operation(summary = "列出积分流水")
     @GetMapping("/credits/ledger")
     public ApiResponse<List<CreditLedger>> ledger(@RequestAttribute("userId") String userId) {
-        return ApiResponse.ok(book.ledger(userId));
+        return ApiResponse.ok(purchases.ledger(userId));
     }
     /**
      * 列出可购买的积分套餐。
@@ -109,7 +109,7 @@ public class CreditController {
     @Operation(summary = "读取一笔积分订单")
     @GetMapping("/credit-orders/{id}")
     public ApiResponse<CreditOrder> order(@RequestAttribute("userId") String userId, @PathVariable String id) {
-        CreditOrder order = book.findOrder(id);
+        CreditOrder order = purchases.findOrder(id);
         if (order == null || !userId.equals(order.getUserId())) {
             throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "订单不存在");
         }
