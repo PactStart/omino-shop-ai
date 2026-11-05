@@ -244,7 +244,7 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 | 放哪                      | 内容                                                                                                                                                                                                                                               |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `application-{env}.yml` | 端口、`context-path`、数据源/Redis **地址形态**、Flyway、线程池、OpenAPI 开关、日志级别默认、JWT TTL、Quartz 是否启用。profile 名与 `APP_ENV` 一致：`local` / `test` / `prod`                                                                                                          |
-| Nacos Config            | 须热更新的运营项：`credit.tokens-per-credit`、`credit.enforce`、`commission.user-share-rate`（用户分成比例，默认 `0.80`）、限流阈值、对话 run 超时、订单同步间隔、各联盟适配器 enable、购积分卡文案开关、邀请 lookup 限流、`app.channels` 渠道白名单等。DataId：`shop-api-app-{env}.yaml` / `shop-api-admin-{env}.yaml`；Group：`OMINO_SHOP_AI`。`INVITE_LAND_BASE_URL`、协议 URL 随环境发版，放 yml 不放 Nacos。提示词与模型分流在库表，不放 Nacos |
+| Nacos Config            | 须热更新的运营项：`credit.tokens-per-credit`、`credit.enforce`、`commission.user-share-rate`（用户分成比例，默认 `0.80`）、联盟出站频率 `union.limit.qps`（键 `taobao` 是该平台每秒合计，键 `taobao:order.details` 是单个接口；缺省或 `0` 不在本地限流）、对话 run 超时 `chat.run-timeout-seconds`（默认 `120`）、订单同步间隔、各联盟适配器 enable、购积分卡文案开关、邀请 lookup 限流、`app.channels` 渠道白名单。后四项还没有配置键，示例里不写。可粘贴示例：`shop-api-app/src/main/resources/nacos-shop-api-app.yaml.example`、`shop-api-admin/src/main/resources/nacos-shop-api-admin.yaml.example`。DataId：`shop-api-app-{env}.yaml` / `shop-api-admin-{env}.yaml`；Group：`OMINO_SHOP_AI`。`INVITE_LAND_BASE_URL`、协议 URL 随环境发版，放 yml 不放 Nacos。提示词与模型分流在库表，不放 Nacos |
 | 环境变量（§9）                | 密钥与连接口令：`PG_PASSWORD`、JWT、联盟、支付、SSO、`NACOS_SERVER_ADDR`。**禁止**写入 Git 中的 yml，**禁止** Nacos 明文存密钥                                                                                                                                                   |
 
 
@@ -448,6 +448,7 @@ omino-shop-ai/
 │   │   │           ├── application-local.yml
 │   │   │           ├── application-test.yml
 │   │   │           ├── application-prod.yml
+│   │   │           ├── nacos-shop-api-app.yaml.example
 │   │   │           └── db/migration/            # Flyway，PG
 │   │   └── shop-api-admin/
 │   │       ├── pom.xml
@@ -456,6 +457,7 @@ omino-shop-ai/
 │   │           ├── resources/application-local.yml
 │   │           ├── resources/application-test.yml
 │   │           ├── resources/application-prod.yml
+│   │           ├── resources/nacos-shop-api-admin.yaml.example
 │   │           └── java/com/omino/shopai/admin/
 │   │               ├── AdminApiApplication.java
 │   │               ├── config/

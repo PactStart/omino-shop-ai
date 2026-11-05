@@ -15,6 +15,12 @@ management:
       exposure:
         include: health
 
+# 联盟出站每秒配额。键 taobao 是平台合计，键 "taobao:order.details" 是单个接口。
+# 缺省或 0 不在本地限流。要热更新时把同名项写进 Nacos，这里是连不上 Nacos 时的兜底。
+union:
+  limit:
+    qps: {}
+
 mybatis-plus:
   configuration:
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler

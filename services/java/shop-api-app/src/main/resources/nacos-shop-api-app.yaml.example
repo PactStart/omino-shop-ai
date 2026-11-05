@@ -1,0 +1,64 @@
+# DataId: shop-api-app-{env}.yaml
+# Group: OMINO_SHOP_AI
+# 复制进 Nacos 后改数字即可。密钥、邀请落地根、协议 URL 不放这里。
+# 订单同步间隔、联盟适配器开关、购积分卡文案开关、邀请 lookup 限流还没有配置键，所以不在本文件里。
+
+# 多少 token 折 1 积分，必须 ≥ 1。改比例不追溯已入账流水。
+# 管理端 DataId 里要写同一个数字。
+credit:
+  tokens-per-credit: "1000"
+  # local 可为 false。test 与 prod 必须 true。
+  enforce: false
+
+# 用户分成，范围 (0, 1]。只重算未结算订单。
+commission:
+  user-share-rate: "0.80"
+
+# 一轮对话允许跑多少秒。
+chat:
+  run-timeout-seconds: 120
+
+# X-App-Channel 白名单。Android 渠道包、iOS、H5 都在这份名单里。
+app:
+  channels:
+    - official
+    - huawei
+    - xiaomi
+    - honor
+    - oppo
+    - vivo
+    - yingyongbao
+    - appstore
+    - web
+
+# 联盟出站每秒配额。键是平台合计，或「平台:接口名」。
+# 接口名是出站日志里的名字，不是联盟官方方法名。缺省或 0 不在本地限流。
+union:
+  limit:
+    qps:
+      taobao: 0
+      "taobao:item.info": 0
+      "taobao:material.optional": 0
+      "taobao:general.link.convert": 0
+      "taobao:order.details": 0
+      "taobao:auth.token": 0
+      "taobao:publisher.info.save": 0
+      jd: 0
+      "jd:goods.query": 0
+      "jd:promotion.bysubunionid": 0
+      "jd:order.row": 0
+      pdd: 0
+      "pdd:goods.detail": 0
+      "pdd:goods.search": 0
+      "pdd:promotion.url": 0
+      "pdd:order.increment": 0
+      "pdd:member.authority": 0
+      "pdd:rp.prom.url": 0
+      vip: 0
+      "vip:goods.byIds": 0
+      "vip:goods.query": 0
+      "vip:url.byGoodsId": 0
+      "vip:channel.url": 0
+      "vip:user.check": 0
+      "vip:user.unbind": 0
+      "vip:order.list": 0

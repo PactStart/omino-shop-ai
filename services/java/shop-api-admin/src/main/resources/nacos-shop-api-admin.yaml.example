@@ -1,0 +1,6 @@
+# DataId: shop-api-admin-{env}.yaml
+# Group: OMINO_SHOP_AI
+# 管理端当前只读积分比例。与 APP 那份 DataId 写同一个数字。
+
+credit:
+  tokens-per-credit: "1000"
