@@ -41,7 +41,7 @@ Java 负责：鉴权、落用户消息、超时、把 Agent 的 SSE **转发给*
 - 多 hop 延迟和费用；
 - SSE 被两套生成器抢。
 
-因此锁定 **一张 `StateGraph`，子图是同进程节点包**。只有「去购买」离开对话，走 Java `POST /api/app/v1/goods/convert-link`，不进图。
+因此锁定 **一张 `StateGraph`**。导购、账户、订单、邀请、客服各自是同进程里编译好的子图，外层只按意图分流。只有「去购买」离开对话，走 Java `POST /api/app/v1/goods/convert-link`，不进图。
 
 工业界对应做法：
 
@@ -90,10 +90,10 @@ Android/iOS  POST /chat/runs/{runId}/cancel
 
 Worker 开 run 前从库读取，放进 `POST /internal/v1/graph/invoke`（见 [`api-internal.md`](./api-internal.md)）：
 
-- `prompts`：`agent_prompt` 八个固定 key 的正文。Agent 按当前节点取对应 key，不在仓库里再藏一套会盖过数据库的提示词。
+- `prompts`：`agent_prompt` 八个固定 key 的正文。某一键没有行，或读出来去空白后是空的，用内置默认正文补上。默认正文包含角色、背景、上下文、目标、输出格式、约束和示例。库里已经有的非空正文保持原样。`V2` 里的一行占位只在没被改过时，由后续迁移换成这套默认。Agent 按当前节点取对应 key。
 - `llm`：按 `llm_model.weight` 在**本 run** 抽中的一条。本轮每一次模型调用都用它。`usage.model` 等于该条 `model_name`。
 
-`test` / `prod` 没有可分流模型，或提示词缺行：不调用本服务。仅 `local` 且模型表没有候选时，`llm` 为空，此时才读进程环境变量 `OPENAI_*`。密钥不写日志、不写 Langfuse。
+`test` / `prod` 没有可分流模型：不调用本服务。提示词缺行不再因此停掉这一轮。仅 `local` 且模型表没有候选时，`llm` 为空，此时才读进程环境变量 `OPENAI_*`。密钥不写日志、不写 Langfuse。
 
 Langfuse 继续做 trace。提示词正文的修改入口是管理后台，不是 Langfuse Prompt。
 
@@ -276,7 +276,7 @@ shop.compare --> 对 referents 调 goods_detail（不海搜）
 
 ## 8. 意图（运行时）
 
-路由用 **结构化输出**（JSON schema / tool calling），枚举必须是 [`conversation.md`](./conversation.md) 那张表，禁止模型自由发挥新 intent。未知 → `chitchat` 或 `handoff`，不要静默当 `shop.search`。
+路由必须走 **工具调用上的结构化输出**：用 Pydantic 模型描述 `intent`、`confidence`、`slots`、`secondary`、`reply`，经 `with_structured_output(..., method="function_calling")` 交给模型。枚举必须是 [`conversation.md`](./conversation.md) 那张表，禁止模型自由发挥新 intent。结构没有解析出来时记为 `handoff`，不要再把自由文本 `json.loads` 当成路由成功，也不要静默当 `shop.search`。DeepSeek 的 Chat Completions 不接受 `response_format.type=json_schema`，所以不用这一档；schema 放在工具参数里。话术仍是一句自然语言，不走结构化输出。
 
 置信度：
 
@@ -364,7 +364,7 @@ Agent 不自己 INSERT 这两张表，避免和幂等 `clientMsgId` 冲突。
 
 ## 10. SSE：节点如何对应事件
 
-`reply_sse`（或子图内提前 flush）按下面顺序推，名称锁定：
+事件只在一处组装。正常结束走 `reply_sse`。`intent` 在路由结束时就推给调用方，其余事件仍按下面的顺序接在后面，同一次回复里 `intent` 只出现一次。授权确认在 `interrupt` 前就要把卡片发给用户，这一轮到不了 `reply_sse`，所以暂停前调用同一个组装函数。提示词只放在这一轮的调用参数里，不写入检查点。顺序锁定：
 
 | 时机 | event |
 |---|---|

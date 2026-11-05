@@ -15,7 +15,9 @@ import com.omino.shopai.app.service.chat.ChatWorkerImpl;
 import com.omino.shopai.app.service.chat.IChatCancelService;
 import com.omino.shopai.app.service.chat.IChatWorker;
 import com.omino.shopai.app.service.chat.FixtureChatWorkerImpl;
+import com.omino.shopai.app.service.chat.LocalChatWorkerImpl;
 import com.omino.shopai.app.service.chat.AgentGatewayImpl;
+import com.omino.shopai.app.service.chat.TurnCommand;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
 import com.omino.shopai.app.web.app.ChatController;
 import com.omino.shopai.entity.Conversation;
@@ -23,6 +25,7 @@ import com.omino.shopai.support.Ids;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -40,10 +43,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.io.BufferedReader;
+import java.io.StringReader;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -175,10 +183,55 @@ class ChatRunTest {
 
     @Test
     void fixtureWorkerIsLocalOnly() {
-        assertEquals(List.of("local"), List.of(FixtureChatWorkerImpl.class.getAnnotation(Profile.class).value()));
+        assertEquals(List.of("local"), List.of(LocalChatWorkerImpl.class.getAnnotation(Profile.class).value()));
+        assertNull(FixtureChatWorkerImpl.class.getAnnotation(Profile.class));
+        assertNull(FixtureChatWorkerImpl.class.getAnnotation(Service.class));
         assertFalse(List.of(ChatWorkerImpl.class.getAnnotation(Profile.class).value()).contains("local"));
         assertTrue(List.of(ChatWorkerImpl.class.getAnnotation(Profile.class).value()).containsAll(List.of("test", "prod")));
-        assertFalse(List.of(AgentGatewayImpl.class.getAnnotation(Profile.class).value()).contains("local"));
+        assertTrue(List.of(AgentGatewayImpl.class.getAnnotation(Profile.class).value()).contains("local"));
+    }
+
+    @Test
+    void cancelClosesTheStreamAndRefreshDoesNot() throws Exception {
+        AtomicBoolean cancel = new AtomicBoolean(false);
+        AtomicInteger closed = new AtomicInteger();
+        List<String> seen = new ArrayList<>();
+        String body = "event: text_delta\ndata: {\"text\":\"a\"}\n\nevent: text_delta\ndata: {\"text\":\"b\"}\n\n";
+        boolean stopped = AgentGatewayImpl.readSse(
+                new BufferedReader(new StringReader(body)),
+                (name, data) -> seen.add(name),
+                cancel::get,
+                closed::incrementAndGet);
+        assertFalse(stopped);
+        assertEquals(List.of("text_delta", "text_delta"), seen);
+        assertEquals(0, closed.get());
+
+        cancel.set(false);
+        seen.clear();
+        boolean cut = AgentGatewayImpl.readSse(
+                new BufferedReader(new StringReader(body)),
+                (name, data) -> {
+                    seen.add(name);
+                    cancel.set(true);
+                },
+                cancel::get,
+                closed::incrementAndGet);
+        assertTrue(cut);
+        assertEquals(List.of("text_delta"), seen);
+        assertEquals(1, closed.get());
+        pump.onDisconnect("run-refresh");
+        assertFalse(events.cancelled("run-refresh"));
+    }
+
+    @Test
+    void hitlMayOmitTextAndPlainTextMayNot() {
+        TurnAcceptedDto accepted = turns.open(USER, new TurnCommand(null, "c-hitl", "text", null, null, null, Map.of("action", "confirm"), List.of()));
+        assertFalse(accepted.runId().isBlank());
+        assertThrows(com.omino.shopai.exception.ApiBusinessException.class,
+                () -> turns.open(USER, new TurnCommand(null, "c-empty", "text", "  ", null, null, null, List.of())));
+        turns.open(USER, new TurnCommand(null, "c-link", "goods_url", null, "https://item.jd.com/1.html", null, null, List.of()));
+        assertThrows(com.omino.shopai.exception.ApiBusinessException.class,
+                () -> turns.open(USER, new TurnCommand(null, "c-image", "image", null, null, null, null, List.of())));
     }
 
     @Test

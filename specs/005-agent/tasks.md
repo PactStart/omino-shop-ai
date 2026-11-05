@@ -28,9 +28,9 @@ description: "Task list for 005-agent"
 
 **Purpose**: 依赖先登记，记忆写入先写入契约。此阶段不调用模型
 
-- [ ] T001 在 `AGENTS.md` §2.2 锁定 `langgraph-checkpoint-postgres` `2.0.25`。写明只用 `PostgresSaver` / `AsyncPostgresSaver`，不用该包的 Store。许可证 MIT，配 `langgraph` `0.2.70`。本任务不改 `services/agent/pyproject.toml`
-- [ ] T002 [P] 把 `specs/005-agent/contracts/tools.md` 的 `POST /internal/v1/memory` 写入 `docs/api-internal.md` 工具表。`source` 只接受 `explicit` 和 `inferred`，`survey` 拒绝。`confidence` 为 0 到 1。`supersedeId` 必须属于 `X-User-Id`。服务端填写用户编号、主键和创建时间，`embedding` 留空。检索路径保持 `POST /internal/v1/memory/search`，不新开第二个检索路径
-- [ ] T003 在 T001 之后改 `services/agent/pyproject.toml`：运行依赖加入已锁定的 `langgraph==0.2.70`、`langchain-core==0.3.29`、`langchain-openai==0.3.3`、`langfuse==2.57.0`、`langgraph-checkpoint-postgres==2.0.25`、`psycopg[binary]==3.2.4`，并把 `httpx==0.28.1` 从开发依赖改为运行依赖。不加入 LangSmith，不升级这些版本
+- [X] T001 在 `AGENTS.md` §2.2 锁定 `langgraph-checkpoint-postgres` `2.0.25`。写明只用 `PostgresSaver` / `AsyncPostgresSaver`，不用该包的 Store。许可证 MIT，配 `langgraph` `0.2.70`。本任务不改 `services/agent/pyproject.toml`
+- [X] T002 [P] 把 `specs/005-agent/contracts/tools.md` 的 `POST /internal/v1/memory` 写入 `docs/api-internal.md` 工具表。`source` 只接受 `explicit` 和 `inferred`，`survey` 拒绝。`confidence` 为 0 到 1。`supersedeId` 必须属于 `X-User-Id`。服务端填写用户编号、主键和创建时间，`embedding` 留空。检索路径保持 `POST /internal/v1/memory/search`，不新开第二个检索路径
+- [X] T003 在 T001 之后改 `services/agent/pyproject.toml`：运行依赖加入已锁定的 `langgraph==0.2.70`、`langchain-core==0.3.29`、`langchain-openai==0.3.3`、`langfuse==2.57.0`、`langgraph-checkpoint-postgres==2.0.25`、`psycopg[binary]==3.2.4`，并把 `httpx==0.28.1` 从开发依赖改为运行依赖。不加入 LangSmith，不升级这些版本
 
 **Checkpoint**: 版本表和内网契约已覆盖新依赖和新写入路径。代码还没装这些包
 
@@ -42,17 +42,17 @@ description: "Task list for 005-agent"
 
 **⚠️ CRITICAL**: 用户故事开始前必须完成本阶段
 
-- [ ] T004 按 `specs/005-agent/plan.md` 的目录新增空模块：`services/agent/app/api/invoke.py`、`services/agent/app/graph/state.py`、`services/agent/app/graph/builder.py`、`services/agent/app/graph/route.py`、`services/agent/app/graph/nodes/`、`services/agent/app/graph/subgraphs/`、`services/agent/app/tools/java_client.py`、`services/agent/app/observability/langfuse_setup.py`。`services/agent/app/main.py` 保留 `GET /health`，进程只监听 `127.0.0.1`
-- [ ] T005 在 `services/agent/app/api/invoke.py` 实现 `POST /internal/v1/graph/invoke` 的鉴权。`X-Internal-Token` 必须等于 `AGENT_INTERNAL_TOKEN`。缺失或不符返回 401，不进入图。不接受消费者令牌
-- [ ] T006 在 `services/agent/app/graph/builder.py` 用 `AsyncPostgresSaver` 作为检查点。连接使用 `autocommit=True` 和 `dict_row`。启动时调用一次 `setup()`，表不进 Flyway。`thread_id` 等于 `conversationId`。不调用 `PostgresStore`
-- [ ] T007 [P] 先写会失败的 `services/agent/tests/test_intent.py`：`route_intent` 覆盖 `docs/conversation.md` 的每条点分意图；把握低于 0.6 去追问且不搜品；未知意图进入闲聊或加急工单，不当成 `shop.search`。此任务只加测试，不写通过实现
-- [ ] T008 在 `services/agent/app/graph/route.py` 实现无 I/O 的 `route_intent`，使 T007 通过。边与 `docs/agent.md` §6 一致。恢复授权不进入这个函数
-- [ ] T009 扩展 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/dto/TurnRequestDto.java`、`services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/IChatTurnService.java`、`ChatTurnServiceImpl.java`、`ChatRun.java` 和 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/ChatController.java`。带上 `inputType`、`sourceUrl`、`imageObjectKey`、`hitl`、`installedPlatforms`。`text` / `voice_transcript` 且没有 `hitl` 时正文 trim 后 1–2000；`hitl` 非空时允许没有正文；`goods_url` 必须有 http(s) 链接；`image` 必须有图片键。同一 `conversationId` + `clientMsgId` 仍返回原来的 `runId`
-- [ ] T010 改 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java`：local、test、prod 都装配；用 Jackson 组装正文；模型字段名是 `model`，不再发送 `modelName`；填入该用户的 `authorizedPlatforms`；连接超时 3 秒；整段流的截止时间用 `chat.run-timeout-seconds`，不再把整个请求限制成 5 秒。异常日志只留状态码和追踪号，不打印调用正文
-- [ ] T011 把 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/FixtureChatWorkerImpl.java` 收成只负责写固定问候的方法。新增 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/LocalChatWorkerImpl.java`：只有连接被拒绝或响应头之前超时，才写「你好」和 `chitchat` 终态。已经拿到 HTTP 状态时写助手不可用。已经转发过事件后，终态用错误或取消，不用问候覆盖。test 和 prod 仍只用 `ChatWorkerImpl`。更新 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/chat/ChatRunTest.java` 里对 profile 的断言
-- [ ] T012 在 `services/agent/app/tools/java_client.py` 封装白名单调用。每个请求带 `X-Internal-Token` 和 `X-User-Id`，后者等于本轮入口里的用户，调用方不能改成别人。单次超时 5 秒。不调用订单同步路径，不调用转链
-- [ ] T013 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/internal/InternalAccountController.java` 实现已有的 `POST /internal/v1/memory/search`：只返回当前用户、`valid_to` 为空的行，按时间倒序，`limit` 缺省 20、最大 20，不返回 `embedding`。同文件增加 T002 的 `POST /internal/v1/memory`。`inferred` 且把握低于 0.8 只插入候选，不覆盖已有行。用户明确说记住时由助手稍后以 `explicit` 调用。客服、查账、工单不得调用写入
-- [ ] T014 在 `services/agent/app/api/invoke.py` 读取当次 `prompts` 和 `llm`。八个键缺一或正文为空时不进入图。测试和生产拒绝空 `llm`。本地 `llm` 为空时才读 `OPENAI_*`。同一轮只建一个模型客户端，密钥不写入日志。不在仓库里放会盖过数据库的提示词文件
+- [X] T004 按 `specs/005-agent/plan.md` 的目录新增空模块：`services/agent/app/api/invoke.py`、`services/agent/app/graph/state.py`、`services/agent/app/graph/builder.py`、`services/agent/app/graph/route.py`、`services/agent/app/graph/nodes/`、`services/agent/app/graph/subgraphs/`、`services/agent/app/tools/java_client.py`、`services/agent/app/observability/langfuse_setup.py`。`services/agent/app/main.py` 保留 `GET /health`，进程只监听 `127.0.0.1`
+- [X] T005 在 `services/agent/app/api/invoke.py` 实现 `POST /internal/v1/graph/invoke` 的鉴权。`X-Internal-Token` 必须等于 `AGENT_INTERNAL_TOKEN`。缺失或不符返回 401，不进入图。不接受消费者令牌
+- [X] T006 在 `services/agent/app/graph/builder.py` 用 `AsyncPostgresSaver` 作为检查点。连接使用 `autocommit=True` 和 `dict_row`。启动时调用一次 `setup()`，表不进 Flyway。`thread_id` 等于 `conversationId`。不调用 `PostgresStore`
+- [X] T007 [P] 先写会失败的 `services/agent/tests/test_intent.py`：`route_intent` 覆盖 `docs/conversation.md` 的每条点分意图；把握低于 0.6 去追问且不搜品；未知意图进入闲聊或加急工单，不当成 `shop.search`。此任务只加测试，不写通过实现
+- [X] T008 在 `services/agent/app/graph/route.py` 实现无 I/O 的 `route_intent`，使 T007 通过。边与 `docs/agent.md` §6 一致。恢复授权不进入这个函数
+- [X] T009 扩展 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/dto/TurnRequestDto.java`、`services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/IChatTurnService.java`、`ChatTurnServiceImpl.java`、`ChatRun.java` 和 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/ChatController.java`。带上 `inputType`、`sourceUrl`、`imageObjectKey`、`hitl`、`installedPlatforms`。`text` / `voice_transcript` 且没有 `hitl` 时正文 trim 后 1–2000；`hitl` 非空时允许没有正文；`goods_url` 必须有 http(s) 链接；`image` 必须有图片键。同一 `conversationId` + `clientMsgId` 仍返回原来的 `runId`
+- [X] T010 改 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java`：local、test、prod 都装配；用 Jackson 组装正文；模型字段名是 `model`，不再发送 `modelName`；填入该用户的 `authorizedPlatforms`；连接超时 3 秒；整段流的截止时间用 `chat.run-timeout-seconds`，不再把整个请求限制成 5 秒。异常日志只留状态码和追踪号，不打印调用正文
+- [X] T011 把 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/FixtureChatWorkerImpl.java` 收成只负责写固定问候的方法。新增 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/LocalChatWorkerImpl.java`：只有连接被拒绝或响应头之前超时，才写「你好」和 `chitchat` 终态。已经拿到 HTTP 状态时写助手不可用。已经转发过事件后，终态用错误或取消，不用问候覆盖。test 和 prod 仍只用 `ChatWorkerImpl`。更新 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/chat/ChatRunTest.java` 里对 profile 的断言
+- [X] T012 在 `services/agent/app/tools/java_client.py` 封装白名单调用。每个请求带 `X-Internal-Token` 和 `X-User-Id`，后者等于本轮入口里的用户，调用方不能改成别人。单次超时 5 秒。不调用订单同步路径，不调用转链
+- [X] T013 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/internal/InternalAccountController.java` 实现已有的 `POST /internal/v1/memory/search`：只返回当前用户、`valid_to` 为空的行，按时间倒序，`limit` 缺省 20、最大 20，不返回 `embedding`。同文件增加 T002 的 `POST /internal/v1/memory`。`inferred` 且把握低于 0.8 只插入候选，不覆盖已有行。用户明确说记住时由助手稍后以 `explicit` 调用。客服、查账、工单不得调用写入
+- [X] T014 在 `services/agent/app/api/invoke.py` 读取当次 `prompts` 和 `llm`。八个键缺一或正文为空时不进入图。测试和生产拒绝空 `llm`。本地 `llm` 为空时才读 `OPENAI_*`。同一轮只建一个模型客户端，密钥不写入日志。不在仓库里放会盖过数据库的提示词文件
 
 **Checkpoint**: 错误令牌进不了图。开一轮能把链接、图片和恢复动作送进助手。路由纯函数已测过
 
@@ -66,13 +66,13 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] 先写会失败的 `services/agent/tests/test_shop.py`。假模型和 `httpx.MockTransport` 断言：把握低于 0.6 或关键词为空时搜索次数为 0；不超过 6 条只发商品卡；超过 6 条只发合集卡且封面最多 4 张；销量和评价数为空保持空白；搜不到时不编造商品；一句里同时有购买和查单时本轮只做主意图
+- [X] T015 [P] [US1] 先写会失败的 `services/agent/tests/test_shop.py`。假模型和 `httpx.MockTransport` 断言：把握低于 0.6 或关键词为空时搜索次数为 0；不超过 6 条只发商品卡；超过 6 条只发合集卡且封面最多 4 张；销量和评价数为空保持空白；搜不到时不编造商品；一句里同时有购买和查单时本轮只做主意图
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] 在 `services/agent/app/graph/subgraphs/shop.py` 实现 `shop.search`。槽位够才调用 `search_goods`。不超过 6 条写入商品卡，超过 6 条只写入合集卡。未知销量、评价数保持空，不写成 0。失败时说明搜不到或暂时失败，回复不含联盟密钥或 PID
-- [ ] T017 [US1] 在 `services/agent/app/graph/builder.py` 接上 `ingest` → `memory_load` → `intent_router` → 追问或 `subgraph_shop` → `memory_write` → `reply_sse`。新的一句事件顺序是 `intent`，再追问或文本，再卡片，最后恰好一个终态
-- [ ] T018 [US1] 在 `services/agent/app/graph/nodes/memory_write.py` 识别用户明确说「记住」的预算或平台，调用 `POST /internal/v1/memory`，`source=explicit`，`kind` 为 `budget` 或 `platform`。`shop.search` 在这两项为空时读取未过期的 `explicit` 行填槽。这句话自己给了预算或平台就以这句话为准。`inferred` 候选不参与搜索。关键词为空仍然追问
+- [X] T016 [US1] 在 `services/agent/app/graph/subgraphs/shop.py` 实现 `shop.search`。槽位够才调用 `search_goods`。不超过 6 条写入商品卡，超过 6 条只写入合集卡。未知销量、评价数保持空，不写成 0。失败时说明搜不到或暂时失败，回复不含联盟密钥或 PID
+- [X] T017 [US1] 在 `services/agent/app/graph/builder.py` 接上 `ingest` → `memory_load` → `intent_router` → 追问或 `subgraph_shop` → `memory_write` → `reply_sse`。新的一句事件顺序是 `intent`，再追问或文本，再卡片，最后恰好一个终态
+- [X] T018 [US1] 在 `services/agent/app/graph/nodes/memory_write.py` 识别用户明确说「记住」的预算或平台，调用 `POST /internal/v1/memory`，`source=explicit`，`kind` 为 `budget` 或 `platform`。`shop.search` 在这两项为空时读取未过期的 `explicit` 行填槽。这句话自己给了预算或平台就以这句话为准。`inferred` 候选不参与搜索。关键词为空仍然追问
 
 **Checkpoint**: 假模型下「我要买纸巾」可单独验收。订单、停止和授权可以还没做
 
@@ -86,13 +86,13 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] 先写会失败的 `services/agent/tests/test_account.py`。断言物流为空时说未知且不编造运单号；没有该订单时说不知道；回复不出现 `mediaCommission` 和联盟原始报文；积分、钱包和邀请数字与工具返回一致；问「你了解我多少」只陈述 `get_me` 和记忆检索的结果
+- [X] T019 [P] [US2] 先写会失败的 `services/agent/tests/test_account.py`。断言物流为空时说未知且不编造运单号；没有该订单时说不知道；回复不出现 `mediaCommission` 和联盟原始报文；积分、钱包和邀请数字与工具返回一致；问「你了解我多少」只陈述 `get_me` 和记忆检索的结果
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] 在 `services/agent/app/graph/subgraphs/order.py` 只调用 `list_orders` / `get_order`。物流为空说未知。返佣只复述 `userCommission`
-- [ ] T021 [P] [US2] 在 `services/agent/app/graph/subgraphs/account.py` 实现 `me.profile`、`me.auth_list`、`me.stats`、`me.credits`。资料走 `get_me` 加记忆检索，统计走 `get_order_stats` 和 `get_wallet`，积分只读 `get_credits`。不创建支付单，不改余额
-- [ ] T022 [US2] 在 `services/agent/app/graph/subgraphs/earn.py` 实现 `earn.invite`，只调用 `get_affiliate_stats`。在 `services/agent/app/graph/builder.py` 把这三条子图接到 `reply_sse`，不发商品卡
+- [X] T020 [P] [US2] 在 `services/agent/app/graph/subgraphs/order.py` 只调用 `list_orders` / `get_order`。物流为空说未知。返佣只复述 `userCommission`
+- [X] T021 [P] [US2] 在 `services/agent/app/graph/subgraphs/account.py` 实现 `me.profile`、`me.auth_list`、`me.stats`、`me.credits`。资料走 `get_me` 加记忆检索，统计走 `get_order_stats` 和 `get_wallet`，积分只读 `get_credits`。不创建支付单，不改余额
+- [X] T022 [US2] 在 `services/agent/app/graph/subgraphs/earn.py` 实现 `earn.invite`，只调用 `get_affiliate_stats`。在 `services/agent/app/graph/builder.py` 把这三条子图接到 `reply_sse`，不发商品卡
 
 **Checkpoint**: 查单和查账户不编造数字。搜品故事仍可单独通过
 
@@ -106,13 +106,13 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] 先写会失败的 JUnit，放在 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/chat/ChatRunTest.java`：取消标记会关闭内网流；只断开 SSE 阅读不写取消标记，工人继续转发
-- [ ] T024 [P] [US3] 先写会失败的 `services/agent/tests/test_cancel.py`：调用方断开后 `astream` 被取消，不写半截检查点，不使用 `interrupt()` 表示停止
+- [X] T023 [P] [US3] 先写会失败的 JUnit，放在 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/chat/ChatRunTest.java`：取消标记会关闭内网流；只断开 SSE 阅读不写取消标记，工人继续转发
+- [X] T024 [P] [US3] 先写会失败的 `services/agent/tests/test_cancel.py`：调用方断开后 `astream` 被取消，不写半截检查点，不使用 `interrupt()` 表示停止
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的读取循环里，每条事件前后查看 `chat:run:{runId}:cancel`。看到后关闭响应流。已转发的 `text_delta` 保留，再写 `cancelled`
-- [ ] T026 [US3] 在 `services/agent/app/api/invoke.py` 把连接断开转成任务取消，结束正在跑的图。不把停止实现成授权暂停，不把半截节点写入检查点
+- [X] T025 [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的读取循环里，每条事件前后查看 `chat:run:{runId}:cancel`。看到后关闭响应流。已转发的 `text_delta` 保留，再写 `cancelled`
+- [X] T026 [US3] 在 `services/agent/app/api/invoke.py` 把连接断开转成任务取消，结束正在跑的图。不把停止实现成授权暂停，不把半截节点写入检查点
 
 **Checkpoint**: 刷新和停止的终态不同。商品故事和查单故事不受影响
 
@@ -126,12 +126,12 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 4
 
-- [ ] T027 [P] [US4] 先写会失败的 `services/agent/tests/test_hitl.py`。第一轮发出 `auth_card` 或 `confirm_card` 后结束。第二轮对同一 `thread_id` 提交恢复值，不产生新的 `intent`，不再发一张卡。`action=confirm` 时 `revoke_authorization` 只调用 1 次。未确认时不调用取消。购买、查单、闲聊和积分不足不发这两种卡
+- [X] T027 [P] [US4] 先写会失败的 `services/agent/tests/test_hitl.py`。第一轮发出 `auth_card` 或 `confirm_card` 后结束。第二轮对同一 `thread_id` 提交恢复值，不产生新的 `intent`，不再发一张卡。`action=confirm` 时 `revoke_authorization` 只调用 1 次。未确认时不调用取消。购买、查单、闲聊和积分不足不发这两种卡
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] 在 `services/agent/app/graph/nodes/hitl.py` 实现暂停。第一轮发出卡片后 `interrupt()` 并结束。下一句从暂停的下一行继续，调用 `start_authorization` 或 `revoke_authorization`，然后 `memory_write` → `reply_sse`。不进入 `intent_router`
-- [ ] T029 [US4] 确认 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/ChatTurnServiceImpl.java` 在 `hitl` 非空且正文为空时仍受理，并把 `hitl` 放进 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的请求体。恢复请求使用同一个 `conversationId` 作为 `thread_id`
+- [X] T028 [US4] 在 `services/agent/app/graph/nodes/hitl.py` 实现暂停。第一轮发出卡片后 `interrupt()` 并结束。下一句从暂停的下一行继续，调用 `start_authorization` 或 `revoke_authorization`，然后 `memory_write` → `reply_sse`。不进入 `intent_router`
+- [X] T029 [US4] 确认 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/ChatTurnServiceImpl.java` 在 `hitl` 非空且正文为空时仍受理，并把 `hitl` 放进 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的请求体。恢复请求使用同一个 `conversationId` 作为 `thread_id`
 
 **Checkpoint**: 授权确认能完成。停止故事仍然不会弹出确认卡
 
@@ -145,12 +145,12 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 5
 
-- [ ] T030 [P] [US5] 先写会失败的 `services/agent/tests/test_support.py`。知识库未命中时明确 miss 且不搜商品；命中时只复述命中内容；反馈返回当前用户的工单号；辱骂或无法判定建立加急工单；闲聊无业务工具。送礼和场景在关键词仍空时追问。链接打不开时说明打不开。图片认不出时追问。比价不发起大范围搜索。指代绑不上已出现的商品时追问，不猜编号
+- [X] T030 [P] [US5] 先写会失败的 `services/agent/tests/test_support.py`。知识库未命中时明确 miss 且不搜商品；命中时只复述命中内容；反馈返回当前用户的工单号；辱骂或无法判定建立加急工单；闲聊无业务工具。送礼和场景在关键词仍空时追问。链接打不开时说明打不开。图片认不出时追问。比价不发起大范围搜索。指代绑不上已出现的商品时追问，不猜编号
 
 ### Implementation for User Story 5
 
-- [ ] T031 [P] [US5] 在 `services/agent/app/graph/subgraphs/support.py` 实现 `kb.faq`、`ticket.create`、`handoff`。`kb.faq` 只调用 `search_kb`。建单调用 `create_ticket`。闲聊放在 `services/agent/app/graph/nodes/chitchat.py`，不调用业务工具
-- [ ] T032 [US5] 在 `services/agent/app/graph/subgraphs/shop.py` 补上 `shop.link`、`shop.image`、`shop.compare`、`shop.gift`、`shop.scene`。链接恰好一张卡。图片认不出则追问。比价只对已绑定商品调用 `goods_detail`。在 `services/agent/app/graph/nodes/coref.py` 只绑定本轮和检查点里上一轮的商品编号或订单编号，不读 `user_event`
+- [X] T031 [P] [US5] 在 `services/agent/app/graph/subgraphs/support.py` 实现 `kb.faq`、`ticket.create`、`handoff`。`kb.faq` 只调用 `search_kb`。建单调用 `create_ticket`。闲聊放在 `services/agent/app/graph/nodes/chitchat.py`，不调用业务工具
+- [X] T032 [US5] 在 `services/agent/app/graph/subgraphs/shop.py` 补上 `shop.link`、`shop.image`、`shop.compare`、`shop.gift`、`shop.scene`。链接恰好一张卡。图片认不出则追问。比价只对已绑定商品调用 `goods_detail`。在 `services/agent/app/graph/nodes/coref.py` 只绑定本轮和检查点里上一轮的商品编号或订单编号，不读 `user_event`
 
 **Checkpoint**: 规则、工单和闲聊不再掉进搜品。故事 1 的 6 条规则仍然有效
 
@@ -164,14 +164,14 @@ description: "Task list for 005-agent"
 
 ### Tests for User Story 6
 
-- [ ] T033 [P] [US6] 先写会失败的 `services/agent/tests/test_model.py`。同一轮两次生成的模型名相同。仓库里没有会覆盖请求正文的提示词文件。`LANGFUSE_ENABLED` 在生产不为真时拒绝进入图，在本地为假时图仍结束。日志和追踪不含 `apiKey`
-- [ ] T034 [P] [US6] 先写会失败的 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/credit/CreditUsageTest.java`：累计 100 token 再到 150 token 只结算 150；同一累计值再到达一次，新增扣费为 0；两段各自低于 0.01 时不各扣一次 0.01，最低额作用在本轮累计结果上
+- [X] T033 [P] [US6] 先写会失败的 `services/agent/tests/test_model.py`。同一轮两次生成的模型名相同。仓库里没有会覆盖请求正文的提示词文件。`LANGFUSE_ENABLED` 在生产不为真时拒绝进入图，在本地为假时图仍结束。日志和追踪不含 `apiKey`
+- [X] T034 [P] [US6] 先写会失败的 `services/java/shop-api-app/src/test/java/com/omino/shopai/app/credit/CreditUsageTest.java`：累计 100 token 再到 150 token 只结算 150；同一累计值再到达一次，新增扣费为 0；两段各自低于 0.01 时不各扣一次 0.01，最低额作用在本轮累计结果上
 
 ### Implementation for User Story 6
 
-- [ ] T035 [US6] 在 `services/agent/app/graph/nodes/reply_sse.py` 于每次模型调用后发送累计 `usage`。字段 `promptTokens`、`completionTokens`、`totalTokens`、`credits` 都是本轮累计，`model` 等于本轮这一个模型名
-- [ ] T036 [US6] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/credit/CreditBillingImpl.java` 于工人第一次转发 `usage` 时扣费。应扣金额是 `docs/conversation.md` 的公式作用于本轮累计 token 的结果，减去本轮已经扣过的金额。`done` 时多退少补，余额不为负。余额不够则掐断调用并写 `credit_exhausted`。助手不得到任何改积分的路径
-- [ ] T037 [US6] 在 `services/agent/app/observability/langfuse_setup.py` 用已锁定的 `langfuse` `2.57.0` 做追踪，`traceId` 沿用请求里的值。送出前去掉 `apiKey`。生产环境开关不为真时 `invoke.py` 直接拒绝。不引入第二套追踪产品
+- [X] T035 [US6] 在 `services/agent/app/graph/nodes/reply_sse.py` 于每次模型调用后发送累计 `usage`。字段 `promptTokens`、`completionTokens`、`totalTokens`、`credits` 都是本轮累计，`model` 等于本轮这一个模型名
+- [X] T036 [US6] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/credit/CreditBillingImpl.java` 于工人第一次转发 `usage` 时扣费。应扣金额是 `docs/conversation.md` 的公式作用于本轮累计 token 的结果，减去本轮已经扣过的金额。`done` 时多退少补，余额不为负。余额不够则掐断调用并写 `credit_exhausted`。助手不得到任何改积分的路径
+- [X] T037 [US6] 在 `services/agent/app/observability/langfuse_setup.py` 用已锁定的 `langfuse` `2.57.0` 做追踪，`traceId` 沿用请求里的值。送出前去掉 `apiKey`。生产环境开关不为真时 `invoke.py` 直接拒绝。不引入第二套追踪产品
 
 **Checkpoint**: 提示词修改能在下一轮看到。扣费与累计 token 一致
 
@@ -181,10 +181,10 @@ description: "Task list for 005-agent"
 
 **Purpose**: 按 quickstart 收口，并确认没有越界
 
-- [ ] T038 [P] 在 `services/agent/tests/test_pending.py` 增加一条多意图测试：本轮只执行主意图，另一件留在检查点的 `pending_intents`，不并行发两套结果
-- [ ] T039 按 `specs/005-agent/quickstart.md` 跑 `services/agent` 的 pytest 和 `mvn -pl shop-api-app -am test`。失败则修到通过。不把真模型响应录进测试
-- [ ] T040 [P] 抽查 `services/agent/app/` 与 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的日志、追踪和给用户的文字，模型密钥、联盟密钥、PID 的出现次数为 0。异常日志不出现调用正文
-- [ ] T041 确认本功能没有新增业务表、没有 Flyway、没有转链、没有改钱包、没有把助手端口暴露给消费者，也没有引入 Flutter 或第二个模型 SDK
+- [X] T038 [P] 在 `services/agent/tests/test_pending.py` 增加一条多意图测试：本轮只执行主意图，另一件留在检查点的 `pending_intents`，不并行发两套结果
+- [X] T039 按 `specs/005-agent/quickstart.md` 跑 `services/agent` 的 pytest 和 `mvn -pl shop-api-app -am test`。失败则修到通过。不把真模型响应录进测试
+- [X] T040 [P] 抽查 `services/agent/app/` 与 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/chat/AgentGatewayImpl.java` 的日志、追踪和给用户的文字，模型密钥、联盟密钥、PID 的出现次数为 0。异常日志不出现调用正文
+- [X] T041 确认本功能没有新增业务表、没有 Flyway、没有转链、没有改钱包、没有把助手端口暴露给消费者，也没有引入 Flutter 或第二个模型 SDK
 
 ---
 

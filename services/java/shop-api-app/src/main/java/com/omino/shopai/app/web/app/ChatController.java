@@ -7,6 +7,7 @@ import com.omino.shopai.app.service.chat.ChatEventPump;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.IChatCancelService;
 import com.omino.shopai.app.service.chat.IChatTurnService;
+import com.omino.shopai.app.service.chat.TurnCommand;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
 import com.omino.shopai.app.web.app.dto.TurnRequestDto;
 import org.springframework.http.MediaType;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 /**
@@ -57,7 +59,19 @@ public class ChatController {
     @Operation(summary = "提交一轮对话")
     @PostMapping("/turns")
     public ApiResponse<TurnAcceptedDto> turns(@RequestAttribute("userId") String userId, @RequestBody TurnRequestDto request) {
-        TurnAcceptedDto accepted = turns.open(userId, request.conversationId(), request.clientMsgId(), request.text());
+        List<String> installed = request.installedPlatforms();
+        if ((installed == null || installed.isEmpty()) && request.device() != null && request.device().installedPlatforms() != null) {
+            installed = request.device().installedPlatforms();
+        }
+        TurnAcceptedDto accepted = turns.open(userId, new TurnCommand(
+                request.conversationId(),
+                request.clientMsgId(),
+                request.inputType(),
+                request.text(),
+                request.sourceUrl(),
+                request.imageObjectKey(),
+                request.hitl(),
+                installed == null ? List.of() : new ArrayList<>(installed)));
         return ApiResponse.ok(accepted);
     }
     /**

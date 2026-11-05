@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 为一次调用准备提示词和模型。缺关键项则返回空。
+ * 为一次调用准备提示词和模型。提示词缺行用默认正文补齐。test 和 prod 没有模型则返回空。
  */
 @Service
 public class RunContextLoaderImpl implements IRunContextLoader {
@@ -55,7 +55,7 @@ public class RunContextLoaderImpl implements IRunContextLoader {
      * 同一 run 只组装一次上下文，避免重复抽模型。
      *
      * @param run 这一轮
-     * @return 提示词和模型；缺关键项则空
+     * @return 提示词和模型；test 和 prod 没有模型则空
      */
     @Override
     public RunContext load(ChatRun run) {
@@ -63,21 +63,12 @@ public class RunContextLoaderImpl implements IRunContextLoader {
     }
 
     /**
-     * 八个提示词必须齐全。local 可以没有模型，其它环境必须解开密钥。
+     * 八个提示词缺行用默认正文补齐。local 可以没有模型，其它环境必须解开密钥。
      *
-     * @return 提示词和模型；缺关键项则空
+     * @return 提示词和模型；test 和 prod 没有模型则空
      */
     private RunContext build() {
-        Map<String, String> stored = loadPrompts();
-        Map<String, String> ready = new LinkedHashMap<>();
-        for (String key : AgentPrompts.KEYS) {
-            String content = stored.get(key);
-            // 八个键缺一个，整次调用不可用。
-            if (content == null || content.isBlank()) {
-                return null;
-            }
-            ready.put(key, content.trim());
-        }
+        Map<String, String> ready = AgentPrompts.fill(loadPrompts());
         LlmModel model = choose(loadModels());
         if (model == null) {
             // local 允许没有可分流模型；test 和 prod 必须选中。

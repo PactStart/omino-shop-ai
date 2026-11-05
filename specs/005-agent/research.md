@@ -2,18 +2,18 @@
 
 未知项是：检查点库哪一版能配上已锁定的图、本地固定问候怎样保留、当次请求怎样送到助手、长期偏好写到哪、追踪用哪一版 SDK。意图和事件名不在这里重选。
 
-## 检查点用 2.0.25，不用 Store
+## 检查点用 3.2.0，不用 Store
 
-- Decision: 工作记忆使用 `langgraph-checkpoint-postgres==2.0.25` 的 `PostgresSaver` / `AsyncPostgresSaver`。连接要求 `autocommit=True` 与 `row_factory=dict_row`。进程启动时调用一次 `setup()`，表不进 Flyway。不使用该包的 `PostgresStore`。
-- Rationale: `langgraph==0.2.70` 要求 `langgraph-checkpoint>=2.0.10,<3`。`2.0.25` 是这条主版本的最后一版，依赖 `langgraph-checkpoint>=2.1.2,<3`，许可证 MIT。3.x 需要 checkpoint 4.x，会把已锁定的图抬走。该包 3.1.1 之前的 Store 命名空间检索有越权读取问题；本功能不调用 Store，工作记忆按 `thread_id` 等值读写，不走那条检索。
+- Decision: 工作记忆使用 `langgraph-checkpoint-postgres==3.2.0` 的 `PostgresSaver` / `AsyncPostgresSaver`。连接要求 `autocommit=True` 与 `row_factory=dict_row`。进程启动时调用一次 `setup()`，表不进 Flyway。不使用该包的 `PostgresStore`。
+- Rationale: `langgraph==1.2.20` 要求 `langgraph-checkpoint>=4.3.0,<5`。`3.2.0` 依赖这条检查点，许可证 MIT。`2.0.25` 只配得上 `langgraph` `0.2.70`。该包 3.1.1 之前的 Store 命名空间检索有越权读取问题；本功能不调用 Store，工作记忆按 `thread_id` 等值读写，不走那条检索。
 - Alternatives considered:
-  - `langgraph-checkpoint-postgres` 3.1.3：修了 Store 问题，但配不上 `langgraph` `0.2.70`。
+  - `langgraph-checkpoint-postgres` `2.0.25`：配不上已经抬高的图。
   - 自己建 `memory_item`：权威文档禁止再为工作记忆建业务表。
   - 内存检查点：刷新后槽位和未完成的授权会丢。
 
 ## 图只使用当次注入的模型和八条提示词
 
-- Decision: 每一轮用 `langchain-openai` `0.3.3` 建一个 OpenAI 兼容客户端，地址、模型名、密钥和超时都来自当次 `llm`。同一轮后续调用复用这一个客户端。`llm` 为空时，仅本地读取进程环境变量 `OPENAI_*`。测试和生产拒绝空模型。八个提示词键缺一或正文为空时，购物服务不发起调用。仓库和 Langfuse 都不存放会盖过数据库的正文。密钥不写入日志和追踪。
+- Decision: 每一轮用 `langchain-openai` `1.7.4` 建一个 OpenAI 兼容客户端，地址、模型名、密钥和超时都来自当次 `llm`。同一轮后续调用复用这一个客户端。`llm` 为空时，仅本地读取进程环境变量 `OPENAI_*`。测试和生产拒绝空模型。八个提示词键缺一或正文为空时，购物服务不发起调用。仓库和 Langfuse 都不存放会盖过数据库的正文。密钥不写入日志和追踪。
 - Rationale: 运营改提示词和权重后，下一轮必须生效。进程里留一份默认正文会盖过数据库。Langfuse `2.57.0` 的追踪集成是 MIT，且已锁定；不升级到需要另一套回调的主版本。
 - Alternatives considered:
   - 仓库里放一份备用提示词：规格禁止。

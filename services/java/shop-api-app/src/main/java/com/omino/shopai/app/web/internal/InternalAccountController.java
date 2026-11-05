@@ -5,6 +5,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.web.internal.dto.PlatformRequestDto;
 import com.omino.shopai.app.service.auth.InternalAccountService;
+import com.omino.shopai.app.service.memory.IMemoryService;
+import com.omino.shopai.app.web.internal.dto.MemorySearchDto;
+import com.omino.shopai.app.web.internal.dto.MemoryWriteDto;
+import com.omino.shopai.entity.MemorySemantic;
 import com.omino.shopai.app.service.credit.CreditBillingImpl;
 import com.omino.shopai.app.dto.OrderDetailDto;
 import com.omino.shopai.app.dto.OrderViewDto;
@@ -38,6 +42,7 @@ public class InternalAccountController {
     private final IOrderQueryService orders;
     private final IWithdrawalService wallet;
     private final CreditBillingImpl credits;
+    private final IMemoryService memories;
 /**
  * Agent 工具的账号入口。调用方必须带当前用户。
  */
@@ -46,11 +51,13 @@ public class InternalAccountController {
             InternalAccountService accounts,
             IOrderQueryService orders,
             IWithdrawalService wallet,
-            CreditBillingImpl credits) {
+            CreditBillingImpl credits,
+            IMemoryService memories) {
         this.accounts = accounts;
         this.orders = orders;
         this.wallet = wallet;
         this.credits = credits;
+        this.memories = memories;
     }
     /**
      * 读取当前对话用户的资料。
@@ -175,14 +182,37 @@ public class InternalAccountController {
         return ApiResponse.ok(accounts.affiliate(userId));
     }
     /**
-     * 检索当前用户的记忆。本阶段返回空列表。
+     * 检索当前用户还没过期的记忆。
      *
-     * @return 记忆列表信封
+     * @param userId 当前对话用户
+     * @param request 条数，可空
+     * @return 记忆列表信封，不含向量
      */
     @Operation(summary = "检索用户记忆")
     @PostMapping("/memory/search")
-    public ApiResponse<List<Map<String, Object>>> memory() {
-        return ApiResponse.ok(List.of());
+    public ApiResponse<List<Map<String, Object>>> memory(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestBody(required = false) MemorySearchDto request) {
+        Integer limit = request == null ? null : request.limit();
+        List<Map<String, Object>> rows = memories.search(userId, limit).stream().map(this::memoryRow).toList();
+        return ApiResponse.ok(rows);
+    }
+
+    /**
+     * 写入当前用户的一条记忆。模型不能直接挑这条路径。
+     *
+     * @param userId 当前对话用户
+     * @param request 种类、正文、把握和来源
+     * @return 新记忆信封
+     */
+    @Operation(summary = "写入用户记忆")
+    @PostMapping("/memory")
+    public ApiResponse<Map<String, Object>> remember(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestBody MemoryWriteDto request) {
+        MemorySemantic row = memories.write(
+                userId, request.kind(), request.text(), request.confidence(), request.source(), request.supersedeId());
+        return ApiResponse.ok(memoryRow(row));
     }
     /**
      * 读取当前用户的积分余额。
@@ -200,6 +230,23 @@ public class InternalAccountController {
 /**
  * 解析输入。
  */
+
+    /**
+     * 把记忆收成助手能读的字段。不带向量。
+     *
+     * @param row 记忆行
+     * @return 对外字段
+     */
+    private Map<String, Object> memoryRow(MemorySemantic row) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", row.getId());
+        body.put("kind", row.getKind());
+        body.put("text", row.getText());
+        body.put("confidence", row.getConfidence());
+        body.put("source", row.getSource() == null ? null : row.getSource().code());
+        body.put("createdAt", row.getCreatedAt());
+        return body;
+    }
 
     private static OffsetDateTime parse(String value) {
         if (value == null || value.isBlank()) {

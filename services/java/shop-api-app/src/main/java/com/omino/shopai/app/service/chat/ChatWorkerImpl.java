@@ -22,6 +22,7 @@ public class ChatWorkerImpl implements IChatWorker {
     private final Clock clock;
     private final Duration timeout;
     private final IRunContextLoader contexts;
+    private final IUsageBilling billing;
 
     /**
      * 注入事件流和 Agent。上下文默认原样放行。
@@ -32,7 +33,7 @@ public class ChatWorkerImpl implements IChatWorker {
      * @param timeoutSeconds 这一轮允许跑多少秒
      */
     public ChatWorkerImpl(IChatEventService events, IAgentGateway gateway, Clock clock, long timeoutSeconds) {
-        this(events, gateway, clock, timeoutSeconds, IRunContextLoader.passthrough());
+        this(events, gateway, clock, timeoutSeconds, IRunContextLoader.passthrough(), IUsageBilling.NONE);
     }
 
     /**
@@ -44,18 +45,39 @@ public class ChatWorkerImpl implements IChatWorker {
      * @param timeoutSeconds 这一轮允许跑多少秒
      * @param contexts 提示词和模型
      */
+    public ChatWorkerImpl(
+            IChatEventService events,
+            IAgentGateway gateway,
+            Clock clock,
+            long timeoutSeconds,
+            IRunContextLoader contexts) {
+        this(events, gateway, clock, timeoutSeconds, contexts, IUsageBilling.NONE);
+    }
+
+    /**
+     * 注入事件流、Agent、上下文和用量扣费。超时或上下文不可用时不调用 Agent。
+     *
+     * @param events 事件流
+     * @param gateway Agent
+     * @param clock 判断是否超时
+     * @param timeoutSeconds 这一轮允许跑多少秒
+     * @param contexts 提示词和模型
+     * @param billing 第一次转发用量时扣费
+     */
     @Autowired
     public ChatWorkerImpl(
             IChatEventService events,
             IAgentGateway gateway,
             Clock clock,
             @Value("${chat.run-timeout-seconds:120}") long timeoutSeconds,
-            IRunContextLoader contexts) {
+            IRunContextLoader contexts,
+            IUsageBilling billing) {
         this.events = events;
         this.gateway = gateway;
         this.clock = clock;
         this.timeout = Duration.ofSeconds(timeoutSeconds);
         this.contexts = contexts;
+        this.billing = billing;
     }
 
     /**
@@ -116,6 +138,7 @@ public class ChatWorkerImpl implements IChatWorker {
             throw new AgentUnavailableException();
         }
         events.append(run.runId(), name, data);
+        billing.onEvent(run, name, data);
     }
 
     /**

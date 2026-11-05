@@ -14,7 +14,7 @@
 
 **Language/Version**: 助手 CPython `3.12.8`。购物服务仍是 Java 21（Temurin `21.0.8`）。
 
-**Primary Dependencies**: 已锁定且本功能才写入 `pyproject.toml` 的 `langgraph==0.2.70`、`langchain-core==0.3.29`、`langchain-openai==0.3.3`、`langfuse==2.57.0`、`psycopg[binary]==3.2.4`。工作记忆使用与 `langgraph` `0.2.70` 配套的 `langgraph-checkpoint-postgres==2.0.25`（MIT）。该精确版本在加入依赖前写入 `AGENTS.md` §2.2。`httpx==0.28.1` 从开发依赖改为运行依赖，版本不变。不引入 LangSmith，不引入第二套模型 SDK，不使用 checkpoint 包里的 Store。
+**Primary Dependencies**: 已锁定并写入 `pyproject.toml` 的 `langgraph==1.2.20`、`langchain-core==1.7.6`、`langchain-openai==1.7.4`、`langfuse==2.57.0`、`psycopg[binary]==3.2.4`。工作记忆使用与 `langgraph` `1.2.20` 配套的 `langgraph-checkpoint-postgres==3.2.0`（MIT）。该精确版本在加入依赖前写入 `AGENTS.md` §2.2。`httpx==0.28.1` 是运行依赖。不把 LangSmith 当作观测，不引入第二套模型 SDK，不使用 checkpoint 包里的 Store。
 
 **Storage**: 不新增业务表，不写 Flyway。工作记忆用官方 `PostgresSaver.setup()` 在现有 PostgreSQL 16 上建 checkpoint 表，`thread_id` 为会话编号。长期偏好仍用已有 `memory_semantic`。浏览、点击、下单、授权事件仍只由购物服务写入 `user_event`。
 
@@ -109,4 +109,4 @@ services/java/shop-api-app/
 - 契约：见 [contracts/invoke.md](contracts/invoke.md) 与 [contracts/tools.md](contracts/tools.md)。记忆写入实现前先写入 [`docs/api-internal.md`](../../docs/api-internal.md)。授权恢复和累计扣费以 [research.md](research.md) 的对应两节为准。
 - 验收步骤：见 [quickstart.md](quickstart.md)。
 
-设计完成后已按上表重查宪章。原则 I 到 XI 通过。`langgraph-checkpoint-postgres` `2.0.25` 在第一次写入 `pyproject.toml` 之前必须已经写进 `AGENTS.md` §2.2；未写入则不要安装。
+设计完成后已按上表重查宪章。原则 I 到 XI 通过。`langgraph-checkpoint-postgres` `3.2.0` 在写入 `pyproject.toml` 之前已经写进 `AGENTS.md` §2.2。

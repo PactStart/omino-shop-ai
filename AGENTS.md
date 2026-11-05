@@ -113,13 +113,13 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | 包管理     | `uv`                            | `0.5.18`                    | 禁止裸 `pip install` 进运行环境                     |
 | API     | `fastapi`                       | `0.115.6`                   | 仅被 Java 内网调用                                |
 | 服务      | `uvicorn`                       | `0.34.0`                    |                                             |
-| Agent 图 | `langgraph`                     | `0.2.70`                    | 意图 → 槽位 → 工具 → 回复 的唯一编排                     |
-| LLM 抽象  | `langchain-core`                | `0.3.29`                    | 消息 / 工具协议                                   |
-| 厂商适配    | `langchain-openai`              | `0.3.3`                     | **DeepSeek** OpenAI 兼容协议（`OPENAI_API_BASE`=`https://api.deepseek.com`）；不另引 DeepSeek SDK |
+| Agent 图 | `langgraph`                     | `1.2.20`                    | 意图 → 槽位 → 工具 → 回复 的唯一编排。由 `0.2.70` 升到 `1.2.20`（不低于 `1.0.1`）。回归：助手单测、授权暂停后从同一线程恢复。MIT |
+| LLM 抽象  | `langchain-core`                | `1.7.6`                     | 消息协议。由 `0.3.33` 升到 `1.7.6`，对齐 `langchain` `1.4.9` 要求的 `>=1.7.5`，也满足 `langgraph` `1.2.20` 的 `>=1.4.7`。传递依赖里会有 `langsmith`，本仓库不配置、不调用。不另引 DeepSeek SDK。回归：当次注入的模型调用 |
+| 厂商适配    | `langchain-openai`              | `1.7.4`                     | **DeepSeek** OpenAI 兼容协议（`OPENAI_API_BASE`=`https://api.deepseek.com`）。由 `0.3.3` 升到 `1.7.4`（不低于 `1.1.14`）。不另引 DeepSeek SDK。MIT |
 | 观测      | `langfuse`                      | `2.57.0`                    | Trace / Prompt / 评分；**默认**。LangSmith 本阶段不引入 |
 | 校验      | `pydantic`                      | `2.10.4`                    | 工具入参/出参                                     |
 | HTTP    | `httpx`                         | `0.28.1`                    | 调 Java `/internal/v1/**` 工具                 |
-| 图状态     | `langgraph-checkpoint-postgres` | 与 `langgraph` `0.2.70` 配套锁定 | 工作记忆 Checkpointer                           |
+| 图状态     | `langgraph-checkpoint-postgres` | `3.2.0`                     | 工作记忆 Checkpointer。只用 `PostgresSaver` / `AsyncPostgresSaver`，不用该包的 Store。MIT。`langgraph` `1.2.20` 要求 `langgraph-checkpoint>=4.3.0`，`2.0.25` 配不上。回归：启动时 `setup()` 建检查点表，不进 Flyway |
 | PG      | `psycopg[binary]`               | `3.2.4`                     | Checkpointer + 语义表                          |
 | 测试      | `pytest`                        | `8.3.4`                     |                                             |
 

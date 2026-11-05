@@ -41,11 +41,11 @@
 }
 ```
 
-`prompts` 的 key 必须与 [`data-model.md`](./data-model.md) §6.29 一致且正文非空，由 Java 从 `agent_prompt` 读出后注入。Agent 不读该表。
+`prompts` 的 key 与 [`data-model.md`](./data-model.md) §6.29 一致。Java 从 `agent_prompt` 读出后注入；缺行或空白用内置默认正文补齐。默认正文包含角色、背景、上下文、目标、输出格式、约束和示例。已有非空正文保持原样。Agent 不读该表。请求里某一键仍是空白时，Agent 在调用模型前再补一次同一套默认正文。
 
 `llm` 为本次 run 按权重命中的那一条（§6.30）。这一轮里每一次模型调用都用它。`apiKey` 只走这条内网请求，Worker 与 Agent 日志、Langfuse 都禁止落盘。`local` 且没有任何可分流模型时，`llm` 为 `null`，Agent 改用自身 `OPENAI_*` 环境变量。`test` / `prod` 不允许 `llm=null`。
 
-记忆由 Agent 按 `conversationId` 读 Checkpointer；Java **不要**每次塞全量向量。语义检索由 Agent 查 PG 或调 `search_memory` 工具。Agent 不持有模型密钥的长期副本，进程内只保留当次请求。
+记忆由 Agent 按 `conversationId` 读 Checkpointer；Java **不要**每次塞全量向量。语义记忆的读写走 `search_memory` 和 `write_memory`，助手不直连 `memory_semantic`。Agent 不持有模型密钥的长期副本，进程内只保留当次请求。
 
 ### 4.5 Java `/internal/v1/**`（仅 Agent Tool；第三产出物不存在）
 
@@ -69,7 +69,8 @@
 | `get_affiliate_stats`       | `GET /internal/v1/affiliate/stats`                       | 邀请人数、有效用户、下级贡献收益                                                                |
 | `search_kb`                 | `POST /internal/v1/kb/search`                            | 规则问答；**未命中必须明确 miss**，不得让模型补政策。后期知识库 MCP 只替换本工具实现                               |
 | `create_ticket`             | `POST /internal/v1/tickets`                              | body：`category`、`content`、`orderId?`、`priority`；同一事务写 `ticket_log.kind=created` |
-| `search_memory`             | `POST /internal/v1/memory/search`                        | 可选；语义记忆若由 Java 写库则走此，否则 Agent 直连 PG 只读 `memory_semantic`                        |
+| `search_memory`             | `POST /internal/v1/memory/search`                        | 记忆节点读取。body 可空或 `{ "limit": 20 }`，`limit` 缺省 20、最大 20。只返回当前用户且 `valid_to` 为空的行，含 `id` `kind` `text` `confidence` `source` `createdAt`，不含 `embedding` |
+| `write_memory`              | `POST /internal/v1/memory`                               | 只由记忆节点调用，不放进模型可挑选的工具。body：`kind` `text` `confidence` `source`，可选 `supersedeId`。`source` 只接受 `explicit` 和 `inferred`，`survey` 拒绝。`confidence` 为 0 到 1。`inferred` 且低于 0.8 只插入候选，不覆盖。`supersedeId` 必须属于 `X-User-Id`，成功时给旧行写 `valid_to` 再插入。用户编号、主键、创建时间由服务端填写，`embedding` 留空。客服、查账、工单不得调用 |
 
 
 **工具白名单**
