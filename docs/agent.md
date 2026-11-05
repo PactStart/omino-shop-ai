@@ -205,6 +205,8 @@ shop.compare --> 对 referents 调 goods_detail（不海搜）
 
 `gift` / `scene` 在关键词仍空时必须先 clarify（对象、预算、年级），禁止用模型直接编 SKU。
 
+`shop.search` 的预算和平台以这句话为准。这两项为空时，用该用户未过期的 `explicit` 记忆补上。`inferred` 候选不参与搜索。关键词为空仍然追问，不用记忆编出一个关键词。
+
 ### 5.2 账户子图 `subgraph_account`
 
 | intent | 节点行为 |
@@ -223,8 +225,8 @@ shop.compare --> 对 referents 调 goods_detail（不海搜）
 
 | 从 | 条件 | 到 |
 |---|---|---|
-| `ingest` | `hitl` 有值 | `hitl`（resume） |
-| `ingest` | 否则 | `memory_load` |
+| 已暂停的 `hitl` | 下一句带上恢复值 | 从暂停点继续，不进入 `intent_router` |
+| `ingest` | 新的一句，没有待恢复的暂停 | `memory_load` |
 | `memory_load` | 恒定 | `intent_router` |
 | `intent_router` | `confidence < 0.6` | `clarify` |
 | `intent_router` | `intent` 前缀 `shop.` | `subgraph_shop` |
@@ -239,6 +241,8 @@ shop.compare --> 对 referents 调 goods_detail（不海搜）
 | `reply_sse` | 恒定 | END |
 
 实现：`builder.py` 里 `add_conditional_edges("intent_router", route_intent, {...})`。`route_intent` 必须是无 I/O 的纯函数，单测覆盖每条 intent。
+
+授权恢复不是从 `ingest` 再跑一遍。第一轮在 `hitl` 发出卡片后 `interrupt()`，本轮结束。下一句对同一个 `thread_id` 提交恢复值，从暂停的下一行继续，调用 `start_authorization` 或 `revoke_authorization`。这次恢复不进入 `intent_router`，也不再发一张授权卡或确认卡。
 
 ---
 
@@ -392,7 +396,9 @@ Langfuse：每个 invoke 一个 trace，`traceId` 与 Java 相同；每个节点
   → Agent resume → 话术「授权完成」→ done
 ```
 
-取消授权：先 `confirm_card`，`action=confirm` 才 `revoke_authorization`。
+取消授权：先 `confirm_card`，`action=confirm` 才 `revoke_authorization`。确认那一句从暂停点继续，授权工具只调用一次。
+
+恢复调用携带同一会话的 `thread_id` 和 `hitl`。它不从 `ingest` 重新识别意图。
 
 ---
 
