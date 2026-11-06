@@ -280,6 +280,12 @@ onMounted(() => {
             <el-table-column label="下单时间" min-width="170">
               <template #default="{ row }">{{ when(row.orderedAt) }}</template>
             </el-table-column>
+            <el-table-column label="付款时间" min-width="170">
+              <template #default="{ row }">{{ when(row.paidAt) }}</template>
+            </el-table-column>
+            <el-table-column label="完成时间" min-width="170">
+              <template #default="{ row }">{{ when(row.completedAt) }}</template>
+            </el-table-column>
           </el-table>
           <el-pagination
             v-if="orders.paged.value"

@@ -9,13 +9,11 @@ import { useRows } from '../support/useRows'
 const router = useRouter()
 const list = useRows()
 const query = reactive({ keyword: '', phone: '', inviteCode: '', id: '', status: '' })
-const h5Origin = (import.meta.env.VITE_H5_ORIGIN as string | undefined) || 'http://127.0.0.1:5177'
+const h5Origin = (import.meta.env.VITE_H5_ORIGIN as string | undefined) || 'http://localhost:5177'
 const view = reactive({
   open: false,
   loading: false,
   error: '',
-  userId: '',
-  nickname: '',
   src: '',
 })
 const frame = ref<HTMLIFrameElement | null>(null)
@@ -56,13 +54,11 @@ async function openView(row: { id: string; nickname?: string }): Promise<void> {
   view.open = true
   view.loading = true
   view.error = ''
-  view.userId = row.id
-  view.nickname = row.nickname || row.id
   view.src = ''
   try {
     const token = await issueGodViewToken(row.id)
     const home = h5Origin.replace(/\/$/, '')
-    view.src = `${home}/?access_token=${encodeURIComponent(token)}`
+    view.src = `${home}/chat?access_token=${encodeURIComponent(token)}`
   } catch (error) {
     view.error = error instanceof Error ? error.message : '签发失败'
   } finally {
@@ -125,44 +121,45 @@ onMounted(load)
       @current-change="changePage"
       @size-change="changeSize"
     />
-    <el-drawer v-model="view.open" title="用户视角" direction="rtl" size="440px" @closed="closeView">
-      <p class="who">{{ view.nickname }}</p>
-      <p class="id">{{ view.userId }}</p>
+    <el-drawer
+      v-model="view.open"
+      class="live-drawer"
+      title="用户视角"
+      direction="rtl"
+      size="500px"
+      @closed="closeView"
+    >
       <el-alert v-if="view.error" :title="view.error" type="warning" show-icon :closable="false" />
       <div v-else v-loading="view.loading" class="stage">
         <div class="phone">
           <iframe v-if="view.src" ref="frame" :src="view.src" title="H5 首页"></iframe>
         </div>
-        <p class="hint">模拟屏打开消费者 H5 首页。首页尚未完成时，框里会是空白或未实现的页面。</p>
       </div>
     </el-drawer>
   </div>
 </template>
 
 <style scoped>
-.who {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-.id {
-  margin: 4px 0 16px;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
 .stage {
   display: flex;
-  flex-direction: column;
+  flex: 1;
   align-items: center;
+  justify-content: center;
+  min-height: 0;
+  height: 100%;
 }
 .phone {
-  width: 320px;
-  height: 640px;
+  box-sizing: border-box;
+  width: auto;
+  height: 100%;
+  max-height: 100%;
+  aspect-ratio: 9 / 19.5;
+  max-width: 100%;
   padding: 12px;
-  border: 10px solid #1c1c1e;
-  border-radius: 36px;
+  border: 12px solid #1c1c1e;
+  border-radius: 42px;
   background: #fff;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
 }
 .phone iframe {
   width: 100%;
@@ -171,11 +168,19 @@ onMounted(load)
   border-radius: 22px;
   background: #f6f6f6;
 }
-.hint {
-  margin: 16px 0 0;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: center;
+</style>
+
+<style>
+.live-drawer .el-drawer__header {
+  margin-bottom: 12px;
+}
+.live-drawer .el-drawer__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 16px 16px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 </style>

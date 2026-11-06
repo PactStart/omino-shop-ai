@@ -1,6 +1,6 @@
 # App HTTP API（`/api/app`）
 
-> 本文件是消费者端 HTTP 契约的权威正文（Android / iOS / H5）。对话 SSE 事件名、开 run / 取消 / 积分扣费见 [`conversation.md`](./conversation.md)。Admin 见 [`api-admin.md`](./api-admin.md)。表结构见 [`data-model.md`](./data-model.md)。
+> 本文件是消费者端 HTTP 契约的权威正文（Android / iOS / H5）。对话 SSE 事件名、开 run / 取消 / 积分扣费见 [`conversation.md`](./conversation.md)。Admin 见 [`api-admin.md`](./api-admin.md)。表结构见 [`data-model.md`](./data-model.md)。接口目录见 [`app-api-catalog.md`](./app-api-catalog.md)，那份不另写字段。
 
 约定与信封见 `AGENTS.md` §4–§5。鉴权：`Authorization: Bearer`（登录除外）。
 
@@ -157,6 +157,16 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 
 商品卡字段与对话卡相同。口令、解析链接和日志里都不放推广位。
 
+### 4.6.4 商城首页
+
+须登录。`GET /api/app/v1/mall`。按 `X-Client-Type`、`X-App-Channel` 过滤。只下发 `published`、且当前时间落在生效窗内的条目。`clientTypes` 或 `channels` 为空数组表示不限制。
+
+`data.banner`：`intervalMs`（缺省 3000，`0` 不自动播）、`items[]`。每项 `id` `title` `imageUrl` `actionType` `action`。`action` 是对象，字段见 [`data-model.md`](./data-model.md) 商城布局。`items` 按 `sort` 升序。
+
+`data.nav`：`columns`（4 到 6，缺省 5）、`categories[]`。分类含 `id` `name` `items[]`，条目字段与 banner 相同。分类和图标都按 `sort` 升序。没有可展示图标的分类不下发。
+
+搜索条和猜你喜欢不在这个接口里。猜你喜欢用 `POST /api/app/v1/goods/guess`。
+
 ### 4.7 邀请码、落地链接与海报模板
 
 邀请码在创建 `app_user` 时生成，**之后禁止修改**。字母表 `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`（8 位），CSPRNG，UNIQUE 冲突则重试。禁止用用户 id / 手机号当码。
@@ -237,7 +247,7 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 | GET | `/api/app/v1/orders` | 本人分页。query：`platform`（`taobao`/`jd`/`pdd`/`vip`，可空=全部）、`orderStatus`（`pending_pay`/`pending_ship`/`shipped`/`completed`/`cancelled`/`unknown`，可空=全部）、`settleStatus`（`none`/`pending`/`settled`，可空=全部）、`page` `size` |
 | GET | `/api/app/v1/orders/{id}` | 详情；无物流 `logistics=null` |
 
-列表与详情给消费者的字段：`id` `platform` `goodsId` `goodsTitle` `goodsImageUrl` `payAmount` `userCommission` `orderStatus` `settleStatus` `orderedAt` `shippedAt`。金额为字符串两位或 `null`。**不下发** `mediaCommission`、`parentUserId`、`walletLedgerId`。`userCommission` 在待结算时是当前分成预估，已结算后是入账金额。
+列表与详情给消费者的字段：`id` `platform` `goodsId` `goodsTitle` `goodsImageUrl` `payAmount` `userCommission` `orderStatus` `settleStatus` `orderedAt` `shippedAt`。金额为字符串两位或 `null`。**不下发** `mediaCommission`、`parentUserId`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`userCommission` 在待结算时是当前分成预估，已结算后是入账金额。
 
 ### 4.11 返佣钱包与提现
 

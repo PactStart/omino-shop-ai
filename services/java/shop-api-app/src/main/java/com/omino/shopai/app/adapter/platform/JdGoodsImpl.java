@@ -482,6 +482,9 @@ public class JdGoodsImpl implements IPlatformGoods {
                 UnionMaps.money(row.getEstimateFee()),
                 status,
                 UnionMaps.parseTime(row.getOrderTime()),
-                status == OrderStatus.COMPLETED ? UnionMaps.parseTime(row.getFinishTime()) : null);
+                status == OrderStatus.COMPLETED ? UnionMaps.parseTime(row.getFinishTime()) : null,
+                null,
+                UnionMaps.parseTime(row.getFinishTime()),
+                null);
     }
 }

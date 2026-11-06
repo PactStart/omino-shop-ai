@@ -652,6 +652,10 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
         OrderStatus status = UnionMaps.taobaoStatus(row.getTkStatus());
         OffsetDateTime orderedAt = UnionMaps.parseTime(row.getTkCreateTime());
         OffsetDateTime shippedAt = status == OrderStatus.COMPLETED ? UnionMaps.parseTime(row.getTkEarningTime()) : null;
+        OffsetDateTime paidAt = UnionMaps.parseTime(row.getTkPaidTime());
+        if (paidAt == null) {
+            paidAt = UnionMaps.parseTime(row.getTbPaidTime());
+        }
         return new IncomingOrderDto(
                 id,
                 null,
@@ -663,7 +667,10 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
                 amount(row.getPubShareFee(), row.getPubSharePreFee()),
                 status,
                 orderedAt,
-                shippedAt);
+                shippedAt,
+                paidAt,
+                null,
+                null);
     }
 
     /**

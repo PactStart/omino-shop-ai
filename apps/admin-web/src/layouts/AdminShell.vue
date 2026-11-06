@@ -12,6 +12,7 @@ import {
   Expand,
   Fold,
   Goods,
+  Grid,
   Message,
   Money,
   Moon,
@@ -155,6 +156,10 @@ function toggleTheme(): void {
           <el-menu-item index="/announcements">
             <el-icon><Bell /></el-icon>
             <template #title>公告</template>
+          </el-menu-item>
+          <el-menu-item index="/mall-layout">
+            <el-icon><Grid /></el-icon>
+            <template #title>商城布局</template>
           </el-menu-item>
           <el-menu-item index="/inbox">
             <el-icon><Message /></el-icon>

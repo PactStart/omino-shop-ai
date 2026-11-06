@@ -396,6 +396,7 @@ omino-shop-ai/
 │   │   │       │   ├── web/app/                       # 对 Android/iOS：/api/app/v1
 │   │   │       │   │   ├── ChatController.java            # POST turns + GET runs/{id}/events
 │   │   │       │   │   ├── GoodsController.java
+│   │   │       │   │   ├── MallController.java            # 商城首页布局
 │   │   │       │   │   ├── AuthController.java
 │   │   │       │   │   ├── OrderController.java
 │   │   │       │   │   ├── WalletController.java
@@ -419,6 +420,7 @@ omino-shop-ai/
 │   │   │       │   ├── chat/ChatEventPump.java        # ≤100ms 读 Redis → SSE
 │   │   │       │   ├── chat/ChatCancelServiceImpl.java # SET cancel 键；不假设 Worker 在本机
 │   │   │       │   │   ├── goods/GoodsServiceImpl.java
+│   │   │       │   │   ├── mall/MallServiceImpl.java      # 按端和渠道下发 banner 与金刚区
 │   │   │       │   │   ├── goods/GoodsCollectionService.java
 │   │   │       │   │   ├── goods/GoodsFavoriteService.java
 │   │   │       │   │   ├── auth/UnionAuthService.java
@@ -472,6 +474,7 @@ omino-shop-ai/
 │   │               │   ├── AdminReleaseController.java
 │   │               │   ├── AdminRuntimeConfigController.java
 │   │               │   ├── AdminAnnouncementController.java
+│   │               │   ├── AdminMallController.java       # 商城版位、分类、条目
 │   │               │   ├── AdminInboxController.java
 │   │               │   ├── AdminUserController.java
 │   │               │   ├── AdminGodViewController.java
@@ -569,6 +572,7 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 | --- | --- |
 | [`docs/conversation.md`](docs/conversation.md) | 意图枚举、一张图、记忆三分法、SSE 事件、开 run / 取消 / 积分扣费 |
 | [`docs/api-app.md`](docs/api-app.md) | 消费者 HTTP：短信登录、商品、转链、浏览/收藏/合集、积分支付、邀请、版本头、站内信、订单 |
+| [`docs/app-api-catalog.md`](docs/app-api-catalog.md) | APP 接口清单。只列路径，供界面数据绑定。字段以 `api-app.md`、`conversation.md` 为准 |
 | [`docs/api-admin.md`](docs/api-admin.md) | 运营 HTTP：用户档案、套餐、海报模板、版本、配置、公告、私信、用户视角 |
 | [`docs/api-internal.md`](docs/api-internal.md) | `POST /internal/v1/graph/invoke` 与 Tool 白名单 |
 | [`docs/data-model.md`](docs/data-model.md) | PostgreSQL 表 |
@@ -848,6 +852,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | 变量                                              | 端                  | 说明                             |
 | ----------------------------------------------- | ------------------ | ------------------------------ |
 | `VITE_ADMIN_API_BASE`                           | admin-web          | 如 `/api/admin`                 |
+| `VITE_H5_ORIGIN`                                | admin-web          | 用户视角模拟屏根地址。本地 `http://localhost:5177`。不要写 `127.0.0.1`，H5 开发服务只听 localhost |
 | `API_BASE`                                      | Android / iOS      | APP API 根，含 `/api/app`         |
 | `VITE_WWW_STORE_IOS` / `VITE_WWW_STORE_ANDROID` | www                | 商店地址                           |
 | `VITE_LAND_API_BASE`                            | land               | 可选，公开邀请预览；可空则落地页不调 API         |

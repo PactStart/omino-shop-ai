@@ -43,6 +43,7 @@
 | 运营 | 版本发布 | `releases` | `/releases` |
 | 运营 | 特殊配置 | `runtimeConfigs` | `/runtime-configs` |
 | 运营 | 公告 | `announcements` | `/announcements` |
+| 运营 | 商城布局 | `mallLayout` | `/mall-layout` |
 | 运营 | 站内信 | `inbox` | `/inbox` |
 | 对话 | 推荐问题 | `chatSuggestions` | `/chat-suggestions` |
 | 对话 | 提示词 | `agentPrompts` | `/agent-prompts` |
@@ -69,8 +70,8 @@
 | `statsRisk` | 风险 | `/stats/risk` | 看还没处理的异常单和账 | 表 | 见 [`ops-metrics.md`](./ops-metrics.md) |
 | `users` | 用户列表 | `/users` | 找人、进详情、打开该用户的模拟屏 | 筛选+表+右侧抽屉 | 点用户编号进 `userDetail`。操作栏「用户视角」打开抽屉。手机列表脱敏 |
 | `userDetail` | 用户详情 | `/users/:id` | 看该用户全部运营可见信息 | 左菜单+右内容 | 见 §3.4；无 JWT/密钥/PID |
-| `orders` | 电商订单 | `/orders` | 按平台/平台订单号/订单状态/结算状态/用户查 | 筛选+表 | 表不展示本系统订单号。列顺序为平台、平台单号、用户，其后是商品和金额。商品列左侧是主图、右侧是名称；没有图时左侧留空位。默认每页 10 条。点行仍进详情。无联盟原始 JSON；表上同时能看媒体返佣与用户分成 |
-| `orderDetail` | 订单详情 | `/orders/:id` | 看一单 | 描述列表 | 无物流写未知；已结算行显示钱包流水 ID |
+| `orders` | 电商订单 | `/orders` | 按平台/平台订单号/订单状态/结算状态/用户查 | 筛选+表 | 表不展示本系统订单号。列顺序为平台、平台单号、用户，其后是商品和金额。商品列左侧是主图、右侧是名称；没有图时左侧留空位。付款时间、完成时间在下单时间后面，没有值的格子留空。默认每页 10 条。点行仍进详情。无联盟原始 JSON；表上同时能看媒体返佣与用户分成 |
+| `orderDetail` | 订单详情 | `/orders/:id` | 看一单 | 描述列表 | 无物流写未知；已结算行显示钱包流水 ID。付款时间、完成时间、`extras` 为空则不出现这一行 |
 | `orderSync` | 同步游标 | `/orders/sync` | 看水位、改水位、同步 | 四行平台 | 右上角刷新重新拉取四行。最近错误显示这次失败的原因。操作栏是「设置」和「同步」。每行可改下单水位和更新水位，可清空。改水位和同步都写审计。同步只触发，拉单在 APP 内异步追平；无美团 |
 | `conversations` | 会话 | `/conversations` | 观测对话 | 表 | 只读；无密钥 |
 | `conversationDetail` | 会话消息 | `/conversations/:id` | 看消息 | 时间线 | 不改用户话 |
@@ -86,12 +87,13 @@
 | `releases` | 版本 | `/releases` | 发渠道包 | 表；Android 一行一渠道 | `versionCode` 输入 `yyyyMMdd`。说明可选纯文本或有限富文本，对应 `format` |
 | `runtimeConfigs` | 特殊配置 | `/runtime-configs` | 渠道/端/版本行为 | 表+JSON 表单 | 只允许已锁 payload 键 |
 | `announcements` | 公告 | `/announcements` | 定向投放 | 表+抽屉 | 端/渠道多选；版本范围日期码。正文可选纯文本或有限富文本，对应 `format` |
+| `mallLayout` | 商城布局 | `/mall-layout` | 配 banner 和金刚区 | 版位参数 + 两张表 + 抽屉 | 不新增版位。金刚图标必须选分类。点击参数按类型填写。不物理删除 |
 | `inbox` | 站内信 | `/inbox` | 发给一个人 | 表单 userId+标题正文 | 禁止全站群发。正文可选纯文本或有限富文本，对应 `format`；列表显示去掉标签后的文字 |
 | `chatSuggestions` | 推荐问题 | `/chat-suggestions` | 配新对话空态问题 | 表+抽屉 | 上架最多 12；下架不物理删 |
 | `agentPrompts` | 提示词 | `/agent-prompts` | 改八条固定提示词 | 左 key 右编辑器 | 不能增删 key；保存后下一轮对话生效 |
 | `llmModels` | 模型分流 | `/llm-models` | 多个模型与权重 | 表+抽屉 | 密钥只写不回显；列表只显示末 4 位 |
 | `kb` | 知识库 | `/kb` | 规则正文 | 表+编辑器 | retired 不停物理删若仍检索 |
-| `userLive` | 用户视角抽屉 | 用户列表内 | 用短时凭证打开该用户的 H5 首页 | 右侧抽屉 + 手机框 | 没有独立路由。令牌只放进模拟屏地址，页面不展示。H5 首页可以还没做。prod 未开启时抽屉里是 `40303` |
+| `userLive` | 用户视角抽屉 | 用户列表内 | 用短时凭证打开该用户的 H5 首页 | 右侧抽屉 + 手机框 | 没有独立路由。抽屉只留标题，标题下居中放一台大号手机，按竖屏比例，不横向拉满。不放用户名、编号和说明。本地地址是 `http://localhost:5177/chat`，不要用 `127.0.0.1`。令牌只放进模拟屏地址，页面不展示。prod 未开启时抽屉里是 `40303` |
 | `audit` | 审计 | `/audit` | 追操作 | 表 | 无密钥 |
 
 ### 3.2 海报编辑（重点）

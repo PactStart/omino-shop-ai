@@ -38,7 +38,10 @@ public class AppOrder {
     private SettleStatus settleStatus;
     private String walletLedgerId;
     private OffsetDateTime orderedAt;
+    private OffsetDateTime paidAt;
     private OffsetDateTime shippedAt;
+    private OffsetDateTime completedAt;
+    private String extras;
     private OffsetDateTime settledAt;
     private OffsetDateTime updatedFromPlatformAt;
     private OffsetDateTime createdAt;

@@ -611,6 +611,9 @@ public class VipGoodsImpl implements IPlatformGoods {
                 UnionMaps.money(row.getCommission()),
                 status,
                 UnionMaps.fromEpoch(row.getOrderTime()),
-                status == OrderStatus.SHIPPED || status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null);
+                status == OrderStatus.SHIPPED || status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
+                null,
+                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
+                null);
     }
 }

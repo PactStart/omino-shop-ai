@@ -477,7 +477,10 @@ public class AdminDirectory {
         row.put("settleStatus", order.getSettleStatus() == null ? null : order.getSettleStatus().code());
         row.put("walletLedgerId", order.getWalletLedgerId());
         row.put("orderedAt", order.getOrderedAt());
+        row.put("paidAt", order.getPaidAt());
         row.put("shippedAt", order.getShippedAt());
+        row.put("completedAt", order.getCompletedAt());
+        row.put("extras", order.getExtras());
         row.put("logistics", null);
         return row;
     }

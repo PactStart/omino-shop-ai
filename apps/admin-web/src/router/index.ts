@@ -21,6 +21,7 @@ import InvitePosterEdit from '../views/invite-poster-edit.vue'
 import Releases from '../views/releases.vue'
 import RuntimeConfigs from '../views/runtime-configs.vue'
 import Announcements from '../views/announcements.vue'
+import MallLayout from '../views/mall-layout.vue'
 import Inbox from '../views/inbox.vue'
 import ChatSuggestions from '../views/chat-suggestions.vue'
 import AgentPrompts from '../views/agent-prompts.vue'
@@ -55,6 +56,7 @@ export const router = createRouter({
         { path: 'releases', name: 'releases', component: Releases },
         { path: 'runtime-configs', name: 'runtimeConfigs', component: RuntimeConfigs },
         { path: 'announcements', name: 'announcements', component: Announcements },
+        { path: 'mall-layout', name: 'mallLayout', component: MallLayout },
         { path: 'inbox', name: 'inbox', component: Inbox },
         { path: 'chat-suggestions', name: 'chatSuggestions', component: ChatSuggestions },
         { path: 'agent-prompts', name: 'agentPrompts', component: AgentPrompts },

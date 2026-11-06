@@ -539,6 +539,9 @@ public class PddGoodsImpl implements IPlatformGoods {
                 UnionMaps.fen(row.getPromotionAmount()),
                 status,
                 UnionMaps.fromEpoch(row.getOrderCreateTime()),
-                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getOrderPayTime()) : null);
+                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getOrderPayTime()) : null,
+                UnionMaps.fromEpoch(row.getOrderPayTime()),
+                UnionMaps.fromEpoch(row.getOrderReceiveTime()),
+                null);
     }
 }
