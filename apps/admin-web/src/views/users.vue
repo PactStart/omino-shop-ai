@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/http'
 import { userStatus, when } from '../support/format'
+import { issueGodViewToken } from '../support/godView'
 import { useRows } from '../support/useRows'
 
 const router = useRouter()
 const list = useRows()
 const query = reactive({ keyword: '', phone: '', inviteCode: '', id: '', status: '' })
+const h5Origin = (import.meta.env.VITE_H5_ORIGIN as string | undefined) || 'http://127.0.0.1:5177'
+const view = reactive({
+  open: false,
+  loading: false,
+  error: '',
+  userId: '',
+  nickname: '',
+  src: '',
+})
+const frame = ref<HTMLIFrameElement | null>(null)
 
 async function load(): Promise<void> {
   await list.load(async () =>
@@ -39,6 +50,29 @@ function changeSize(size: number): void {
   list.size.value = size
   list.page.value = 1
   void load()
+}
+
+async function openView(row: { id: string; nickname?: string }): Promise<void> {
+  view.open = true
+  view.loading = true
+  view.error = ''
+  view.userId = row.id
+  view.nickname = row.nickname || row.id
+  view.src = ''
+  try {
+    const token = await issueGodViewToken(row.id)
+    const home = h5Origin.replace(/\/$/, '')
+    view.src = `${home}/?access_token=${encodeURIComponent(token)}`
+  } catch (error) {
+    view.error = error instanceof Error ? error.message : '签发失败'
+  } finally {
+    view.loading = false
+  }
+}
+
+function closeView(): void {
+  view.src = ''
+  if (frame.value) frame.value.src = 'about:blank'
 }
 
 onMounted(load)
@@ -74,6 +108,11 @@ onMounted(load)
       <el-table-column label="注册时间" min-width="170">
         <template #default="{ row }">{{ when(row.createdAt) }}</template>
       </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="openView(row)">用户视角</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <el-pagination
       v-if="list.paged.value"
@@ -86,5 +125,57 @@ onMounted(load)
       @current-change="changePage"
       @size-change="changeSize"
     />
+    <el-drawer v-model="view.open" title="用户视角" direction="rtl" size="440px" @closed="closeView">
+      <p class="who">{{ view.nickname }}</p>
+      <p class="id">{{ view.userId }}</p>
+      <el-alert v-if="view.error" :title="view.error" type="warning" show-icon :closable="false" />
+      <div v-else v-loading="view.loading" class="stage">
+        <div class="phone">
+          <iframe v-if="view.src" ref="frame" :src="view.src" title="H5 首页"></iframe>
+        </div>
+        <p class="hint">模拟屏打开消费者 H5 首页。首页尚未完成时，框里会是空白或未实现的页面。</p>
+      </div>
+    </el-drawer>
   </div>
 </template>
+
+<style scoped>
+.who {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.id {
+  margin: 4px 0 16px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.phone {
+  width: 320px;
+  height: 640px;
+  padding: 12px;
+  border: 10px solid #1c1c1e;
+  border-radius: 36px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+.phone iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 22px;
+  background: #f6f6f6;
+}
+.hint {
+  margin: 16px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+</style>

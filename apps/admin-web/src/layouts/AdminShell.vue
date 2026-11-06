@@ -25,7 +25,6 @@ import {
   Tickets,
   Upload,
   User,
-  View,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -98,10 +97,6 @@ function toggleTheme(): void {
           <el-menu-item index="/users">
             <el-icon><User /></el-icon>
             <template #title>用户列表</template>
-          </el-menu-item>
-          <el-menu-item index="/god-view">
-            <el-icon><View /></el-icon>
-            <template #title>用户视角</template>
           </el-menu-item>
           <el-menu-item index="/conversations">
             <el-icon><ChatDotRound /></el-icon>

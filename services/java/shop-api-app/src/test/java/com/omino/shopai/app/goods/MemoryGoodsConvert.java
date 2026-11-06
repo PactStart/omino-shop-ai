@@ -1,6 +1,7 @@
 package com.omino.shopai.app.goods;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.omino.shopai.app.adapter.dataoke.DataokeClient;
 import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.app.dto.ConvertedLinkDto;
 import com.omino.shopai.app.service.goods.GoodsServiceImpl;
@@ -35,7 +36,7 @@ public final class MemoryGoodsConvert extends GoodsServiceImpl {
      * @param stub 替换签发；空则走真实实现
      */
     public MemoryGoodsConvert(MemoryGoods goods, List<IPlatformGoods> clients, Stub stub) {
-        super(null, clients, goods, null, new ObjectMapper(), null, null, null, null);
+        super(null, clients, goods, null, new ObjectMapper(), null, null, null, null, new DataokeClient("", ""));
         this.goods = goods;
         this.stub = stub;
     }

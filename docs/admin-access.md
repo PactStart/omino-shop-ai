@@ -94,7 +94,7 @@
 | `sync:write` | 改水位 | `group:trade` | 设置下单水位和更新水位 | `PATCH /v1/order-sync/{platform}` |
 | `user:read` | 看用户 | `group:people` | 用户列表、用户详情 | `GET /v1/users`、`GET /v1/users/{id}`。列表手机保持打码 |
 | `user:phone` | 看完整手机 | `group:people` | 详情里的手机号 | 详情接口的手机字段。没有本权限时详情也打码，和列表同一规则 |
-| `user:live` | 打开用户视角 | `group:people` | 用户视角 | `POST /v1/god-view/tokens`。还要 `GOD_VIEW_ENABLED=true`，否则仍是 `40303` |
+| `user:live` | 打开用户视角 | `group:people` | 用户列表操作栏，不是左栏菜单 | `POST /v1/god-view/tokens`。还要 `GOD_VIEW_ENABLED=true`，否则仍是 `40303` |
 | `chat:read` | 看会话 | `group:people` | 会话观测 | `GET /v1/conversations`、`GET /v1/conversations/{id}/messages` |
 | `ticket:read` | 看工单 | `group:people` | 工单 | `GET /v1/tickets`、`GET /v1/tickets/{id}` |
 | `ticket:reply` | 回复工单 | `group:people` | 回复框 | `POST /v1/tickets/{id}/reply` |

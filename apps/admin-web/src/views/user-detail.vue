@@ -17,7 +17,6 @@ import {
 } from '@element-plus/icons-vue'
 import { apiGet, errorMessage } from '../api/http'
 import { field, label, money, onOff, recordOf, text, userStatus, visibleText, when } from '../support/format'
-import { issueGodView } from '../support/godView'
 import { useRows } from '../support/useRows'
 
 const route = useRoute()
@@ -45,8 +44,6 @@ const tab = computed(() => {
 const profileError = ref('')
 const profile = ref<Record<string, unknown> | null>(null)
 const auths = ref<Record<string, unknown>[]>([])
-const refused = ref(false)
-const actionError = ref('')
 
 const orders = useRows()
 const credits = useRows()
@@ -167,18 +164,6 @@ async function loadLedger(): Promise<void> {
   )
 }
 
-async function openView(): Promise<void> {
-  refused.value = false
-  actionError.value = ''
-  const result = await issueGodView(id.value)
-  if (result === 'ok') return
-  if (result === 'denied') {
-    refused.value = true
-    return
-  }
-  actionError.value = result
-}
-
 function reloadTab(): void {
   if (tab.value === 'orders') void loadOrders()
   if (tab.value === 'credits') void loadCredits()
@@ -211,11 +196,8 @@ onMounted(() => {
   <div class="page">
     <div class="head">
       <h1>{{ field(profile, 'nickname') || '用户详情' }}</h1>
-      <el-button type="primary" @click="openView">打开用户视角</el-button>
     </div>
     <el-alert v-if="profileError" :title="profileError" type="error" show-icon :closable="false" />
-    <el-alert v-if="refused" title="拒绝" type="warning" show-icon :closable="false" />
-    <el-alert v-if="actionError" :title="actionError" type="error" show-icon :closable="false" />
     <div class="split">
       <el-menu class="side" :default-active="tab" @select="choose">
         <el-menu-item v-for="item in menus" :key="item.id" :index="item.id">

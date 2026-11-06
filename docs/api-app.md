@@ -139,6 +139,24 @@ APP 打开顺序：已安装则 `deeplink` → `universalLink` → `fallbackHttp
 
 合集由搜品 Tool 在结果 **> 6** 时创建，不提供用户「新建合集」。
 
+### 4.6.3 商城搜索、口令与推荐
+
+须登录。搜品、口令、解析、相似、猜你喜欢都要当前用户的推广身份，没有则 `40301` `NEED_AUTH`，不出站。联想词和热搜词不走联盟，走大淘客；密钥未配置时 `data.list` 为 `[]`，不出站。上游失败是 `50010`。分页 `page` 从 1 起，`size` 默认 20、最大 20。`sort` 只接受 `sales` `price` `commission` `coupon`，空则用平台默认排序。
+
+搜索还可以带 `priceMin`、`priceMax`（单位元，最多两位小数；最低价高于最高价是 `40001`）、`brand`、`coupon`。`brand` 和 `coupon` 只有 `true` 才筛选，`false` 或不传表示不限。平台没有对应条件时忽略该字段，不报错：四个平台都认价格和有券；只有拼多多认品牌。`nextId` 是上一页返回的翻页游标，第一页不传。京东把它当作 `searchPosition`，拼多多把它当作 `listId`，淘宝和唯品会忽略。响应仍是商品卡分页；平台给出下一页游标时，`data` 多一个 `nextId`，没有则不出现。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/app/v1/goods/search` | body：`platform` `keyword` `page?` `size?` `sort?` `priceMin?` `priceMax?` `brand?` `coupon?` `nextId?`。`data` 为商品卡分页，可带 `nextId` |
+| GET | `/api/app/v1/goods/suggestions` | query：`keyword`。`data.list` 为补全词 |
+| GET | `/api/app/v1/goods/hot-words` | `data.list` 为热搜词 |
+| POST | `/api/app/v1/goods/command` | body：`goodsId`，或 `platform` + `platformGoodsId`。`data.command` 是口令。该平台不支持时 `40001` |
+| POST | `/api/app/v1/goods/parse` | body：`platform` `content`。只支持 `taobao` `vip`，其它平台 `40001`。`data.goods` 能定位商品时是商品卡，否则 `null`；`data.url` 是解析出的链接，可空 |
+| POST | `/api/app/v1/goods/similar` | body：`platform` `platformGoodsId` 或 `goodsId`，以及 `page` `size`。不支持的平台 `40001`。`data` 为商品卡分页 |
+| POST | `/api/app/v1/goods/guess` | body：`platform` `page` `size`。不支持的平台 `40001`。`data` 为商品卡分页 |
+
+商品卡字段与对话卡相同。口令、解析链接和日志里都不放推广位。
+
 ### 4.7 邀请码、落地链接与海报模板
 
 邀请码在创建 `app_user` 时生成，**之后禁止修改**。字母表 `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`（8 位），CSPRNG，UNIQUE 冲突则重试。禁止用用户 id / 手机号当码。

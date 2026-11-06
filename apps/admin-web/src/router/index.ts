@@ -8,7 +8,6 @@ import OrderSync from '../views/order-sync.vue'
 import OrderDetail from '../views/order-detail.vue'
 import Users from '../views/users.vue'
 import UserDetail from '../views/user-detail.vue'
-import GodView from '../views/god-view.vue'
 import Conversations from '../views/conversations.vue'
 import ConversationDetail from '../views/conversation-detail.vue'
 import Tickets from '../views/tickets.vue'
@@ -43,7 +42,6 @@ export const router = createRouter({
         { path: 'orders/:id', name: 'orderDetail', component: OrderDetail },
         { path: 'users', name: 'users', component: Users },
         { path: 'users/:id', name: 'userDetail', component: UserDetail },
-        { path: 'god-view', name: 'godView', component: GodView },
         { path: 'conversations', name: 'conversations', component: Conversations },
         { path: 'conversations/:id', name: 'conversationDetail', component: ConversationDetail },
         { path: 'tickets', name: 'tickets', component: Tickets },
