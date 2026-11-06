@@ -239,7 +239,10 @@
 | settle_status                       | VARCHAR(16)    | NOT NULL | 结算状态，仅此三值：`none` 不结算、`pending` 待结算、`settled` 已结算。与订单状态分开 |
 | wallet_ledger_id                    | CHAR(26)       | 可空，UNIQUE，逻辑关联 → wallet_ledger.id | 结算入账后的钱包流水。空=尚未入账。一单至多一条 |
 | ordered_at                          | TIMESTAMPTZ(3) | 可空       | 平台下单时间                    |
+| paid_at                             | TIMESTAMPTZ(3) | 可空       | 付款时间。平台没回传则为空           |
 | shipped_at                          | TIMESTAMPTZ(3) | 可空       | 有则用于「发货了吗」；无则如实说未知        |
+| completed_at                        | TIMESTAMPTZ(3) | 可空       | 完成时间（确认收货或订单完成）。不是 `settled_at` |
+| extras                              | TEXT           | 可空       | JSON 对象字符串。只放有用但不常用、不值得单独成列的字段。空着表示没有。不是联盟原始报文 |
 | settled_at                          | TIMESTAMPTZ(3) | 可空       | 写入钱包流水的时间；未结算为空         |
 | updated_from_platform_at            | TIMESTAMPTZ(3) | 可空       | 最近从平台更新                   |
 | created_at                          | TIMESTAMPTZ(3) | NOT NULL | 本库首次写入                    |
@@ -264,7 +267,9 @@
 
 本阶段**不**给上级写第二笔流水，也没有上级分成金额。`parent_user_id` 只做归因。已结算后平台改口或订单变取消：**不自动追回**；要冲正则另做调账，不在同步里改历史流水。
 
-消费者接口不下发 `media_commission`、`parent_user_id`、`wallet_ledger_id`。这三列只在 Admin。
+消费者接口不下发 `media_commission`、`parent_user_id`、`wallet_ledger_id`、`paid_at`、`completed_at`、`extras`。这几列只在 Admin。
+
+同步时能对上的时间才写入：淘宝付款取 `tk_paid_time`，没有再取 `tb_paid_time`，没有完成时间。京东完成取 `finishTime`，没有付款时间。拼多多付款取 `order_pay_time`，完成取 `order_receive_time`。唯品会完成在状态为已完成时取 `signTime`，没有付款时间。`extras` 必须是 JSON 对象；空白写成空，数组、字符串和非法 JSON 拒绝写入。
 
 ### 6.9 `order_sync_cursor` 平台同步游标
 
@@ -745,5 +750,70 @@ Worker 每次开 run 读完全表，放进 `graph/invoke` 的 `prompts`。缺任
 ### 6.31 运营指标
 
 `stats_*` 表的字段、口径和任务只写在 [`ops-metrics.md`](./ops-metrics.md)。业务表不因为指标加列。
+
+### 6.32 商城布局
+
+消费者商城页的 banner 和金刚区。搜索条和猜你喜欢不进这三张表。资源位和专题本次不建表。不建数据库外键。
+
+#### `mall_zone` 版位
+
+固定两行，迁移时写入。后台只改展示参数。
+
+| 字段 | 类型 | 约束 | 注释 |
+| --- | --- | --- | --- |
+| code | VARCHAR(16) | PK | `banner` 或 `nav` |
+| columns | INT | 可空 | 仅 `nav`。每行 4、5 或 6，默认 5 |
+| interval_ms | INT | 可空 | 仅 `banner`。轮播间隔毫秒，默认 3000；`0` 不自动播 |
+| updated_at | TIMESTAMPTZ(3) | NOT NULL | |
+
+`columns` 只允许空或 4 到 6。`interval_ms` 只允许空或 0 到 60000。
+
+#### `mall_category` 金刚分类
+
+| 字段 | 类型 | 约束 | 注释 |
+| --- | --- | --- | --- |
+| id | CHAR(26) | PK | |
+| name | VARCHAR(32) | NOT NULL | 显示在该组图标上方 |
+| sort | INT | NOT NULL，默认 0 | 小的在上 |
+| status | VARCHAR(16) | NOT NULL | `draft` \| `published` \| `retired` |
+| created_at | TIMESTAMPTZ(3) | NOT NULL | |
+| updated_at | TIMESTAMPTZ(3) | NOT NULL | |
+
+#### `mall_entry` 版位条目
+
+banner 的一张图、金刚区的一个图标，各是一行。
+
+| 字段 | 类型 | 约束 | 注释 |
+| --- | --- | --- | --- |
+| id | CHAR(26) | PK | |
+| zone | VARCHAR(16) | NOT NULL | `banner` 或 `nav`。逻辑上对应 `mall_zone.code` |
+| category_id | CHAR(26) | 可空 | 逻辑上对应 `mall_category.id`。`nav` 必填，`banner` 必须为空 |
+| title | VARCHAR(32) | 可空 | `nav` 必填，显示在图标下。banner 可空，不叠在图上 |
+| image_object_key | VARCHAR(512) | NOT NULL | 图片地址或对象键。`http`/`https` 开头时端上直接用；否则原样下发 |
+| sort | INT | NOT NULL，默认 0 | 同一版位、同一分类内小的在前 |
+| status | VARCHAR(16) | NOT NULL | `draft` \| `published` \| `retired` |
+| starts_at | TIMESTAMPTZ(3) | 可空 | 含；空=不限开始 |
+| ends_at | TIMESTAMPTZ(3) | 可空 | 不含；空=不限结束；有值须晚于 `starts_at` |
+| client_types | JSONB | NOT NULL，默认 `[]` | `[]`=全端；否则 `android`/`ios`/`h5` |
+| channels | JSONB | NOT NULL，默认 `[]` | `[]`=全渠道 |
+| action_type | VARCHAR(32) | NOT NULL | 点击类型。已知取值由应用枚举校验，库上不做 `CHECK`，以便加类型时不迁移 |
+| action_payload | JSONB | NOT NULL，默认 `{}` | 该类型的参数，必须是对象 |
+| created_at | TIMESTAMPTZ(3) | NOT NULL | |
+| updated_at | TIMESTAMPTZ(3) | NOT NULL | |
+| INDEX(zone, status, sort) | | | |
+
+点击类型与 `action_payload`：
+
+| action_type | payload |
+| --- | --- |
+| `none` | `{}` |
+| `page` | `{ "page": "mallSearch" \| "chat" \| "orders" \| "me" \| "invite" \| "credits", "params": {} }` |
+| `goods` | `{ "goodsId": "..." }`，或 `{ "platform", "platformGoodsId" }` |
+| `search` | `{ "keyword": "...", "platform": "..." }`。`platform` 可空 |
+| `miniprogram` | `{ "userName", "appId", "path" }`。`userName` 与 `appId` 至少有一个 |
+| `deeplink` | `{ "scheme", "universalLink", "fallbackUrl" }`。`scheme` 与 `universalLink` 至少有一个。链接只允许 `http`/`https` |
+| `webview` | `{ "url": "https://..." }`。只允许 `http`/`https` |
+
+端上不认识的 `action_type` 不可点。已下架分类下的图标不下发。
 
 ---

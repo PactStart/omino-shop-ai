@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiGet, errorMessage } from '../api/http'
-import { field, label, money, recordOf, settleLabel, shipped, when } from '../support/format'
+import { field, label, money, recordOf, settleLabel, shipped, text, when } from '../support/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,7 +53,10 @@ watch(id, load)
       <el-descriptions-item label="结算状态">{{ settleLabel(order.settleStatus) }}</el-descriptions-item>
       <el-descriptions-item label="钱包流水">{{ field(order, 'walletLedgerId') }}</el-descriptions-item>
       <el-descriptions-item label="下单时间">{{ when(order.orderedAt) }}</el-descriptions-item>
+      <el-descriptions-item v-if="when(order.paidAt)" label="付款时间">{{ when(order.paidAt) }}</el-descriptions-item>
       <el-descriptions-item label="发货">{{ shipped(order.shippedAt) }}</el-descriptions-item>
+      <el-descriptions-item v-if="when(order.completedAt)" label="完成时间">{{ when(order.completedAt) }}</el-descriptions-item>
+      <el-descriptions-item v-if="text(order.extras)" label="补充" :span="2">{{ text(order.extras) }}</el-descriptions-item>
       <el-descriptions-item label="结算时间">{{ when(order.settledAt) }}</el-descriptions-item>
       <el-descriptions-item label="平台更新">{{ when(order.updatedFromPlatformAt) }}</el-descriptions-item>
       <el-descriptions-item label="写入时间">{{ when(order.createdAt) }}</el-descriptions-item>

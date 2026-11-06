@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGet } from '../api/http'
 import { userStatus, when } from '../support/format'
+import { issueGodViewToken } from '../support/godView'
 import { useRows } from '../support/useRows'
 
 const router = useRouter()
 const list = useRows()
 const query = reactive({ keyword: '', phone: '', inviteCode: '', id: '', status: '' })
+const h5Origin = (import.meta.env.VITE_H5_ORIGIN as string | undefined) || 'http://localhost:5177'
+const view = reactive({
+  open: false,
+  loading: false,
+  error: '',
+  src: '',
+})
+const frame = ref<HTMLIFrameElement | null>(null)
 
 async function load(): Promise<void> {
   await list.load(async () =>
@@ -39,6 +48,27 @@ function changeSize(size: number): void {
   list.size.value = size
   list.page.value = 1
   void load()
+}
+
+async function openView(row: { id: string; nickname?: string }): Promise<void> {
+  view.open = true
+  view.loading = true
+  view.error = ''
+  view.src = ''
+  try {
+    const token = await issueGodViewToken(row.id)
+    const home = h5Origin.replace(/\/$/, '')
+    view.src = `${home}/chat?access_token=${encodeURIComponent(token)}`
+  } catch (error) {
+    view.error = error instanceof Error ? error.message : '签发失败'
+  } finally {
+    view.loading = false
+  }
+}
+
+function closeView(): void {
+  view.src = ''
+  if (frame.value) frame.value.src = 'about:blank'
 }
 
 onMounted(load)
@@ -74,6 +104,11 @@ onMounted(load)
       <el-table-column label="注册时间" min-width="170">
         <template #default="{ row }">{{ when(row.createdAt) }}</template>
       </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="openView(row)">用户视角</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <el-pagination
       v-if="list.paged.value"
@@ -86,5 +121,66 @@ onMounted(load)
       @current-change="changePage"
       @size-change="changeSize"
     />
+    <el-drawer
+      v-model="view.open"
+      class="live-drawer"
+      title="用户视角"
+      direction="rtl"
+      size="500px"
+      @closed="closeView"
+    >
+      <el-alert v-if="view.error" :title="view.error" type="warning" show-icon :closable="false" />
+      <div v-else v-loading="view.loading" class="stage">
+        <div class="phone">
+          <iframe v-if="view.src" ref="frame" :src="view.src" title="H5 首页"></iframe>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
+
+<style scoped>
+.stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  height: 100%;
+}
+.phone {
+  box-sizing: border-box;
+  width: auto;
+  height: 100%;
+  max-height: 100%;
+  aspect-ratio: 9 / 19.5;
+  max-width: 100%;
+  padding: 12px;
+  border: 12px solid #1c1c1e;
+  border-radius: 42px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+.phone iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 22px;
+  background: #f6f6f6;
+}
+</style>
+
+<style>
+.live-drawer .el-drawer__header {
+  margin-bottom: 12px;
+}
+.live-drawer .el-drawer__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 16px 16px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+</style>

@@ -116,6 +116,8 @@ class OrderSyncCatchUpTest {
         Clock clock = Clock.fixed(Instant.parse("2026-11-04T14:00:00Z"), ZoneOffset.UTC);
         MemoryOrders orders = new MemoryOrders();
         String itemId = "gkt2U2v7wko5XfkXiatr-02XQW48SBANaDBGdHxz";
+        OffsetDateTime paidAt = OffsetDateTime.parse("2026-11-04T12:00:00+08:00");
+        OffsetDateTime completedAt = OffsetDateTime.parse("2026-11-04T13:00:00+08:00");
         IncomingOrderDto incoming = new IncomingOrderDto(
                 "3317160864126018693",
                 null,
@@ -127,7 +129,10 @@ class OrderSyncCatchUpTest {
                 new BigDecimal("3.08"),
                 OrderStatus.PENDING_SHIP,
                 OffsetDateTime.now(clock),
-                null);
+                null,
+                paidAt,
+                completedAt,
+                " {\"payMonth\":\"202611\"} ");
         MemoryOrderSync.Pull source = (platform, cursor, create, update) -> List.of(incoming);
         MemoryOrderSync sync = new MemoryOrderSync(orders, source, clock, "0.80");
         sync.sync("taobao");
@@ -142,5 +147,8 @@ class OrderSyncCatchUpTest {
         AppOrder again = orders.findByPlatformOrder("taobao", "3317160864126018693");
         assertEquals("01M69DC83P322ETQS9QEPTBBD0", again.getGoodsId());
         assertEquals(itemId, again.getPlatformGoodsId());
+        assertEquals(paidAt, again.getPaidAt());
+        assertEquals(completedAt, again.getCompletedAt());
+        assertEquals("{\"payMonth\":\"202611\"}", again.getExtras());
     }
 }

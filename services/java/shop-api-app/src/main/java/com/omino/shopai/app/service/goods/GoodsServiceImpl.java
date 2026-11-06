@@ -4,11 +4,19 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ErrorCodes;
+import com.omino.shopai.app.adapter.dataoke.DataokeClient;
 import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.app.dto.ConvertedLinkDto;
 import com.omino.shopai.app.dto.GoodsCardDto;
+import com.omino.shopai.app.dto.GoodsCommandDto;
 import com.omino.shopai.app.dto.GoodsDetailDto;
+import com.omino.shopai.app.dto.GoodsHitPage;
+import com.omino.shopai.app.dto.GoodsParseDto;
+import com.omino.shopai.app.dto.GoodsSearchRequestDto;
+import com.omino.shopai.app.dto.KeywordListDto;
+import com.omino.shopai.app.dto.ParsedMaterial;
 import com.omino.shopai.app.dto.PromotionLinkDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.entity.AppUserInstalledApp;
 import com.omino.shopai.entity.ClickEvent;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -36,6 +44,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -47,6 +56,7 @@ import java.util.function.Function;
 public class GoodsServiceImpl implements IGoodsService {
 
     private static final Duration RELATION_TTL = Duration.ofMinutes(10);
+    private static final Set<String> SORTS = Set.of("sales", "price", "commission", "coupon");
 
     private final GoodsSnapshotMapper snapshots;
     private final List<IPlatformGoods> clients;
@@ -57,6 +67,7 @@ public class GoodsServiceImpl implements IGoodsService {
     private final StringRedisTemplate redis;
     private final AppUserInstalledAppMapper installedApps;
     private final ClickEventMapper clicks;
+    private final DataokeClient dataoke;
 
     /**
      * 详情、搜索和转链共用同一份平台适配器。
@@ -70,6 +81,7 @@ public class GoodsServiceImpl implements IGoodsService {
      * @param redis 推广身份缓存
      * @param installedApps 已安装的电商 APP
      * @param clicks 点击记录
+     * @param dataoke 大淘客联想词和热搜词
      */
     public GoodsServiceImpl(
             GoodsSnapshotMapper snapshots,
@@ -80,7 +92,8 @@ public class GoodsServiceImpl implements IGoodsService {
             PlatformAuthorizationMapper authorizations,
             StringRedisTemplate redis,
             AppUserInstalledAppMapper installedApps,
-            ClickEventMapper clicks) {
+            ClickEventMapper clicks,
+            DataokeClient dataoke) {
         this.snapshots = snapshots;
         this.clients = clients;
         this.cache = cache;
@@ -90,6 +103,7 @@ public class GoodsServiceImpl implements IGoodsService {
         this.redis = redis;
         this.installedApps = installedApps;
         this.clicks = clicks;
+        this.dataoke = dataoke;
     }
 
     /**
@@ -149,6 +163,210 @@ public class GoodsServiceImpl implements IGoodsService {
                 cards.add(toCard(save(found)));
             }
             return cards;
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 分页搜品。没有推广身份则不出站。价格先校验，再把整份请求交给平台。
+     *
+     * @param userId 当前用户
+     * @param request 搜索条件
+     * @return 商品卡分页，平台给出游标时带 nextId
+     */
+    @Override
+    public PageDto<GoodsCardDto> searchPage(String userId, GoodsSearchRequestDto request) {
+        if (request == null || request.keyword() == null || request.keyword().isBlank()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "关键词不能为空");
+        }
+        Platform parsed = requirePlatform(request.platform());
+        String priceMin = money(request.priceMin(), "最低价不正确");
+        String priceMax = money(request.priceMax(), "最高价不正确");
+        if (priceMin != null && priceMax != null && new BigDecimal(priceMin).compareTo(new BigDecimal(priceMax)) > 0) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "价格区间不正确");
+        }
+        int pageNo = pageOf(request.page());
+        int pageSize = sizeOf(request.size());
+        GoodsSearchRequestDto query = new GoodsSearchRequestDto(
+                parsed.code(),
+                request.keyword().trim(),
+                pageNo,
+                pageSize,
+                sortOf(request.sort()),
+                priceMin,
+                priceMax,
+                request.brand(),
+                request.coupon(),
+                cursor(request.nextId()));
+        String promotionId = requireRelation(userId, parsed);
+        try {
+            GoodsHitPage hit = client(parsed).searchPage(query, userId, promotionId);
+            return new PageDto<>(cards(parsed, hit.list()), pageNo, pageSize, hit.total(), cursor(hit.nextId()));
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 按已输入的词做补全。密钥没配时是空列表。
+     *
+     * @param keyword 已输入的词
+     * @return 补全词
+     */
+    @Override
+    public KeywordListDto suggestions(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "关键词不能为空");
+        }
+        try {
+            if (dataoke == null) {
+                return new KeywordListDto(List.of());
+            }
+            return new KeywordListDto(dataoke.suggestions(keyword));
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 读取热搜词。密钥没配时是空列表。
+     *
+     * @return 热搜词
+     */
+    @Override
+    public KeywordListDto hotWords() {
+        try {
+            if (dataoke == null) {
+                return new KeywordListDto(List.of());
+            }
+            return new KeywordListDto(dataoke.hotWords());
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 生成一件商品的口令。平台不支持时直接拒绝，不出站。
+     *
+     * @param userId 当前用户
+     * @param goodsId 本系统商品号，可空
+     * @param platform 平台码
+     * @param platformGoodsId 平台商品号
+     * @return 口令
+     */
+    @Override
+    public GoodsCommandDto command(String userId, String goodsId, String platform, String platformGoodsId) {
+        GoodsSnapshot goods = locate(userId, goodsId, platform, platformGoodsId);
+        IPlatformGoods adapter = client(goods.getPlatform());
+        if (!adapter.offersCommand()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "该平台暂不支持口令");
+        }
+        String promotionId = requireRelation(userId, goods.getPlatform());
+        try {
+            String text = adapter.command(goods, userId, promotionId);
+            if (text == null || text.isBlank()) {
+                throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "没有口令");
+            }
+            return new GoodsCommandDto(text);
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 解析一段链接或口令。京东和拼多多不支持。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     * @param content 链接或口令
+     * @return 商品卡和链接
+     */
+    @Override
+    public GoodsParseDto parse(String userId, String platform, String content) {
+        if (content == null || content.isBlank()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "内容不能为空");
+        }
+        Platform parsed = requirePlatform(platform);
+        IPlatformGoods adapter = client(parsed);
+        if (!adapter.offersParse()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "该平台暂不支持解析");
+        }
+        String promotionId = requireRelation(userId, parsed);
+        try {
+            ParsedMaterial found = adapter.parse(content.trim(), userId, promotionId);
+            GoodsCardDto card = null;
+            if (found != null && found.goods() != null && found.goods().getPlatformGoodsId() != null
+                    && !found.goods().getPlatformGoodsId().isBlank()) {
+                if (found.goods().getPlatform() == null) {
+                    found.goods().setPlatform(parsed);
+                }
+                card = toCard(save(found.goods()));
+            }
+            String url = found == null ? null : found.url();
+            if (card == null && (url == null || url.isBlank())) {
+                throw new ApiBusinessException(ErrorCodes.NOT_FOUND, "没有解析出商品");
+            }
+            return new GoodsParseDto(card, url);
+        } catch (ApiBusinessException ex) {
+            throw ex;
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 查与一件商品相似的商品。
+     *
+     * @param userId 当前用户
+     * @param goodsId 本系统商品号，可空
+     * @param platform 平台码
+     * @param platformGoodsId 平台商品号
+     * @param page 页码
+     * @param size 每页条数
+     * @return 商品卡分页
+     */
+    @Override
+    public PageDto<GoodsCardDto> similar(
+            String userId, String goodsId, String platform, String platformGoodsId, Integer page, Integer size) {
+        GoodsSnapshot seed = locate(userId, goodsId, platform, platformGoodsId);
+        IPlatformGoods adapter = client(seed.getPlatform());
+        if (!adapter.offersSimilar()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "该平台暂不支持相似商品");
+        }
+        int pageNo = pageOf(page);
+        int pageSize = sizeOf(size);
+        String promotionId = requireRelation(userId, seed.getPlatform());
+        try {
+            GoodsHitPage hit = adapter.similar(seed.getPlatformGoodsId(), pageNo, pageSize, userId, promotionId);
+            return new PageDto<>(cards(seed.getPlatform(), hit.list()), pageNo, pageSize, hit.total());
+        } catch (PlatformCallException ex) {
+            throw upstream();
+        }
+    }
+
+    /**
+     * 猜你喜欢。
+     *
+     * @param userId 当前用户
+     * @param platform 平台码
+     * @param page 页码
+     * @param size 每页条数
+     * @return 商品卡分页
+     */
+    @Override
+    public PageDto<GoodsCardDto> guess(String userId, String platform, Integer page, Integer size) {
+        Platform parsed = requirePlatform(platform);
+        IPlatformGoods adapter = client(parsed);
+        if (!adapter.offersGuess()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "该平台暂不支持猜你喜欢");
+        }
+        int pageNo = pageOf(page);
+        int pageSize = sizeOf(size);
+        String promotionId = requireRelation(userId, parsed);
+        try {
+            GoodsHitPage hit = adapter.guess(pageNo, pageSize, userId, promotionId);
+            return new PageDto<>(cards(parsed, hit.list()), pageNo, pageSize, hit.total());
         } catch (PlatformCallException ex) {
             throw upstream();
         }
@@ -277,6 +495,122 @@ public class GoodsServiceImpl implements IGoodsService {
         } catch (PlatformCallException ex) {
             throw upstream();
         }
+    }
+
+    /**
+     * 把联盟快照落库并收成商品卡。没有平台商品号的行丢掉。
+     *
+     * @param platform 这一页所属平台
+     * @param rows 联盟快照
+     * @return 商品卡
+     */
+    private List<GoodsCardDto> cards(Platform platform, List<GoodsSnapshot> rows) {
+        List<GoodsCardDto> cards = new ArrayList<>();
+        if (rows == null) {
+            return cards;
+        }
+        for (GoodsSnapshot found : rows) {
+            if (found == null || found.getPlatformGoodsId() == null || found.getPlatformGoodsId().isBlank()) {
+                continue;
+            }
+            if (found.getPlatform() == null) {
+                found.setPlatform(platform);
+            }
+            cards.add(toCard(save(found)));
+        }
+        return cards;
+    }
+
+    /**
+     * 用商品号或平台商品号找到快照。库里没有就向联盟要一次详情。
+     *
+     * @param userId 当前用户
+     * @param goodsId 本系统商品号，可空
+     * @param platform 平台码
+     * @param platformGoodsId 平台商品号
+     * @return 已落库的快照
+     */
+    private GoodsSnapshot locate(String userId, String goodsId, String platform, String platformGoodsId) {
+        if (goodsId != null && !goodsId.isBlank()) {
+            return findById(goodsId).orElseThrow(() -> new ApiBusinessException(ErrorCodes.NOT_FOUND, "商品不存在"));
+        }
+        Platform parsed = requirePlatform(platform);
+        if (platformGoodsId == null || platformGoodsId.isBlank()) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "商品不能为空");
+        }
+        return findByPlatform(parsed.code(), platformGoodsId).orElseGet(() -> load(userId, parsed, platformGoodsId));
+    }
+
+    /**
+     * 页码缺省或小于 1 时从第一页开始。
+     *
+     * @param page 请求页码
+     * @return 从 1 起的页码
+     */
+    private static int pageOf(Integer page) {
+        if (page == null || page < 1) {
+            return 1;
+        }
+        return page;
+    }
+
+    /**
+     * 每页条数缺省 20，最大 20。
+     *
+     * @param size 请求条数
+     * @return 1 到 20
+     */
+    private static int sizeOf(Integer size) {
+        if (size == null || size < 1) {
+            return 20;
+        }
+        return Math.min(size, 20);
+    }
+
+    /**
+     * 空排序留给平台默认。不认识的值拒绝。
+     *
+     * @param sort 排序
+     * @return 合法排序；空输入返回空
+     */
+    private static String sortOf(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return null;
+        }
+        if (!SORTS.contains(sort)) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "排序不正确");
+        }
+        return sort;
+    }
+
+    /**
+     * 价格必须是非负的元，最多两位小数。空值表示不限制这一端。
+     *
+     * @param raw 请求里的金额
+     * @param message 不合法时的提示
+     * @return 两位小数的金额；空输入返回空
+     */
+    private static String money(String raw, String message) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        if (!raw.trim().matches("\\d+(\\.\\d{1,2})?")) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, message);
+        }
+        return new BigDecimal(raw.trim()).setScale(2, RoundingMode.UNNECESSARY).toPlainString();
+    }
+
+    /**
+     * 空白游标当成没有。
+     *
+     * @param nextId 请求或平台返回的游标
+     * @return 去掉空白后的游标；空输入返回空
+     */
+    private static String cursor(String nextId) {
+        if (nextId == null || nextId.isBlank()) {
+            return null;
+        }
+        return nextId.trim();
     }
 
     /**

@@ -8,7 +8,6 @@ import OrderSync from '../views/order-sync.vue'
 import OrderDetail from '../views/order-detail.vue'
 import Users from '../views/users.vue'
 import UserDetail from '../views/user-detail.vue'
-import GodView from '../views/god-view.vue'
 import Conversations from '../views/conversations.vue'
 import ConversationDetail from '../views/conversation-detail.vue'
 import Tickets from '../views/tickets.vue'
@@ -22,6 +21,7 @@ import InvitePosterEdit from '../views/invite-poster-edit.vue'
 import Releases from '../views/releases.vue'
 import RuntimeConfigs from '../views/runtime-configs.vue'
 import Announcements from '../views/announcements.vue'
+import MallLayout from '../views/mall-layout.vue'
 import Inbox from '../views/inbox.vue'
 import ChatSuggestions from '../views/chat-suggestions.vue'
 import AgentPrompts from '../views/agent-prompts.vue'
@@ -43,7 +43,6 @@ export const router = createRouter({
         { path: 'orders/:id', name: 'orderDetail', component: OrderDetail },
         { path: 'users', name: 'users', component: Users },
         { path: 'users/:id', name: 'userDetail', component: UserDetail },
-        { path: 'god-view', name: 'godView', component: GodView },
         { path: 'conversations', name: 'conversations', component: Conversations },
         { path: 'conversations/:id', name: 'conversationDetail', component: ConversationDetail },
         { path: 'tickets', name: 'tickets', component: Tickets },
@@ -57,6 +56,7 @@ export const router = createRouter({
         { path: 'releases', name: 'releases', component: Releases },
         { path: 'runtime-configs', name: 'runtimeConfigs', component: RuntimeConfigs },
         { path: 'announcements', name: 'announcements', component: Announcements },
+        { path: 'mall-layout', name: 'mallLayout', component: MallLayout },
         { path: 'inbox', name: 'inbox', component: Inbox },
         { path: 'chat-suggestions', name: 'chatSuggestions', component: ChatSuggestions },
         { path: 'agent-prompts', name: 'agentPrompts', component: AgentPrompts },

@@ -10,6 +10,8 @@ import com.omino.shopai.app.util.CountMaps;
 
 import com.omino.shopai.app.util.UnionMaps;
 
+import com.omino.shopai.app.dto.GoodsHitPage;
+import com.omino.shopai.app.dto.GoodsSearchRequestDto;
 import com.omino.shopai.app.dto.PromotionLinkDto;
 
 import com.omino.shopai.exception.PlatformCallException;
@@ -23,12 +25,14 @@ import com.pdd.pop.sdk.http.HttpClientConfig;
 import com.pdd.pop.sdk.http.PopHttpClient;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsDetailRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsPromotionUrlGenerateRequest;
+import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsRecommendGetRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkGoodsSearchRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkMemberAuthorityQueryRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkOrderListIncrementGetRequest;
 import com.pdd.pop.sdk.http.api.pop.request.PddDdkRpPromUrlGenerateRequest;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsDetailResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsPromotionUrlGenerateResponse;
+import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsRecommendGetResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkGoodsSearchResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkMemberAuthorityQueryResponse;
 import com.pdd.pop.sdk.http.api.pop.response.PddDdkOrderListIncrementGetResponse;
@@ -41,7 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 拼多多联盟。只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。
+ * 拼多多联盟。商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。相似和猜你喜欢走商品推荐，不生成口令。
  */
 @Component
 public class PddGoodsImpl implements IPlatformGoods {
@@ -95,37 +99,68 @@ public class PddGoodsImpl implements IPlatformGoods {
 
     @Override
     public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
+        return searchPage(GoodsSearchRequestDto.firstPage(platform().code(), keyword), userId, promotionId).list();
+    }
+
+    @Override
+    public GoodsHitPage searchPage(GoodsSearchRequestDto query, String userId, String promotionId) {
         Upstream.call(clientId, clientSecret);
-        if (keyword == null || keyword.isBlank()) {
-            return List.of();
+        if (query == null || query.keyword() == null || query.keyword().isBlank()) {
+            return GoodsHitPage.empty();
         }
         try {
             PddDdkGoodsSearchRequest request = new PddDdkGoodsSearchRequest();
-            request.setKeyword(keyword);
-            request.setPage(1);
-            request.setPageSize(20);
+            request.setKeyword(query.keyword());
+            request.setPage(Math.max(query.page() == null ? 1 : query.page(), 1));
+            request.setPageSize(clamp(query.size() == null ? 20 : query.size()));
+            applySort(request, query.sort());
+            applyFilters(request, query);
             bind(request, promotionId, userId);
             PddDdkGoodsSearchResponse response = SdkLog.exchange(
                     "pdd", "goods.search", request, () -> client().syncInvoke(request));
-            if (response == null || response.getErrorResponse() != null) {
+            if (response == null || response.getErrorResponse() != null || response.getGoodsSearchResponse() == null) {
                 throw new PlatformCallException();
             }
-            if (response.getGoodsSearchResponse() == null || response.getGoodsSearchResponse().getGoodsList() == null) {
-                return List.of();
-            }
             List<GoodsSnapshot> found = new ArrayList<>();
-            for (PddDdkGoodsSearchResponse.GoodsSearchResponseGoodsListItem row : response.getGoodsSearchResponse().getGoodsList()) {
-                GoodsSnapshot snapshot = searchSnapshot(row);
-                if (snapshot != null) {
-                    found.add(snapshot);
+            var rows = response.getGoodsSearchResponse().getGoodsList();
+            if (rows != null) {
+                for (PddDdkGoodsSearchResponse.GoodsSearchResponseGoodsListItem row : rows) {
+                    GoodsSnapshot snapshot = searchSnapshot(row);
+                    if (snapshot != null) {
+                        found.add(snapshot);
+                    }
                 }
             }
-            return found;
+            Integer total = response.getGoodsSearchResponse().getTotalCount();
+            return new GoodsHitPage(
+                    found,
+                    total == null ? found.size() : total,
+                    response.getGoodsSearchResponse().getListId());
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
             throw new PlatformCallException();
         }
+    }
+
+    @Override
+    public boolean offersSimilar() {
+        return true;
+    }
+
+    @Override
+    public GoodsHitPage similar(String platformGoodsId, int page, int size, String userId, String promotionId) {
+        return recommend(platformGoodsId, page, size, userId, promotionId);
+    }
+
+    @Override
+    public boolean offersGuess() {
+        return true;
+    }
+
+    @Override
+    public GoodsHitPage guess(int page, int size, String userId, String promotionId) {
+        return recommend(null, page, size, userId, promotionId);
     }
 
     @Override
@@ -302,6 +337,12 @@ public class PddGoodsImpl implements IPlatformGoods {
         request.setCustomParameters(custom(userId));
     }
 
+    /** 推荐和搜品使用同一对备案参数。 */
+    public static void bind(PddDdkGoodsRecommendGetRequest request, String pid, String userId) {
+        request.setPid(UnionMaps.promotion(pid));
+        request.setCustomParameters(custom(userId));
+    }
+
     /** 转链请求的推广位方法名是 setPId。 */
     public static void bind(PddDdkGoodsPromotionUrlGenerateRequest request, String pid, String userId) {
         request.setPId(UnionMaps.promotion(pid));
@@ -314,6 +355,111 @@ public class PddGoodsImpl implements IPlatformGoods {
             throw new PlatformCallException();
         }
         return "{\"uid\":\"" + buyer + "\"}";
+    }
+
+    private GoodsHitPage recommend(String platformGoodsId, int page, int size, String userId, String promotionId) {
+        Upstream.call(clientId, clientSecret);
+        try {
+            int pageSize = clamp(size);
+            PddDdkGoodsRecommendGetRequest request = new PddDdkGoodsRecommendGetRequest();
+            request.setOffset(Math.max(page - 1, 0) * pageSize);
+            request.setLimit(pageSize);
+            if (platformGoodsId != null && !platformGoodsId.isBlank()) {
+                request.setGoodsSignList(List.of(platformGoodsId));
+            }
+            bind(request, promotionId, userId);
+            PddDdkGoodsRecommendGetResponse response = SdkLog.exchange(
+                    "pdd", "goods.recommend", request, () -> client().syncInvoke(request));
+            if (response == null || response.getErrorResponse() != null || response.getGoodsBasicDetailResponse() == null) {
+                throw new PlatformCallException();
+            }
+            List<GoodsSnapshot> found = new ArrayList<>();
+            var rows = response.getGoodsBasicDetailResponse().getList();
+            if (rows != null) {
+                for (PddDdkGoodsRecommendGetResponse.GoodsBasicDetailResponseListItem row : rows) {
+                    GoodsSnapshot snapshot = recommendSnapshot(row);
+                    if (snapshot != null) {
+                        found.add(snapshot);
+                    }
+                }
+            }
+            Integer total = response.getGoodsBasicDetailResponse().getTotal();
+            return new GoodsHitPage(found, total == null ? found.size() : total);
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    /**
+     * 把品牌、有券、价格和翻页游标写到拼多多能认的字段上。
+     *
+     * @param request 搜索请求
+     * @param query 已经校验过的搜索条件
+     */
+    private static void applyFilters(PddDdkGoodsSearchRequest request, GoodsSearchRequestDto query) {
+        if (Boolean.TRUE.equals(query.brand())) {
+            request.setIsBrandGoods(true);
+        }
+        if (Boolean.TRUE.equals(query.coupon())) {
+            request.setWithCoupon(true);
+        }
+        if (query.nextId() != null && !query.nextId().isBlank()) {
+            request.setListId(query.nextId());
+        }
+        if (query.priceMin() == null && query.priceMax() == null) {
+            return;
+        }
+        // rangeId 1 是券后价，单位是分。没传的那一端不限制。
+        PddDdkGoodsSearchRequest.RangeListItem item = new PddDdkGoodsSearchRequest.RangeListItem();
+        item.setRangeId(1);
+        if (query.priceMin() != null) {
+            item.setRangeFrom(GoodsSearchRequestDto.fen(query.priceMin()));
+        }
+        if (query.priceMax() != null) {
+            item.setRangeTo(GoodsSearchRequestDto.fen(query.priceMax()));
+        }
+        request.setRangeList(List.of(item));
+    }
+
+    private static void applySort(PddDdkGoodsSearchRequest request, String sort) {
+        if (sort == null) {
+            return;
+        }
+        switch (sort) {
+            case "sales" -> request.setSortType(6);
+            case "price" -> request.setSortType(3);
+            case "commission" -> request.setSortType(2);
+            case "coupon" -> request.setWithCoupon(true);
+            default -> {
+            }
+        }
+    }
+
+    private static int clamp(int size) {
+        if (size < 1) {
+            return 20;
+        }
+        return Math.min(size, 20);
+    }
+
+    private static GoodsSnapshot recommendSnapshot(PddDdkGoodsRecommendGetResponse.GoodsBasicDetailResponseListItem row) {
+        String id = row.getGoodsSign();
+        if (id == null || id.isBlank()) {
+            id = row.getGoodsId() == null ? null : row.getGoodsId().toString();
+        }
+        if (id == null) {
+            return null;
+        }
+        GoodsSnapshot snapshot = base(id);
+        snapshot.setTitle(row.getGoodsName());
+        snapshot.setImageUrl(UnionMaps.http(row.getGoodsImageUrl()));
+        snapshot.setShopName(row.getMallName());
+        snapshot.setSalesCount(CountMaps.sales(row.getSalesTip()));
+        snapshot.setPrice(UnionMaps.fen(row.getMinNormalPrice()));
+        snapshot.setCouponPrice(UnionMaps.fen(row.getMinGroupPrice()));
+        return snapshot;
     }
 
     private PopHttpClient client() {
@@ -393,6 +539,9 @@ public class PddGoodsImpl implements IPlatformGoods {
                 UnionMaps.fen(row.getPromotionAmount()),
                 status,
                 UnionMaps.fromEpoch(row.getOrderCreateTime()),
-                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getOrderPayTime()) : null);
+                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getOrderPayTime()) : null,
+                UnionMaps.fromEpoch(row.getOrderPayTime()),
+                UnionMaps.fromEpoch(row.getOrderReceiveTime()),
+                null);
     }
 }

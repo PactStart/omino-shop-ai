@@ -10,6 +10,9 @@ import com.omino.shopai.app.util.CountMaps;
 
 import com.omino.shopai.app.util.UnionMaps;
 
+import com.omino.shopai.app.dto.GoodsHitPage;
+import com.omino.shopai.app.dto.GoodsSearchRequestDto;
+import com.omino.shopai.app.dto.ParsedMaterial;
 import com.omino.shopai.app.dto.PromotionLinkDto;
 
 import com.omino.shopai.exception.PlatformCallException;
@@ -28,8 +31,13 @@ import com.vip.adp.api.open.service.GetChannelUrlByTypeEnum;
 import com.vip.adp.api.open.service.GetChannelUrlByTypeRequest;
 import com.vip.adp.api.open.service.GetChannelUrlByTypeResponse;
 import com.vip.adp.api.open.service.GoodsInfo;
+import com.vip.adp.api.open.service.GoodsInfoResponse;
 import com.vip.adp.api.open.service.OrderQueryModel;
 import com.vip.adp.api.open.service.QueryGoodsRequest;
+import com.vip.adp.api.open.service.SimilarRecommendRequest;
+import com.vip.adp.api.open.service.UserRecommendRequest;
+import com.vip.adp.api.open.service.VipLinkCheckReq;
+import com.vip.adp.api.open.service.VipLinkCheckResp;
 import com.vip.adp.api.open.service.UnBindOpenIdResponse;
 import com.vip.adp.api.open.service.UnbindOpenIdRequest;
 import com.vip.adp.api.open.service.UnionGoodsV2ServiceHelper;
@@ -49,7 +57,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 唯品会联盟。只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。
+ * 唯品会联盟。商品查询、详情、转链、订单、授权和备案。另接相似、猜你喜欢、链接解析，口令取转链里的 onlyCommand。
  */
 @Component
 public class VipGoodsImpl implements IPlatformGoods {
@@ -101,31 +109,154 @@ public class VipGoodsImpl implements IPlatformGoods {
 
     @Override
     public List<GoodsSnapshot> search(String keyword, String userId, String promotionId) {
+        return searchPage(GoodsSearchRequestDto.firstPage(platform().code(), keyword), userId, promotionId).list();
+    }
+
+    @Override
+    public GoodsHitPage searchPage(GoodsSearchRequestDto query, String userId, String promotionId) {
         Upstream.call(appKey, appSecret);
-        if (keyword == null || keyword.isBlank()) {
-            return List.of();
+        if (query == null || query.keyword() == null || query.keyword().isBlank()) {
+            return GoodsHitPage.empty();
         }
         try {
             QueryGoodsRequest request = new QueryGoodsRequest();
-            request.setKeyword(keyword);
-            request.setPage(1);
-            request.setPageSize(20);
+            request.setKeyword(query.keyword());
+            request.setPage(Math.max(query.page() == null ? 1 : query.page(), 1));
+            request.setPageSize(clamp(query.size() == null ? 20 : query.size()));
+            applySort(request, query.sort());
+            if (query.priceMin() != null) {
+                request.setPriceStart(query.priceMin());
+            }
+            if (query.priceMax() != null) {
+                request.setPriceEnd(query.priceMax());
+            }
+            if (Boolean.TRUE.equals(query.coupon())) {
+                request.setQueryExclusiveCoupon(true);
+            }
             bind(request, promotionId);
-            var response = SdkLog.exchange("vip", "goods.query", request, () -> goodsClient().query(request));
-            if (response == null) {
+            GoodsInfoResponse response = SdkLog.exchange("vip", "goods.query", request, () -> goodsClient().query(request));
+            return pageOf(response);
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    @Override
+    public boolean offersCommand() {
+        return true;
+    }
+
+    @Override
+    public String command(GoodsSnapshot goods, String userId, String promotionId) {
+        Upstream.call(appKey, appSecret);
+        String goodsId = goods == null ? null : goods.getPlatformGoodsId();
+        if (goodsId == null || goodsId.isBlank()) {
+            throw new PlatformCallException();
+        }
+        try {
+            String buyer = UnionMaps.userId(userId);
+            UrlGenByGoodsIdRequest request = new UrlGenByGoodsIdRequest();
+            bind(request, promotionId);
+            var response = SdkLog.exchange("vip", "url.command", goodsId, () -> urlClient().genByGoodsId(
+                    List.of(goodsId),
+                    "default_pid",
+                    Ids.ulid(),
+                    buyer == null ? "" : buyer,
+                    Boolean.FALSE,
+                    Boolean.FALSE,
+                    Boolean.TRUE,
+                    request));
+            if (response == null || response.getUrlInfoList() == null || response.getUrlInfoList().isEmpty()) {
                 throw new PlatformCallException();
             }
-            if (response.getGoodsInfoList() == null || response.getGoodsInfoList().isEmpty()) {
-                return List.of();
+            return response.getUrlInfoList().get(0).getOnlyCommand();
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    @Override
+    public boolean offersParse() {
+        return true;
+    }
+
+    @Override
+    public ParsedMaterial parse(String content, String userId, String promotionId) {
+        Upstream.call(appKey, appSecret);
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        try {
+            VipLinkCheckReq request = new VipLinkCheckReq();
+            request.setContent(content.trim());
+            request.setRequestId(Ids.ulid());
+            VipLinkCheckResp response = SdkLog.exchange(
+                    "vip", "url.check", request, () -> urlClient().vipLinkCheck(request));
+            if (response == null || response.getSuccessMap() == null || response.getSuccessMap().isEmpty()) {
+                throw new PlatformCallException();
             }
-            List<GoodsSnapshot> found = new ArrayList<>();
-            for (GoodsInfo row : response.getGoodsInfoList()) {
-                GoodsSnapshot snapshot = snapshot(row);
-                if (snapshot != null) {
-                    found.add(snapshot);
-                }
-            }
-            return found;
+            var checked = response.getSuccessMap().values().iterator().next();
+            String goodsId = checked.getGoodsId();
+            GoodsSnapshot goods = goodsId == null || goodsId.isBlank() ? null : detail(goodsId, userId, promotionId);
+            return new ParsedMaterial(goods, UnionMaps.http(checked.getLandUrl()));
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    @Override
+    public boolean offersSimilar() {
+        return true;
+    }
+
+    @Override
+    public GoodsHitPage similar(String platformGoodsId, int page, int size, String userId, String promotionId) {
+        Upstream.call(appKey, appSecret);
+        if (platformGoodsId == null || platformGoodsId.isBlank()) {
+            return GoodsHitPage.empty();
+        }
+        try {
+            SimilarRecommendRequest request = new SimilarRecommendRequest();
+            request.setGoodsId(platformGoodsId);
+            request.setPage(Math.max(page, 1));
+            request.setPageSize(clamp(size));
+            request.setRequestId(Ids.ulid());
+            request.setChanTag("default_pid");
+            request.setOpenId(UnionMaps.promotion(promotionId));
+            GoodsInfoResponse response = SdkLog.exchange(
+                    "vip", "goods.similar", request, () -> goodsClient().similarRecommend(request));
+            return pageOf(response);
+        } catch (PlatformCallException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new PlatformCallException();
+        }
+    }
+
+    @Override
+    public boolean offersGuess() {
+        return true;
+    }
+
+    @Override
+    public GoodsHitPage guess(int page, int size, String userId, String promotionId) {
+        Upstream.call(appKey, appSecret);
+        try {
+            UserRecommendRequest request = new UserRecommendRequest();
+            request.setPage(Math.max(page, 1));
+            request.setPageSize(clamp(size));
+            request.setRequestId(Ids.ulid());
+            request.setChanTag("default_pid");
+            request.setOpenId(UnionMaps.promotion(promotionId));
+            GoodsInfoResponse response = SdkLog.exchange(
+                    "vip", "goods.guess", request, () -> goodsClient().userRecommend(request));
+            return pageOf(response);
         } catch (PlatformCallException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -345,6 +476,56 @@ public class VipGoodsImpl implements IPlatformGoods {
         }
     }
 
+    private GoodsHitPage pageOf(GoodsInfoResponse response) {
+        if (response == null) {
+            throw new PlatformCallException();
+        }
+        List<GoodsSnapshot> found = new ArrayList<>();
+        if (response.getGoodsInfoList() != null) {
+            for (GoodsInfo row : response.getGoodsInfoList()) {
+                GoodsSnapshot snapshot = snapshot(row);
+                if (snapshot != null) {
+                    found.add(snapshot);
+                }
+            }
+        }
+        Integer total = response.getTotal();
+        return new GoodsHitPage(found, total == null ? found.size() : total);
+    }
+
+    private static void applySort(QueryGoodsRequest request, String sort) {
+        if (sort == null) {
+            return;
+        }
+        switch (sort) {
+            case "sales" -> {
+                request.setFieldName("SALES");
+                request.setOrder(1);
+            }
+            case "price" -> {
+                request.setFieldName("PRICE");
+                request.setOrder(0);
+            }
+            case "commission" -> {
+                request.setFieldName("COMMISSION");
+                request.setOrder(1);
+            }
+            case "coupon" -> {
+                request.setFieldName("DISCOUNT");
+                request.setOrder(1);
+            }
+            default -> {
+            }
+        }
+    }
+
+    private static int clamp(int size) {
+        if (size < 1) {
+            return 20;
+        }
+        return Math.min(size, 20);
+    }
+
     private UnionGoodsV2ServiceHelper.UnionGoodsV2ServiceClient goodsClient() {
         var client = new UnionGoodsV2ServiceHelper.UnionGoodsV2ServiceClient();
         client.setClientInvocationContext(context());
@@ -430,6 +611,9 @@ public class VipGoodsImpl implements IPlatformGoods {
                 UnionMaps.money(row.getCommission()),
                 status,
                 UnionMaps.fromEpoch(row.getOrderTime()),
-                status == OrderStatus.SHIPPED || status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null);
+                status == OrderStatus.SHIPPED || status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
+                null,
+                status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
+                null);
     }
 }

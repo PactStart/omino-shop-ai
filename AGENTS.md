@@ -84,10 +84,10 @@ APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构�
 | DAO XML 生成器              | `com.baomidou:mybatis-plus-generator`                         | `3.5.9`         | 只生成 Mapper 接口与 XML。不生成 Entity、Service、Controller。只放 test 范围，不进两个可运行 jar。不用它的 Service 模板。Apache-2.0 |
 | 微信支付                     | `com.github.wechatpay-apiv3:wechatpay-java`                   | `0.2.17`        | 只用 APIv3 下单与回调验签。不用于向用户打款，不带入示例商户站点。Apache-2.0。只进 `shop-api-app` |
 | 支付宝                      | `com.alipay.sdk:alipay-sdk-java`                              | `4.40.1044.ALL` | 回调验签（APP）与单笔转账（Admin）。不引第二个支付宝库。Apache-2.0。若依赖树抬高已锁定版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x` |
-| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细，以及授权换票和渠道备案。另装同版本 `sources`。不用推荐、退款、处罚、活动、口令。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
-| 京东联盟 SDK                 | `com.jd:open-api-sdk`                                         | `20250925`      | 只用商品查询、子联盟转链、订单行查询。不用京粉、大字段、物料、榜单、活动。许可例外同上。只进 `shop-api-app` |
-| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。不用推荐、PID 生成、招商。许可例外同上。只进 `shop-api-app` |
-| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。商品转链不用渠道链接。不用相似推荐、猜你喜欢、退款、PID 生成。许可例外同上。只进 `shop-api-app` |
+| 淘宝客 SDK                  | `com.taobao:taobao-sdk-java`                                  | `20250925`      | 只用物料搜索、商品详情、万能转链、订单明细，以及授权换票和渠道备案。口令用淘口令生成；相似和猜你喜欢只用物料推荐（相似物料 `13256`，猜你喜欢物料 `28026`）。另装同版本 `sources`。不用退款、处罚、活动。厂商许可，不是 MIT / Apache-2.0 / BSD，因官方出站必须用它，记为例外。只进 `shop-api-app`。传递进来的 Fastjson 不得在业务代码里调用 |
+| 京东联盟 SDK                 | `com.jd:open-api-sdk`                                         | `20250925`      | 只用商品查询、子联盟转链、订单行查询。口令是转链参数 `command=1` 带回的短口令。猜你喜欢只用物料查询 `eliteId=1`。不用京粉、大字段、榜单、活动。没有单独的相似商品接口，相似方法留空。许可例外同上。只进 `shop-api-app` |
+| 拼多多 SDK                  | `com.pdd:pop-sdk`                                             | `1.10.16`       | 只用商品搜索、详情、推广链接、增量订单，以及备案查询和授权页。猜你喜欢和按商品的相似只用商品推荐。不用 PID 生成、招商，也不生成口令。许可例外同上。只进 `shop-api-app` |
+| 唯品会 SDK                  | `com.vip:vop-sdk`                                             | `20250214094310` | 只用商品查询、按商品号详情、按商品号转链、订单列表，以及授权检查、备案链接和解绑。另用相似推荐、猜你喜欢、链接解析；口令取转链结果里的 `onlyCommand`。商品转链不用渠道链接。不用退款、PID 生成。许可例外同上。只进 `shop-api-app` |
 | 唯品会传输                   | `com.vip:osp-sdk`                                             | `20250214094310` | 只作为 `vop-sdk` 的调用运行时，不单独发起业务接口。许可例外同上。只进 `shop-api-app` |
 
 
@@ -326,8 +326,7 @@ omino-shop-ai/
 │   │           ├── announcements.vue
 │   │           ├── inbox.vue
 │   │           ├── users.vue
-│   │           ├── user-detail.vue
-│   │           └── god-view.vue
+│   │           └── user-detail.vue
 ├── services/
 │   ├── java/
 │   │   ├── pom.xml                    # parent，packaging=pom
@@ -397,6 +396,7 @@ omino-shop-ai/
 │   │   │       │   ├── web/app/                       # 对 Android/iOS：/api/app/v1
 │   │   │       │   │   ├── ChatController.java            # POST turns + GET runs/{id}/events
 │   │   │       │   │   ├── GoodsController.java
+│   │   │       │   │   ├── MallController.java            # 商城首页布局
 │   │   │       │   │   ├── AuthController.java
 │   │   │       │   │   ├── OrderController.java
 │   │   │       │   │   ├── WalletController.java
@@ -420,6 +420,7 @@ omino-shop-ai/
 │   │   │       │   ├── chat/ChatEventPump.java        # ≤100ms 读 Redis → SSE
 │   │   │       │   ├── chat/ChatCancelServiceImpl.java # SET cancel 键；不假设 Worker 在本机
 │   │   │       │   │   ├── goods/GoodsServiceImpl.java
+│   │   │       │   │   ├── mall/MallServiceImpl.java      # 按端和渠道下发 banner 与金刚区
 │   │   │       │   │   ├── goods/GoodsCollectionService.java
 │   │   │       │   │   ├── goods/GoodsFavoriteService.java
 │   │   │       │   │   ├── auth/UnionAuthService.java
@@ -473,6 +474,7 @@ omino-shop-ai/
 │   │               │   ├── AdminReleaseController.java
 │   │               │   ├── AdminRuntimeConfigController.java
 │   │               │   ├── AdminAnnouncementController.java
+│   │               │   ├── AdminMallController.java       # 商城版位、分类、条目
 │   │               │   ├── AdminInboxController.java
 │   │               │   ├── AdminUserController.java
 │   │               │   ├── AdminGodViewController.java
@@ -549,7 +551,7 @@ omino-shop-ai/
 - `mapper` 是唯一 DAO，类名 `XxxMapper`，不加 `I`，不以 `Impl` 结尾。
 - 业务类禁止以 `Mybatis` 开头，禁止以 `Store` 结尾。
 - 异常放 `com.omino.shopai.exception`，类名以 `Exception` 结尾。
-- 对外的请求体、响应体放 `dto`（common 的 `com.omino.shopai.dto`，或仅 app 使用的 `com.omino.shopai.app.dto`）。类名以 `Dto` 结尾。只被一个 Controller 使用的请求记录放在该 Controller 所在目录的 `dto` 包，不写在 Controller 类里面。分页只有 `PageDto<T>`，字段仍是 `list`、`page`、`size`、`total`，不要再按资源各写一个分页记录。
+- 对外的请求体、响应体放 `dto`（common 的 `com.omino.shopai.dto`，或仅 app 使用的 `com.omino.shopai.app.dto`）。类名以 `Dto` 结尾。只被一个 Controller 使用的请求记录放在该 Controller 所在目录的 `dto` 包，不写在 Controller 类里面。分页只有 `PageDto<T>`，字段仍是 `list`、`page`、`size`、`total`。商品搜索可以在同一页上多写 `nextId`（下一页游标，没有就不写出），不要再按资源各写一个分页记录。
 - 无状态工具放 `support` 或 `app.util`，不和用例、联盟适配器放在同一个包。
 - 同一件事不要拆成只被一处调用的一串小类型。
 - 信封的 `traceId` 和 `ts` 不由 Controller 填写。访问过滤器在进入 Controller 之前生成这一次请求的追踪号，放在请求属性上，访问日志用同一个号。Controller 返回 `ApiResponse.ok(data)`。`ResponseBodyAdvice` 在写出 JSON 之前把追踪号和上海时间写进信封；异常信封走同一条，成功和失败是同一个号。微信/支付宝回调原文、登录重定向和 SSE 不是信封，Advice 不改它们。`@Operation.summary` 写这个接口做什么，不写路径。
@@ -570,6 +572,7 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 | --- | --- |
 | [`docs/conversation.md`](docs/conversation.md) | 意图枚举、一张图、记忆三分法、SSE 事件、开 run / 取消 / 积分扣费 |
 | [`docs/api-app.md`](docs/api-app.md) | 消费者 HTTP：短信登录、商品、转链、浏览/收藏/合集、积分支付、邀请、版本头、站内信、订单 |
+| [`docs/app-api-catalog.md`](docs/app-api-catalog.md) | APP 接口清单。只列路径，供界面数据绑定。字段以 `api-app.md`、`conversation.md` 为准 |
 | [`docs/api-admin.md`](docs/api-admin.md) | 运营 HTTP：用户档案、套餐、海报模板、版本、配置、公告、私信、用户视角 |
 | [`docs/api-internal.md`](docs/api-internal.md) | `POST /internal/v1/graph/invoke` 与 Tool 白名单 |
 | [`docs/data-model.md`](docs/data-model.md) | PostgreSQL 表 |
@@ -800,6 +803,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | `UNION_JD_APP_KEY` / `UNION_JD_APP_SECRET`                              | 京东联盟。不读取站点号                                             |
 | `UNION_PDD_CLIENT_ID` / `UNION_PDD_CLIENT_SECRET`                       | 拼多多                                                     |
 | `UNION_VIP_APP_KEY` / `UNION_VIP_APP_SECRET`                            | 唯品会                                                     |
+| `DATAOKE_APP_KEY` / `DATAOKE_APP_SECRET` | 大淘客开放平台。只用于联想词和热搜词。任一为空则这两个接口返回空列表，不出站。不下发客户端 |
 | `PAY_WECHAT_PUBLIC_KEY` / `PAY_WECHAT_PUBLIC_KEY_ID` / `PAY_WECHAT_API_V3_KEY` | 微信支付回调验签。任一为空则拒绝入账，不向微信发探测请求。SDK 坐标锁定前见 §2 |
 | `PAY_ALIPAY_PUBLIC_KEY` | 支付宝回调验签。空则拒绝入账 |
 | `PAY_ALIPAY_APP_ID` / `PAY_ALIPAY_PRIVATE_KEY` | 管理端打款，放在 `local.admin.env`。缺任一则本次打款结果为失败，冻结额不动 |
@@ -848,6 +852,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | 变量                                              | 端                  | 说明                             |
 | ----------------------------------------------- | ------------------ | ------------------------------ |
 | `VITE_ADMIN_API_BASE`                           | admin-web          | 如 `/api/admin`                 |
+| `VITE_H5_ORIGIN`                                | admin-web          | 用户视角模拟屏根地址。本地 `http://localhost:5177`。不要写 `127.0.0.1`，H5 开发服务只听 localhost |
 | `API_BASE`                                      | Android / iOS      | APP API 根，含 `/api/app`         |
 | `VITE_WWW_STORE_IOS` / `VITE_WWW_STORE_ANDROID` | www                | 商店地址                           |
 | `VITE_LAND_API_BASE`                            | land               | 可选，公开邀请预览；可空则落地页不调 API         |

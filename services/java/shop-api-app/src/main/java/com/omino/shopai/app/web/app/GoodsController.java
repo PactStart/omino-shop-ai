@@ -4,9 +4,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.omino.shopai.api.ApiResponse;
 import com.omino.shopai.app.dto.CollectionViewDto;
+import com.omino.shopai.app.dto.GoodsCommandDto;
+import com.omino.shopai.app.dto.GoodsParseDto;
+import com.omino.shopai.app.dto.KeywordListDto;
 import com.omino.shopai.app.web.app.dto.ConvertRequestDto;
 import com.omino.shopai.app.web.app.dto.DetailRequestDto;
 import com.omino.shopai.app.web.app.dto.FavoriteRequestDto;
+import com.omino.shopai.app.web.app.dto.GoodsCommandRequestDto;
+import com.omino.shopai.app.web.app.dto.GoodsGuessRequestDto;
+import com.omino.shopai.app.web.app.dto.GoodsParseRequestDto;
+import com.omino.shopai.app.dto.GoodsSearchRequestDto;
+import com.omino.shopai.app.web.app.dto.GoodsSimilarRequestDto;
 import com.omino.shopai.app.dto.ConvertedLinkDto;
 import com.omino.shopai.app.dto.GoodsCardDto;
 import com.omino.shopai.app.dto.GoodsDetailDto;
@@ -55,6 +63,103 @@ public class GoodsController {
         return ApiResponse.ok(
                 goods.detail(userId, request.goodsId(), request.platform(), request.platformGoodsId()));
     }
+    /**
+     * 按关键词分页搜一个平台的商品。
+     *
+     * @param userId 当前用户
+     * @param request 平台、关键词、分页、排序、价格、品牌、有券和翻页游标
+     * @return 商品卡分页信封
+     */
+    @Operation(summary = "分页搜索商品")
+    @PostMapping("/search")
+    public ApiResponse<PageDto<GoodsCardDto>> search(
+            @RequestAttribute("userId") String userId, @RequestBody GoodsSearchRequestDto request) {
+        return ApiResponse.ok(goods.searchPage(userId, request));
+    }
+
+    /**
+     * 按已输入的词返回补全建议。
+     *
+     * @param userId 当前用户
+     * @param keyword 已输入的词
+     * @return 补全词信封
+     */
+    @Operation(summary = "获取商品联想词")
+    @GetMapping("/suggestions")
+    public ApiResponse<KeywordListDto> suggestions(
+            @RequestAttribute("userId") String userId, @RequestParam String keyword) {
+        return ApiResponse.ok(goods.suggestions(keyword));
+    }
+
+    /**
+     * 返回热搜词，给搜索框做推荐。
+     *
+     * @param userId 当前用户
+     * @return 热搜词信封
+     */
+    @Operation(summary = "获取商品热搜词")
+    @GetMapping("/hot-words")
+    public ApiResponse<KeywordListDto> hotWords(@RequestAttribute("userId") String userId) {
+        return ApiResponse.ok(goods.hotWords());
+    }
+
+    /**
+     * 为已定位的商品生成口令。
+     *
+     * @param userId 当前用户
+     * @param request 商品号或平台商品号
+     * @return 口令信封
+     */
+    @Operation(summary = "生成商品口令")
+    @PostMapping("/command")
+    public ApiResponse<GoodsCommandDto> command(
+            @RequestAttribute("userId") String userId, @RequestBody GoodsCommandRequestDto request) {
+        return ApiResponse.ok(goods.command(userId, request.goodsId(), request.platform(), request.platformGoodsId()));
+    }
+
+    /**
+     * 解析淘宝或唯品会的链接和口令。
+     *
+     * @param userId 当前用户
+     * @param request 平台和待解析内容
+     * @return 解析结果信封
+     */
+    @Operation(summary = "万能解析商品")
+    @PostMapping("/parse")
+    public ApiResponse<GoodsParseDto> parse(
+            @RequestAttribute("userId") String userId, @RequestBody GoodsParseRequestDto request) {
+        return ApiResponse.ok(goods.parse(userId, request.platform(), request.content()));
+    }
+
+    /**
+     * 按一件商品取相似商品。
+     *
+     * @param userId 当前用户
+     * @param request 种子商品和分页
+     * @return 商品卡分页信封
+     */
+    @Operation(summary = "获取相似商品")
+    @PostMapping("/similar")
+    public ApiResponse<PageDto<GoodsCardDto>> similar(
+            @RequestAttribute("userId") String userId, @RequestBody GoodsSimilarRequestDto request) {
+        return ApiResponse.ok(goods.similar(
+                userId, request.goodsId(), request.platform(), request.platformGoodsId(), request.page(), request.size()));
+    }
+
+    /**
+     * 取一个平台的猜你喜欢。
+     *
+     * @param userId 当前用户
+     * @param request 平台和分页
+     * @return 商品卡分页信封
+     */
+    @Operation(summary = "获取猜你喜欢")
+    @PostMapping("/guess")
+    public ApiResponse<PageDto<GoodsCardDto>> guess(
+            @RequestAttribute("userId") String userId, @RequestBody GoodsGuessRequestDto request) {
+        return ApiResponse.ok(goods.guess(userId, request.platform(), request.page(), request.size()));
+    }
+
     /**
      * 校验授权和推广身份后生成购买链接。
      *

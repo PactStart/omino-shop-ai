@@ -285,7 +285,10 @@ final class MemoryOrders implements TransactionOperations {
         copy.setSettleStatus(source.getSettleStatus());
         copy.setWalletLedgerId(source.getWalletLedgerId());
         copy.setOrderedAt(source.getOrderedAt());
+        copy.setPaidAt(source.getPaidAt());
         copy.setShippedAt(source.getShippedAt());
+        copy.setCompletedAt(source.getCompletedAt());
+        copy.setExtras(source.getExtras());
         copy.setSettledAt(source.getSettledAt());
         copy.setUpdatedFromPlatformAt(source.getUpdatedFromPlatformAt());
         copy.setCreatedAt(source.getCreatedAt());

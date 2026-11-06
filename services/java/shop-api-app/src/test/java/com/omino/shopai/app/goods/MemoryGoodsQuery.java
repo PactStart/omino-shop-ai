@@ -1,6 +1,7 @@
 package com.omino.shopai.app.goods;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.omino.shopai.app.adapter.dataoke.DataokeClient;
 import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.app.service.goods.GoodsServiceImpl;
 import com.omino.shopai.entity.GoodsSnapshot;
@@ -23,7 +24,7 @@ public final class MemoryGoodsQuery extends GoodsServiceImpl {
      * @param json 缓存序列化
      */
     public MemoryGoodsQuery(MemoryGoods goods, List<IPlatformGoods> clients, ObjectMapper json) {
-        super(null, clients, goods, null, json, null, null, null, null);
+        super(null, clients, goods, null, json, null, null, null, null, new DataokeClient("", ""));
         this.goods = goods;
     }
 

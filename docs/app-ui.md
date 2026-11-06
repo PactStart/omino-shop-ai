@@ -23,7 +23,7 @@
 | 额外约束  | **所有页面统一遵循这套风格，禁止私自变更配色、圆角、图标样式。** 另：商品卡禁止「购买/转链」；停止生成 ≠ 刷新/断线；无物流写「未知」；不展示 PID / relationId / 完整收款账号。P0 不做暗色。          |
 
 
-**壳：** 登录后仅 Tab「对话 / 订单 / 我的」。登录、详情、提现表单、一切 Modal/Drawer **无 Tab**。
+**壳：** 登录后 Tab「对话 / 商城 / 订单 / 我的」。登录后仍进对话。登录、详情、提现表单、一切 Modal/Drawer **无 Tab**。商城内的搜索页和内嵌页保留底栏。
 
 ---
 
@@ -80,6 +80,8 @@
 | Page | 认证 / —         | `login`           | 登录     | `/login`                 | `inviteCode?`                            | Demo 只进手机号；以后四入口 | 上标题下按钮栈               | `BtnPhone`（Demo 主入口）`BtnWechat` `LinkApple` `LinkGoogle` `LegalLinks`                          | Demo 隐藏微信/Apple/Google；无邮箱密码、无 SSO；成功进 Tab |
 | Page | 认证 / `login`   | `loginPhone`      | 手机号验证码 | `/login/phone`           | `inviteCode?`                            | 短信登录              | 返回+表单                 | `PhoneField` `OtpGrid`                                                                               | 11 位；60s 倒计时；成功进 Tab                      |
 | Page | 对话 / Tab       | `chat`            | 对话     | `/chat`                  | `conversationId?`                        | 说需求、出卡、澄清、HITL、停止 | 顶栏+消息流+Composer；底 Tab | `ChatTopBar` `MsgList` `Composer` `SuggestionChips` `GoodsCard` `CollectionCard` `ClarifyCard` `AuthCard` `ConfirmCard` `TicketReceipt` | JWT；无消息时拉推荐问题；生成中顶栏变「停止」；断线不 cancel；卡上无购买；合集卡进合集页 |
+| Page | 商城 / Tab       | `mall`            | 商城     | `/mall`                  | —                                        | 浏览运营布局和推荐 | 搜索+轮播+金刚区+推荐；底 Tab | `MallSearchBar` `MallBanner` `MallNav` `MallGuess` | 顺序固定。资源位、专题本次不渲染。布局来自 `GET /mall`；猜你喜欢来自 `POST /goods/guess` |
+| Page | 商城 / `mall`    | `mallSearch`      | 商城搜索 | `/mall/search`           | `keyword?` `platform?`                   | 搜商品            | 搜索框+结果；底 Tab | `SearchField` `GoodsCard` | 走 `POST /goods/search`。点卡片进详情 |
 | Page | 对话 / `chat`    | `chatHistory`     | 会话列表   | `/chat/history`          | —                                        | 切会话、新对话           | 列表                    | `ConversationRow`                                                                                    | 「新对话」清空 id 回 `chat`                       |
 | Page | 订单 / Tab       | `orders`          | 订单     | `/orders`                | `platform?` `orderStatus?`               | 看本人电商单            | 标题+两行 Chip+列表        | `PlatformChips` `StatusChips` `OrderRow`                                                             | 四平台码+六种订单状态；行上另标结算状态与用户返佣；空态不编物流；再次购买进详情不转链 |
 | Page | 订单 / `orders`  | `orderDetail`     | 订单详情   | `/orders/:id`            | `id`                                     | 看一单状态             | 头图+字段表                | `OrderHeader` `InfoRows`                                                                             | 无物流→「暂无物流信息」；无转链钮                         |
@@ -115,7 +117,7 @@
 
 | type      | 层级             | ID              | 名称   | Path | 入参 / Props                       | 目标         | 布局         | 子单元                    | 约束                          |
 | --------- | -------------- | --------------- | ---- | ---- | -------------------------------- | ---------- | ---------- | ---------------------- | --------------------------- |
-| Component | 壳 / Tab 页      | `tabBar`        | 底栏   | —    | `current`                        | 三 Tab 切换   | 三等分图标+字    | —                      | 仅 `chat` `orders` `me`      |
+| Component | 壳 / Tab 页      | `tabBar`        | 底栏   | —    | `current`                        | 四 Tab 切换   | 四等分图标+字    | —                      | `chat` `mall` `orders` `me`。登录后仍进 `chat` |
 | Component | 对话 / `chat`    | `chatTopBar`    | 对话顶栏 | —    | `title` `credits` `generating`   | 积分入口、历史、停止 | 左标题右一控件    | `CreditChip`           | 生成中只留停止                     |
 | Component | 对话 / `chat`    | `composer`      | 输入栏  | —    | `text` `generating`              | 发文字/语音/扩展  | `+` 框 麦 发送 | —                      | 生成中禁用发送或只停止；返回手势 ≠ cancel   |
 | Component | 对话 / `chat`    | `suggestionChips` | 推荐问题 | — | `items[]`（`id` `text`） | 空对话时一键发问 | Composer 上方横滑 Chip | — | 只在消息列表为空时显示；点击即 `POST turns`；数据来自 `GET /chat/suggestions` |
@@ -151,7 +153,7 @@
 | Modal  | 系统 / 多页                      | `toast`         | 轻提示    | —    | `text`                                       | 失败/成功一句    | 底中单行 2s     | —                     | 不堆系统 Alert                       |
 
 
-登录成功后根为 Tab：`/chat` · `/orders` · `/me`。主路径：`login` → `chat` → `goodsDetail` →（未授权）`authSheet`；（积分不足）`creditSheet` → `creditPackages`。
+登录成功后根为 Tab：`/chat` · `/mall` · `/orders` · `/me`。主路径：`login` → `chat` → `goodsDetail` →（未授权）`authSheet`；（积分不足）`creditSheet` → `creditPackages`。商城点击：`page` 只打开 `mallSearch` `chat` `orders` `me` `invite` `credits`；`webview` 在 App 内嵌打开；不认识的点击类型不可点。
 
 **设置页分组（`settings` 本体）**
 
@@ -163,4 +165,4 @@
 | 通知 | 推送设置 | `settingsPush` |
 | 账号 | 注销、退出登录 | `deleteConfirm` / `logoutConfirm` |
 
-H5 上帝视角：Admin 取 token 后进入 `/chat`，顶栏 `godViewBar`；请求头 `X-Client-Type: h5`、`X-App-Channel: web`。
+H5 上帝视角：Admin 取 token 后进入 `http://localhost:5177/chat`（开发服务只听 localhost）。地址上的 `access_token` 读入本地后立刻从地址去掉。顶栏 `godViewBar`；请求头 `X-Client-Type: h5`、`X-App-Channel: web`。

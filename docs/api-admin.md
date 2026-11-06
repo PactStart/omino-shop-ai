@@ -116,6 +116,21 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 
 `startsAt`/`endsAt` 空 = 不限。两者都有时须 `endsAt > startsAt`。已有用户端缓存的是模板 URL，改图或矩形后 `updated_at` 变化，客户端下次拉列表重贴码。
 
+## 商城布局
+
+运营配置商城 banner 和金刚区。版位只有 `banner` 与 `nav` 两行，不能新增。资源位和专题不在本接口。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/v1/mall/zones` | 两个版位。`banner` 看 `intervalMs`，`nav` 看 `columns` |
+| PATCH | `/api/admin/v1/mall/zones/{code}` | `banner` 改 `intervalMs`（0–60000）。`nav` 改 `columns`（4、5 或 6） |
+| GET/POST | `/api/admin/v1/mall/categories` | 分类列表；新建 `name` `sort` `status` |
+| PATCH | `/api/admin/v1/mall/categories/{id}` | 改名称、排序、状态。不物理删除 |
+| GET | `/api/admin/v1/mall/entries` | 全部条目，可按 `zone` 过滤 |
+| POST/PATCH | `/api/admin/v1/mall/entries`（及 `/{id}`） | 图、标题、分类、生效窗、端、渠道、`actionType`、`action`。`nav` 必须有分类和标题，`banner` 不能带分类 |
+
+`action` 的形状以 [`data-model.md`](./data-model.md) 商城布局为准。不认识的点击类型是 `40001`。
+
 ## 版本 / 配置 / 公告 / 站内信 / 上帝视角
 
 `version_code` 为 `yyyyMMdd` 八位整数（如 `20261029`），同端同渠道唯一。当天再发：PATCH 同一行，禁止第二条同号。
@@ -131,12 +146,12 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 
 ## 电商订单
 
-只读。金额为字符串两位或 `null`。含 `mediaCommission`（平台付给媒体）、`userCommission`（分给下单用户）、`parentUserId`、`orderStatus`、`settleStatus`、`walletLedgerId`。无联盟原始 JSON，无物流编造。
+只读。金额为字符串两位或 `null`。含 `mediaCommission`（平台付给媒体）、`userCommission`（分给下单用户）、`parentUserId`、`orderStatus`、`settleStatus`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`paidAt` 与 `completedAt` 可空。`extras` 是 JSON 对象字符串或 `null`。无联盟原始 JSON，无物流编造。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/admin/v1/orders` | 分页。query：`userId` `platform` `platformOrderId` `orderStatus` `settleStatus` `page` `size`。`platformOrderId` 精确匹配，空白则不筛。行含 `goodsTitle` 与 `goodsImageUrl`（同步时的主图，没有则为空） |
-| GET | `/api/admin/v1/orders/{id}` | 单行全字段（运营可见列，见 [`data-model.md`](./data-model.md) §6.8） |
+| GET | `/api/admin/v1/orders` | 分页。query：`userId` `platform` `platformOrderId` `orderStatus` `settleStatus` `page` `size`。`platformOrderId` 精确匹配，空白则不筛。行含 `goodsTitle` 与 `goodsImageUrl`（同步时的主图，没有则为空），以及可空的 `paidAt`、`completedAt`、`extras` |
+| GET | `/api/admin/v1/orders/{id}` | 单行全字段（运营可见列，见 [`data-model.md`](./data-model.md) §6.8）。`paidAt`、`completedAt`、`extras` 为空时后台不展示 |
 
 结算只由订单同步写入钱包，本接口不提供「手动结算」。
 

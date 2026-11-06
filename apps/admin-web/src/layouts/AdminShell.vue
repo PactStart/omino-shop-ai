@@ -12,6 +12,7 @@ import {
   Expand,
   Fold,
   Goods,
+  Grid,
   Message,
   Money,
   Moon,
@@ -25,7 +26,6 @@ import {
   Tickets,
   Upload,
   User,
-  View,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -99,10 +99,6 @@ function toggleTheme(): void {
             <el-icon><User /></el-icon>
             <template #title>用户列表</template>
           </el-menu-item>
-          <el-menu-item index="/god-view">
-            <el-icon><View /></el-icon>
-            <template #title>用户视角</template>
-          </el-menu-item>
           <el-menu-item index="/conversations">
             <el-icon><ChatDotRound /></el-icon>
             <template #title>会话观测</template>
@@ -160,6 +156,10 @@ function toggleTheme(): void {
           <el-menu-item index="/announcements">
             <el-icon><Bell /></el-icon>
             <template #title>公告</template>
+          </el-menu-item>
+          <el-menu-item index="/mall-layout">
+            <el-icon><Grid /></el-icon>
+            <template #title>商城布局</template>
           </el-menu-item>
           <el-menu-item index="/inbox">
             <el-icon><Message /></el-icon>

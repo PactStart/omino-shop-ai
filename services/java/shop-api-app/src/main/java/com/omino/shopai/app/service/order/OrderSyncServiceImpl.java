@@ -1,5 +1,8 @@
 package com.omino.shopai.app.service.order;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.omino.shopai.app.adapter.platform.IPlatformGoods;
 import com.omino.shopai.exception.PlatformCallException;
@@ -42,6 +45,8 @@ import java.util.concurrent.Executor;
  */
 @Service
 public class OrderSyncServiceImpl implements IOrderSyncService {
+
+    private static final ObjectMapper EXTRAS = new ObjectMapper();
 
     private final AppOrderMapper orders;
     private final OrderSyncCursorMapper cursors;
@@ -344,6 +349,28 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
     }
 
     /**
+     * 补充字段只接受 JSON 对象。空白当成没有，避免把空串写进检查约束。
+     *
+     * @param raw 适配器交来的 JSON
+     * @return 紧凑的对象字符串；没有则为空
+     */
+    private static String extras(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        JsonNode node;
+        try {
+            node = EXTRAS.readTree(raw);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalArgumentException("extras 不是 JSON 对象");
+        }
+        if (node == null || !node.isObject()) {
+            throw new IllegalArgumentException("extras 不是 JSON 对象");
+        }
+        return node.toString();
+    }
+
+    /**
      * 取最内层的失败说明，去掉密钥，并截到游标列能放下的长度。
      *
      * @param error 这次失败
@@ -390,7 +417,10 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
         order.setMediaCommission(incoming.mediaCommission());
         order.setOrderStatus(incoming.orderStatus() == null ? OrderStatus.UNKNOWN : incoming.orderStatus());
         order.setOrderedAt(incoming.orderedAt());
+        order.setPaidAt(incoming.paidAt());
         order.setShippedAt(incoming.shippedAt());
+        order.setCompletedAt(incoming.completedAt());
+        order.setExtras(extras(incoming.extras()));
         order.setUpdatedFromPlatformAt(now);
 
         // 已经记过返佣的订单只更新商品快照，佣金和流水号保持第一次的值。

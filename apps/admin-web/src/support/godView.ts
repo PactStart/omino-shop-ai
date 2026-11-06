@@ -1,13 +1,13 @@
-import { ElMessage } from 'element-plus'
 import { apiPost, errorMessage, isApiError } from '../api/http'
 
-export async function issueGodView(userId: string): Promise<'ok' | 'denied' | string> {
+export async function issueGodViewToken(userId: string): Promise<string> {
   try {
-    await apiPost('/v1/god-view/tokens', { userId })
-    ElMessage.success('签发成功')
-    return 'ok'
+    const body = await apiPost<{ token: string }>('/v1/god-view/tokens', { userId })
+    return body.data.token
   } catch (error) {
-    if (isApiError(error) && error.code === 40303) return 'denied'
-    return errorMessage(error)
+    if (isApiError(error) && error.code === 40303) {
+      throw new Error('上帝视角未开启')
+    }
+    throw new Error(errorMessage(error))
   }
 }
