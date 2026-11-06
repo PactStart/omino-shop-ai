@@ -7,7 +7,9 @@ import com.omino.shopai.app.service.chat.ChatEventServiceImpl;
 import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.ChatRun;
 import com.omino.shopai.app.service.chat.ChatWorkerImpl;
+import com.omino.shopai.app.service.agent.RunContextLoaderImpl;
 import com.omino.shopai.app.service.chat.RunContext;
+import com.omino.shopai.support.AgentPrompts;
 import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.entity.LlmModel;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,25 @@ class RunInjectionTest {
         assertEquals(1, gateway.calls);
         assertEquals(8, gateway.context.prompts().size());
         assertEquals("deepseek-chat", gateway.context.llm().modelName());
+    }
+
+    @Test
+    void missingPromptOnLocalStillOpensTheRunWithDefaults() {
+        RunContextLoaderImpl loader = new RunContextLoaderImpl(null, null, "", "local") {
+            @Override
+            protected Map<String, String> loadPrompts() {
+                return Map.of();
+            }
+
+            @Override
+            protected List<LlmModel> loadModels() {
+                return List.of();
+            }
+        };
+        RunContext context = loader.load(run());
+        assertEquals(8, context.prompts().size());
+        assertEquals(AgentPrompts.DEFAULTS.get("intent.router"), context.prompts().get("intent.router"));
+        assertNull(context.llm());
     }
 
     @Test
@@ -72,7 +93,7 @@ class RunInjectionTest {
     }
 
     private static ChatRun run() {
-        return new ChatRun("run-1", "01USER0000000000000000000A", "conv", "m1", "你好", Instant.now().plus(Duration.ofMinutes(1)));
+        return ChatRun.text("run-1", "01USER0000000000000000000A", "conv", "m1", "你好", Instant.now().plus(Duration.ofMinutes(1)));
     }
 
     private static Map<String, String> prompts() {

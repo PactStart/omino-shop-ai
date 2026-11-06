@@ -83,8 +83,8 @@ class UnionAuthTest {
     void missingKeysDoNotOpenClients() {
         SdkSessions.opened.set(0);
         assertThrows(PlatformCallException.class, () -> new PddGoodsImpl("", "").bound(USER, "501"));
-        assertThrows(PlatformCallException.class, () -> new VipGoodsImpl("", "").bound("v" + USER));
-        assertThrows(PlatformCallException.class, () -> new VipGoodsImpl("", "").unbind("v" + USER));
+        assertThrows(PlatformCallException.class, () -> new VipGoodsImpl("", "").bound(USER));
+        assertThrows(PlatformCallException.class, () -> new VipGoodsImpl("", "").unbind(USER));
         assertThrows(PlatformCallException.class, () -> new TaobaoGoodsImpl("", "").authorizeUrl("state"));
         assertThrows(PlatformCallException.class, () -> new TaobaoGoodsImpl("", "").filing("code"));
         assertEquals(0, SdkSessions.opened.get());
@@ -167,7 +167,7 @@ class UnionAuthTest {
         AtomicReference<PlatformAuthorization> row = new AtomicReference<>();
         UnionAuthService service = service(store(row), new MemoryGoods(), new TaobaoGoodsImpl("", ""), new PddGoodsImpl("", ""), vip, null);
         UnionAuthDto pending = service.status(USER, "vip");
-        assertEquals("v" + USER, vip.lastOpenId);
+        assertEquals(USER, vip.lastOpenId);
         assertEquals("https://vip.example/bind", pending.authUrl());
         assertFalse(pending.authUrl().contains(vip.lastOpenId));
         assertEquals(AuthStatus.NONE, row.get().getStatus());
@@ -177,7 +177,7 @@ class UnionAuthTest {
         service.revoke(USER, "vip");
         assertEquals(1, vip.unbinds);
         assertEquals(AuthStatus.REVOKED, row.get().getStatus());
-        assertEquals("v" + USER, row.get().getRelationId());
+        assertEquals(USER, row.get().getRelationId());
     }
 
     private static String stateOf(UnionAuthService service, ScriptTaobao taobao) {

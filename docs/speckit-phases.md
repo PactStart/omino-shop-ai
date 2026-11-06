@@ -282,7 +282,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 1. 确认 constitution 已不是模板；若仍是，先改完再开 feat 1。
 2. 新对话，贴 §0 开场，加上「开始 feat 1」，再执行 §1 的命令序列。
 3. 审 spec / plan 时看范围有没有串 feat：feat 2 写页面、feat 4 或 feat 5 去接官方 SDK、feat 5 直连联盟，都是失败。真实出站只在 feat 3。
-4. feat 1、feat 2、feat 3 已合并到 main。当前是 feat 4。feat 4 审完并实现前，不要并行开 feat 5。feat 6 等 feat 5。feat 7 等页面契约在 H5 上走过一遍。feat 8 的官网可以在 feat 1 之后就做。
+4. feat 1、feat 2、feat 3、feat 4 已合并到 main。当前是 feat 5。feat 5 审完并实现前，不要并行开 feat 6。feat 7 等页面契约在 H5 上走过一遍。feat 8 的官网可以在 feat 1 之后就做。
 5. 同一功能不要再跑 `/opsx-propose`。
 
-feat 1、feat 2、feat 3 已在 main。**当前 `/speckit-specify` 是 feat 4。**
+feat 1、feat 2、feat 3、feat 4 已在 main。**当前 `/speckit-specify` 是 feat 5。**

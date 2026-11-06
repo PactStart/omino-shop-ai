@@ -18,6 +18,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 
@@ -107,17 +109,55 @@ public class ChatTurnServiceImpl implements IChatTurnService {
      */
     @Override
     public TurnAcceptedDto open(String userId, String conversationId, String clientMsgId, String text) {
-        if (clientMsgId == null || clientMsgId.isBlank() || clientMsgId.length() > 64) {
+        return open(userId, new TurnCommand(conversationId, clientMsgId, "text", text, null, null, null, List.of()));
+    }
+
+    /**
+     * 按输入类型校验后受理。已受理则返回原来的 runId。
+     *
+     * @param userId 用户主键
+     * @param command 这一轮的输入
+     * @return 已受理的 run
+     */
+    @Override
+    public TurnAcceptedDto open(String userId, TurnCommand command) {
+        if (command.clientMsgId() == null || command.clientMsgId().isBlank() || command.clientMsgId().length() > 64) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "clientMsgId 不能为空");
         }
-        if (text == null || text.isBlank() || text.trim().length() > 2000) {
+        String trimmed = validate(command);
+        Conversation conversation = resolveConversation(userId, command.conversationId(), trimmed);
+        return findRunId(conversation.getId(), command.clientMsgId())
+                .map(runId -> new TurnAcceptedDto(conversation.getId(), runId, command.clientMsgId()))
+                .orElseGet(() -> start(userId, conversation.getId(), command, trimmed));
+    }
+
+    /**
+     * 文本和语音在没有恢复动作时必须有 1 到 2000 字。链接必须是 http(s)。图片必须有键。
+     *
+     * @param command 这一轮的输入
+     * @return 修剪后的正文，可以是空串
+     */
+    private static String validate(TurnCommand command) {
+        String type = command.inputType() == null || command.inputType().isBlank() ? "text" : command.inputType();
+        boolean resume = command.hitl() != null && !command.hitl().isEmpty();
+        String text = command.text() == null ? "" : command.text().trim();
+        if (("text".equals(type) || "voice_transcript".equals(type)) && !resume) {
+            if (text.isBlank() || text.length() > 2000) {
+                throw new ApiBusinessException(ErrorCodes.VALIDATION, "text 不能为空");
+            }
+        } else if (!text.isEmpty() && text.length() > 2000) {
             throw new ApiBusinessException(ErrorCodes.VALIDATION, "text 不能为空");
         }
-        String trimmed = text.trim();
-        Conversation conversation = resolveConversation(userId, conversationId, trimmed);
-        return findRunId(conversation.getId(), clientMsgId)
-                .map(runId -> new TurnAcceptedDto(conversation.getId(), runId, clientMsgId))
-                .orElseGet(() -> start(userId, conversation.getId(), clientMsgId, trimmed));
+        if ("goods_url".equals(type)) {
+            String url = command.sourceUrl();
+            if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) {
+                throw new ApiBusinessException(ErrorCodes.VALIDATION, "链接不能为空");
+            }
+        }
+        if ("image".equals(type) && (command.imageObjectKey() == null || command.imageObjectKey().isBlank())) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "图片不能为空");
+        }
+        return text;
     }
 
     /**
@@ -125,19 +165,24 @@ public class ChatTurnServiceImpl implements IChatTurnService {
      *
      * @param userId 用户主键
      * @param conversationId 会话主键
-     * @param clientMsgId 客户端消息号
+     * @param command 这一轮的输入
      * @param text 已修剪的用户文本
      * @return 已受理的 run
      */
-    private TurnAcceptedDto start(String userId, String conversationId, String clientMsgId, String text) {
+    private TurnAcceptedDto start(String userId, String conversationId, TurnCommand command, String text) {
         String runId = Ids.ulid();
-        insertUserMessage(conversationId, clientMsgId, text, runId);
-        ChatRun run = new ChatRun(runId, userId, conversationId, clientMsgId, text, clock.instant().plus(timeout));
+        insertUserMessage(conversationId, command.clientMsgId(), text, runId);
+        String type = command.inputType() == null || command.inputType().isBlank() ? "text" : command.inputType();
+        Map<String, Object> hitl = command.hitl() == null || command.hitl().isEmpty() ? null : command.hitl();
+        List<String> installed = command.installedPlatforms() == null ? List.of() : command.installedPlatforms();
+        ChatRun run = new ChatRun(
+                runId, userId, conversationId, command.clientMsgId(), type, text,
+                command.sourceUrl(), command.imageObjectKey(), hitl, installed, clock.instant().plus(timeout));
         cancels.remember(run);
         if (!credits.block(run)) {
             executor.execute(() -> worker.start(run));
         }
-        return new TurnAcceptedDto(conversationId, runId, clientMsgId);
+        return new TurnAcceptedDto(conversationId, runId, command.clientMsgId());
     }
 
     /**
@@ -150,7 +195,8 @@ public class ChatTurnServiceImpl implements IChatTurnService {
      */
     private Conversation resolveConversation(String userId, String conversationId, String text) {
         if (conversationId == null || conversationId.isBlank()) {
-            String title = text.length() <= 32 ? text : text.substring(0, 32);
+            String source = text.isBlank() ? "对话" : text;
+            String title = source.length() <= 32 ? source : source.substring(0, 32);
             return createConversation(userId, title);
         }
         return findOwnedConversation(conversationId, userId)

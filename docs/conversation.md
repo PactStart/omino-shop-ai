@@ -128,7 +128,7 @@ Android/iOS/H5 → Java（JWT）。Java 写入用户消息后 **异步** 调 Age
 | conversationId | string | 可空；空则创建                                    |
 | clientMsgId    | string | 必填，≤64，幂等键                                 |
 | inputType      | string | `text`                                     |
-| text           | string | `text`/`voice_transcript` 时必填，trim 1–2000  |
+| text           | string | `text`/`voice_transcript` 且没有 `hitl` 时必填，trim 1–2000。`hitl` 非空时可以没有正文 |
 | sourceUrl      | string | `goods_url` 时必填，http(s) 商品链接               |
 | imageObjectKey | string | `image` 时必填，先走上传接口得到对象键                    |
 | hitl           | object | HITL 恢复：`interruptId` + `action`（`confirm` |
@@ -192,7 +192,7 @@ Checkpointer：取消发生在某节点中途时，**不写半截 node 状态**�
 
 积分账户与返佣 `wallet` **分户**。扣费、入账、支付回调 **只在 Java**。Agent 只通过 SSE 事件 `usage` 上报 token，**禁止** Tool 改积分、禁止持支付密钥。
 
-**比例**（Nacos `credit.tokens-per-credit`，默认 `1000`，热更新）：`credits = round(billed_tokens / tokens_per_credit, 2)`，`RoundingMode.HALF_UP`。`billed_tokens = prompt_tokens + completion_tokens`。若 `billed_tokens > 0` 且结果 `< 0.01`，按 **0.01** 起扣。未调用 LLM 的 run 不扣。Java Tool HTTP **不计** token。不落 `credit_rate` 表。
+**比例**（Nacos `credit.tokens-per-credit`，默认 `1000`，热更新）：`credits = round(billed_tokens / tokens_per_credit, 2)`，`RoundingMode.HALF_UP`。`billed_tokens` 用本 run 累计的 `prompt_tokens + completion_tokens`。若累计 `billed_tokens > 0` 且结果 `< 0.01`，本 run 按 **0.01** 起扣。这个最低额不按每一小段 token 另算。本次实扣等于该结果减去本 run 已经扣过的金额。未调用 LLM 的 run 不扣。Java Tool HTTP **不计** token。不落 `credit_rate` 表。
 
 **余额禁止为负。** `credit.enforce=false` 仅 `local` 且 Nacos/yml 允许（Demo）；`test`/`prod` 必须 `true`。开跑阈值：`available < 0.01` 视为不足。
 
@@ -203,6 +203,8 @@ Checkpointer：取消发生在某节点中途时，**不写半截 node 状态**�
 | 流中         | Agent 每完成一次 LLM 调用（及流式过程中的 usage 心跳）发 `usage`。Java 按增量扣 `credit_account` 并写 `llm_usage` + `credit_ledger.type=consume`。下一跳将使余额不足：与 cancel 相同 **abort Agent HTTP**，再 `credit_card`（`reason=EXHAUSTED_MID`）+ `credit_exhausted`。已输出的 `text_delta` 保留 |
 | `done`     | 用厂商最终 usage **多退少补**：多扣则 `credit_ledger.type=refund`；少扣且余额不够则只扣到 0，不透支                                                                                                                                                                             |
 
+
+`usage` 的 `promptTokens`、`completionTokens`、`totalTokens`、`credits` 是本 run 累计。Java 只扣相对该 run 上一条用量的增加部分。同一累计值再次到达不扣第二次。
 
 `credit_card.data.packages` 为当前 `active` 套餐对外字段（`id,name,credits,price,sort`），**不含**成本。客户端拉起支付走 [`api-app.md`](./api-app.md) 积分套餐，**不**把支付当 LangGraph `interrupt`。购入成功后用户再 `POST turns` 新 `runId`。
 

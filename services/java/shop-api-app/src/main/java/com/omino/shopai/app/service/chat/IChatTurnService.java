@@ -17,4 +17,13 @@ public interface IChatTurnService {
      * @return 已受理的 run
      */
     TurnAcceptedDto open(String userId, String conversationId, String clientMsgId, String text);
+
+    /**
+     * 按输入类型校验后受理。链接和图片可以没有正文。恢复动作也可以没有正文。
+     *
+     * @param userId 用户主键
+     * @param command 这一轮的输入
+     * @return 已受理的 run
+     */
+    TurnAcceptedDto open(String userId, TurnCommand command);
 }

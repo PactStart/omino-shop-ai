@@ -3,6 +3,8 @@
 **/target
 **/dist
 **/.venv
+**/__pycache__
+**/*.pyc
 **/.gradle
 **/build
 **/.env
