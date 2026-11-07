@@ -1,6 +1,6 @@
 # 对话设计（意图、图、记忆、SSE）
 
-> 本文件是对话契约的权威正文。技术栈/约束见 [`AGENTS.md`](../AGENTS.md)；表结构见 [`data-model.md`](./data-model.md)；App 开 run 以外的 HTTP 见 [`api-app.md`](./api-app.md)；Tool 见 [`api-internal.md`](./api-internal.md)。运行时节点说明见 [`agent.md`](./agent.md)，冲突以本文为准。
+> 本文件是对话契约的权威正文。技术栈/约束见 [`AGENTS.md`](../AGENTS.md)；表结构见 [`data-model.md`](./data-model.md)；App 开 run 以外的 HTTP 见 [`app-api-catalog.md`](./app-api-catalog.md)；Tool 见 [`api-internal.md`](./api-internal.md)。运行时节点说明见 [`agent.md`](./agent.md)，冲突以本文为准。
 
 信封、错误码见 `AGENTS.md` §5。
 
@@ -206,7 +206,7 @@ Checkpointer：取消发生在某节点中途时，**不写半截 node 状态**�
 
 `usage` 的 `promptTokens`、`completionTokens`、`totalTokens`、`credits` 是本 run 累计。Java 只扣相对该 run 上一条用量的增加部分。同一累计值再次到达不扣第二次。
 
-`credit_card.data.packages` 为当前 `active` 套餐对外字段（`id,name,credits,price,sort`），**不含**成本。客户端拉起支付走 [`api-app.md`](./api-app.md) 积分套餐，**不**把支付当 LangGraph `interrupt`。购入成功后用户再 `POST turns` 新 `runId`。
+`credit_card.data.packages` 为当前 `active` 套餐对外字段（`id,name,credits,price,sort`），**不含**成本。客户端拉起支付走 [`app-api-catalog.md`](./app-api-catalog.md) 积分套餐，**不**把支付当 LangGraph `interrupt`。购入成功后用户再 `POST turns` 新 `runId`。
 
 Checkpointer 规则与取消相同：不写半截 node。
 

@@ -23,7 +23,7 @@ description: "Task list for 003-union-sdk"
 - Java：`services/java/shop-api-app`、`services/java/shop-api-common`、`services/java/pom.xml`
 - 官方包目录：`services/java/sdks`
 - 适配层：`services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/`
-- 权威文档：`AGENTS.md` §2.1、`docs/api-app.md`、`docs/data-model.md`
+- 权威文档：`AGENTS.md` §2.1、`docs/app-api-catalog.md`、`docs/data-model.md`
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -103,7 +103,7 @@ description: "Task list for 003-union-sdk"
 
 ### Implementation for User Story 3
 
-- [X] T016 [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/PlatformGoodsClient.java` 增加转链方法。改 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/goods/ServerLinkIssuer.java`，在授权检查之后调用该方法，不再用商品页拼接 `openapp.{platform}://item/`。未安装 APP 时的链接形态仍按 `docs/api-app.md`
+- [X] T016 [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/PlatformGoodsClient.java` 增加转链方法。改 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/goods/ServerLinkIssuer.java`，在授权检查之后调用该方法，不再用商品页拼接 `openapp.{platform}://item/`。未安装 APP 时的链接形态仍按 `docs/app-api-catalog.md`
 - [X] T017 [P] [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/TaobaoGoodsClient.java` 用 `TbkDgGeneralLinkConvertRequest` 实现转链。响应对象不包含 PID、relationId、密钥
 - [X] T018 [P] [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/JdGoodsClient.java` 用 `UnionOpenPromotionBysubunionidGetRequest` 实现转链，响应约束同 T017
 - [X] T019 [P] [US3] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/adapter/platform/PddGoodsClient.java` 用 `PddDdkGoodsPromotionUrlGenerateRequest` 实现转链，响应约束同 T017
@@ -218,7 +218,7 @@ Task: "VipGoodsClient 用 vop-sdk 商品查询和按商品号详情"
 
 ## Notes
 
-- 不新增表，不改 `docs/api-app.md` 的路径
+- 不新增表，不改 `docs/app-api-catalog.md` 的路径
 - 不复制参考仓库的 Java 和脚本
 - 官方正常返回的空列表不是 `50010`，但也不能当作 SC-003 的成功样本
 - 成功样本需要测试密钥。唯品会还需要白名单 IP

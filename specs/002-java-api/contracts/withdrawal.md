@@ -1,6 +1,6 @@
 # 返佣提现
 
-实现前把本文件写入 [`docs/api-app.md`](../../../docs/api-app.md) 与 [`docs/api-admin.md`](../../../docs/api-admin.md)。状态列以 [data-model.md](../data-model.md) 为准，并同时补进 [`docs/data-model.md`](../../../docs/data-model.md)。
+实现前把本文件写入 [`docs/app-api-catalog.md`](../../../docs/app-api-catalog.md) 与 [`docs/api-admin.md`](../../../docs/api-admin.md)。状态列以 [data-model.md](../data-model.md) 为准，并同时补进 [`docs/data-model.md`](../../../docs/data-model.md)。
 
 金额为字符串、两位小数。收款账号完整值只留在服务端用于打款。列表和详情只返回 `accountMask`。日志、审计、对话工具响应不写完整账号。
 

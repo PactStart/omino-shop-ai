@@ -1,6 +1,6 @@
 # Spec Kit 分阶段实现（给 AI 的操作手册）
 
-> **本文件不是产品规范。** 字段、路径、意图、SSE、表结构以 [`AGENTS.md`](../AGENTS.md) 与 `docs/conversation.md`、`docs/api-*.md`、`docs/data-model.md`、`docs/app-ui.md`、`docs/admin-ui.md`、`docs/agent.md` 为准。
+> **本文件不是产品规范。** 字段、路径、意图、SSE、表结构以 [`AGENTS.md`](../AGENTS.md) 与 `docs/conversation.md`、`docs/app-api-catalog.md`、`docs/api-*.md`、`docs/data-model.md`、`docs/ui/README.md`、`docs/admin-ui.md`、`docs/agent.md` 为准。
 >
 > **一次只做下面 9 个 feat 里的一个。** 不要把整份 `AGENTS.md` 丢进 `/speckit-specify`。不要对同一功能再跑 OpenSpec（`/opsx-*`）。
 >
@@ -56,7 +56,7 @@
 | 4 | `004-admin-web` | 后台管理页面 | feat 3 | 运营用 SSO 登录，按 `admin-ui.md` 操作已有接口 |
 | 5 | `005-agent` | Python Agent | feat 3 | 一句购物话得到意图、商品卡或合集卡；授权 HITL；查单与账户数字来自 Java |
 | 6 | `006-mall-goods` | 商城搜品 | feat 3；后台抽屉依赖 feat 4 的用户列表 | APP 能分页搜品、补全关键词、看热搜，并能要口令、解析链接、看相似和猜你喜欢；运营从用户列表打开模拟屏 |
-| 7 | `007-h5` | 消费者 H5 | feat 5；商城页依赖 feat 6 | 手机号登录后走完 `app-ui.md` 的 H5 页面 |
+| 7 | `007-h5` | 消费者 H5 | feat 5；商城页依赖 feat 6 | 手机号登录后走完 `ui/README.md` 的 H5 页面 |
 | 8 | `008-ios` | iOS（Android 同契约） | feat 7 的页面契约 | iOS 与 Android 原生对话、详情、订单、我的；不验收上架 |
 | 9 | `009-www-land` | 官网与落地页 | feat 1；落地页邀请预览依赖 feat 2 的公开字段 | `apps/www` 品牌页，`apps/land` 的 `/i/{inviteCode}` 与 `/download` |
 
@@ -119,7 +119,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 功能：Java 双产出物的全部 HTTP、表和同步（002-java-api）。一个功能，按 docs/speckit-phases.md feat 2 的 11 个切片顺序做完。页面不在本功能。
 
 做：
-- 表结构按 docs/data-model.md。APP 契约按 docs/api-app.md，Admin 契约按 docs/api-admin.md，Tool 契约按 docs/api-internal.md，对话开 run / SSE / 取消 / 积分按 docs/conversation.md。
+- 表结构按 docs/data-model.md。APP 契约按 docs/app-api-catalog.md，Admin 契约按 docs/api-admin.md，Tool 契约按 docs/api-internal.md，对话开 run / SSE / 取消 / 积分按 docs/conversation.md。
 - 手机号验证码登录与 JWT。创蓝对齐 omino-sso；local 允许 SMS mock。邀请码绑定即 valid，写入 app_user.inviter_id。
 - POST /chat/turns 立刻返回 runId；事件进 Redis；GET SSE 泵间隔 ≤100ms；断开不取消生成；cancel 写 cancelled。本功能结束时 Worker 仍可投递假事件，事件名必须真实。
 - 商品详情、goods_snapshot（销量、评价数、商品链接；未知不要写成 0）、convert-link。未授权 40301 NEED_AUTH。禁止下发 PID。浏览、收藏、合集。
@@ -133,7 +133,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 不做：Vue/H5/iOS 页面、LangGraph 节点、Flutter、自建管理员密码、服务端合成邀请海报、给上级写第二笔分成、复制 mall-guide。
 
 验收：切片 1–11 各有测试或 curl。无 token 为 40100。未授权转链为 40301。完成单入账一次。Admin 未登录打不到业务接口。
-权威：AGENTS.md §2.1 §5 §7，docs/data-model.md，docs/api-app.md，docs/api-admin.md，docs/api-internal.md，docs/conversation.md。
+权威：AGENTS.md §2.1 §5 §7，docs/data-model.md，docs/app-api-catalog.md，docs/api-admin.md，docs/api-internal.md，docs/conversation.md。
 ```
 
 ### feat 3 — 官方联盟 SDK
@@ -153,7 +153,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 不做：页面、LangGraph、新平台码、服务端合成海报、复制 mall-guide 的源码与调用代码、大淘客、把私有仓库口令写进仓库。
 
 验收：五个 jar 在 services/java/sdks。一条命令能装进本地 Maven，一条命令能传到私有仓库，仓库里没有口令。四个平台在测试密钥下，搜品、详情、转链、订单增量都能打到官方；没配密钥时仍是 50010，且不发出站请求。抽查响应无 PID、无密钥。重复同步不双写入账。
-权威：AGENTS.md §2 §7 §9，docs/api-app.md，docs/api-internal.md，docs/data-model.md。
+权威：AGENTS.md §2 §7 §9，docs/app-api-catalog.md，docs/api-internal.md，docs/data-model.md。
 ```
 
 ### feat 4 — 后台管理页面
@@ -204,7 +204,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 功能：商城搜品（006-mall-goods）。给 APP 增加搜索、联想、热搜、口令、解析、相似和猜你喜欢。管理后台去掉左栏「用户视角」，改到用户列表操作栏。
 
 做：
-- APP：POST /api/app/v1/goods/search 分页，sort 可选 sales、price、commission、coupon，并可带价格区间、是否品牌、是否有券和翻页游标 nextId。GET suggestions、GET hot-words。POST command、POST parse、POST similar、POST guess。字段以 docs/api-app.md 为准。
+- APP：POST /api/app/v1/goods/search 分页，sort 可选 sales、price、commission、coupon，并可带价格区间、是否品牌、是否有券和翻页游标 nextId。GET suggestions、GET hot-words。POST command、POST parse、POST similar、POST guess。字段以 docs/app-api-catalog.md 为准。
 - 联想词走大淘客 search-suggestion（文档 id=18），热搜词走 get-top100（文档 id=4）。签名在 Java 里自己算，不引入对方 SDK，不用 Fastjson。密钥 DATAOKE_APP_KEY / DATAOKE_APP_SECRET，空则这两个接口返回空列表且不出站。
 - IPlatformGoods 增加分页搜品、口令、解析、相似、猜你喜欢。淘宝、京东、拼多多、唯品会里，官方有对应能力的才出站，没有的方法留空并在接口上标明不支持。万能解析只做淘宝和唯品会。不复制 mall-guide 的类和调用代码。
 - 管理后台：删除左栏「用户视角」和 /god-view。用户列表操作栏打开右侧抽屉，签发已有的短时 JWT，手机框里打开消费者 H5 首页。令牌不画在页面上。H5 首页可以还没做。
@@ -212,7 +212,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 不做：消费者 H5 页面、对话图、新平台码、服务端合成海报。
 
 验收：四个平台的分页搜品有测试或适配器分支。未配置大淘客密钥时联想和热搜是空列表。淘宝、唯品会解析会出站，京东和拼多多返回不支持。用户列表能打开抽屉；左栏没有「用户视角」。
-权威：docs/api-app.md，docs/admin-ui.md，AGENTS.md §2 §9。
+权威：docs/app-api-catalog.md，docs/admin-ui.md，AGENTS.md §2 §9。
 ```
 
 ### feat 7 — 消费者 H5
@@ -220,21 +220,21 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 **Specify 粘贴稿：**
 
 ```text
-功能：消费者 H5（007-h5）。apps/h5，与原生共用 docs/app-ui.md 的页面 ID、路由和 SSE 事件。商城搜索调用 feat 6 的接口。
+功能：消费者 H5（007-h5）。apps/h5，与原生共用 docs/ui/README.md 的页面 ID、路由和 SSE 事件。本期不做商城 Tab。
 
 做：
 - Vue 3 + Vite + TypeScript + Pinia + Tailwind，禁止 Element Plus，禁止 Flutter。
 - 客户端头 X-Client-Type=h5、X-App-Channel=web。登录先做手机号验证码。
 - 对话：空态推荐问题、流式文本、商品卡、合集卡、澄清、授权卡、停止、断线续传。断开 SSE 不发 cancel。
 - 详情是唯一「去购买」。未授权提示 NEED_AUTH。销量/评价数为空不显示 0。goodsUrl 不是购买按钮。
-- 订单按 orderStatus 筛选，展示用户返佣与结算状态。再次购买进详情，行内不转链。
+- 订单按 orderStatus 筛选，展示用户返佣与结算状态。有商品的订单卡片进入商品详情，行内不转链。没有订单详情页。
 - 浏览、收藏、合集移除、积分、钱包与提现、邀请海报（浏览器贴码、左右滑）、工单、站内信、设置。风格和字号只存本地。
 - 上帝视角：JWT gv=1 时顶栏常驻且不可关；该态禁止注销。prod 默认没有入口。
 
-不做：落地页 apps/land、官网、管理后台、Android/iOS 工程。
+不做：商城 Tab、商城搜索和内嵌页，落地页 apps/land、官网、管理后台、Android/iOS 工程。
 
-验收：浏览器走完「验证码登录 → 推荐问题或输入买纸巾 → 卡或合集 → 详情 → 停止一次 → 刷新仍能看到已生成内容」。订单、邀请、设置页面 ID 与 app-ui.md 一致。
-权威：docs/app-ui.md，docs/api-app.md，docs/conversation.md，AGENTS.md §2.4.2。
+验收：浏览器走完「验证码登录 → 推荐问题或输入买纸巾 → 卡或合集 → 详情 → 停止一次 → 刷新仍能看到已生成内容」。订单、邀请、设置页面 ID 与 docs/ui/README.md 一致。
+权威：docs/ui/README.md，docs/app-api-catalog.md，docs/conversation.md，AGENTS.md §2.4.2。
 ```
 
 ### feat 8 — iOS（Android 同契约）
@@ -242,7 +242,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 **Specify 粘贴稿：**
 
 ```text
-功能：iOS 与 Android 原生客户端（008-ios）。页面与 H5 同一套 docs/app-ui.md，工程分开。
+功能：iOS 与 Android 原生客户端（008-ios）。页面与 H5 同一套 docs/ui/README.md，工程分开。
 
 做：
 - iOS：Swift + SwiftUI，最低 iOS 17，网络用 URLSession。Android：Kotlin + Jetpack Compose，包名 com.omino.shopai。禁止 Flutter / RN / KMP。
@@ -253,7 +253,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 不做：商店上架、H5 里再包一层原生、把管理后台放进 App。
 
 验收：模拟器或真机走完与 H5 相同的主路径：登录、出卡、详情去购买门闩、订单列表、邀请海报能滑。Android 与 iOS 行为一致，允许分两个任务先后做完。
-权威：AGENTS.md §2.3，docs/app-ui.md，docs/api-app.md。
+权威：AGENTS.md §2.3，docs/ui/README.md，docs/app-api-catalog.md。
 ```
 
 ### feat 9 — 官网与落地页
@@ -303,7 +303,7 @@ feat 2 内部按这个顺序写 `tasks.md`，前一切片没验收不要跳到�
 1. 确认 constitution 已不是模板；若仍是，先改完再开 feat 1。
 2. 新对话，贴 §0 开场，加上「开始 feat 1」，再执行 §1 的命令序列。
 3. 审 spec / plan 时看范围有没有串 feat：feat 2 写页面、feat 4 或 feat 5 去接官方 SDK、feat 5 直连联盟，都是失败。真实出站只在 feat 3。
-4. feat 1 到 feat 5 已合并到 main。当前是 feat 6 商城搜品。feat 6 合进 main 前，不要并行开 feat 7。feat 8 等页面契约在 H5 上走过一遍。feat 9 的官网可以在 feat 1 之后就做。
+4. feat 1 到 feat 6 已合并到 main。当前是 feat 7 消费者 H5。feat 8 等页面契约在 H5 上走过一遍。feat 9 的官网可以在 feat 1 之后就做。
 5. 同一功能不要再跑 `/opsx-propose`。
 
-feat 1 到 feat 5 已在 main。**当前分支是 feat 6 `006-mall-goods`。**
+feat 1 到 feat 6 已在 main。**当前分支是 feat 7 `007-h5`。**

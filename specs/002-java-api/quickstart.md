@@ -1,6 +1,6 @@
 # Quickstart: 002-java-api
 
-验收按用户故事 1 到 11 的顺序做。前一个故事的检查没过，不开始下一个。字段和已有路径以 `docs/data-model.md`、`docs/api-app.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md` 为准。本功能新加的会话和提现路径以 [contracts/](contracts/) 为准，而且必须已经写回上述权威文档。
+验收按用户故事 1 到 11 的顺序做。前一个故事的检查没过，不开始下一个。字段和已有路径以 `docs/data-model.md`、`docs/app-api-catalog.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md` 为准。本功能新加的会话和提现路径以 [contracts/](contracts/) 为准，而且必须已经写回上述权威文档。
 
 ## 准备
 

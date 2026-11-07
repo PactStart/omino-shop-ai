@@ -63,7 +63,7 @@ specs/002-java-api/
 └── tasks.md              # 由 /speckit-tasks 生成，本命令不创建
 ```
 
-已有 HTTP 不在 `contracts/` 里再写一遍。实现以 `docs/api-app.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md` 为准。
+已有 HTTP 不在 `contracts/` 里再写一遍。实现以 `docs/app-api-catalog.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md` 为准。
 
 ### Source Code (repository root)
 

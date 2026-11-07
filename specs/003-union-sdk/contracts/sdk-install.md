@@ -1,6 +1,6 @@
 # 官方包安装与上传
 
-本功能不新增 HTTP。消费者与内部工具的路径仍以 [`docs/api-app.md`](../../../docs/api-app.md) 和 [`docs/api-internal.md`](../../../docs/api-internal.md) 为准。
+本功能不新增 HTTP。消费者与内部工具的路径仍以 [`docs/app-api-catalog.md`](../../../docs/app-api-catalog.md) 和 [`docs/api-internal.md`](../../../docs/api-internal.md) 为准。
 
 ## 文件
 

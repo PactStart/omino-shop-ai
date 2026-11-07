@@ -243,14 +243,14 @@
 - **FR-002**: 业务 JSON MUST 使用权威信封：`code`、`message`、`data`、`traceId`、`ts`。成功时 `code` 为 `0`。错误码以权威错误表为准。`message` MUST NOT 含堆栈、SQL、密钥或联盟推广位标识。
 - **FR-003**: 表结构 MUST 与 [`docs/data-model.md`](../../docs/data-model.md) 一致，并通过迁移创建。MUST NOT 使用 MySQL。平台只有 `taobao`、`jd`、`pdd`、`vip`。
 - **FR-004**: DAO 的常规 XML 映射 MUST 由集成的生成器产出。引入该生成器前 MUST 按宪章检索同类项目，并在权威技术栈表锁定精确版本，写明用它的哪一部分。手写 XML 只允许覆盖生成器表达不了的查询，MUST NOT 在 XML 中拼联盟业务，MUST NOT 复制 mall-guide。
-- **FR-005**: 消费者 HTTP MUST 符合 [`docs/api-app.md`](../../docs/api-app.md)。需登录的接口在无凭证时 MUST 返回 `40100`。Demo 登录为手机号验证码。短信通道与 omino-sso 的创蓝字段对齐。仅本地允许模拟短信。生产 MUST NOT 使用模拟短信。
+- **FR-005**: 消费者 HTTP MUST 符合 [`docs/app-api-catalog.md`](../../docs/app-api-catalog.md)。需登录的接口在无凭证时 MUST 返回 `40100`。Demo 登录为手机号验证码。短信通道与 omino-sso 的创蓝字段对齐。仅本地允许模拟短信。生产 MUST NOT 使用模拟短信。
 - **FR-006**: 首次登录携带有效且非本人的邀请码时，MUST 在同一事务写入 `app_user.inviter_id` 与邀请关系，并将该关系标为有效。`inviter_id` 写入后 MUST NOT 再改。MUST NOT 自己邀请自己。
 - **FR-007**: 对话的开轮、事件流、停止和积分不足 MUST 符合 [`docs/conversation.md`](../../docs/conversation.md)。提交后 MUST 立刻返回本轮编号。事件进入共享流。订阅读取间隔 MUST 不超过 100 毫秒。断开订阅 MUST NOT 取消生成。停止 MUST 写入 `cancelled`。终态（`done`、`error`、`cancelled`、`credit_exhausted`）之后，该轮 Redis Stream MUST 再保留 30 分钟。未结束的轮由 Worker 按该契约超时写入 `error` 并结束。
 - **FR-008**: 本功能 MUST NOT 实现意图图或图节点。`test` 与 `prod` 的 Worker MUST 调用 Agent。Agent 不可用，或测试与生产没有可分流模型时，本轮 MUST 以事件 `error` 结束，且 `code` 为 `50020`，MUST NOT 把样例商品写成成功的 `done`。假事件内容 MAY 只出现在自动化测试的测试双写或 `local`。事件名 MUST 使用对话契约中的锁定名称。
 - **FR-009**: 商品详情、瘦快照、转链、浏览、收藏和合集 MUST 符合消费者契约。`salesCount` 与 `reviewCount` 未知时 MUST 为空，MUST NOT 为 0。未授权转链 MUST 返回 `40301`，且 `error.reason` 为 `NEED_AUTH`。MUST NOT 下发联盟推广位标识。
 - **FR-010**: 四个平台的外部访问 MUST 只发生在平台适配层。搜品或详情失败 MUST 返回 `50010`。MUST NOT 实现美团。
 - **FR-011**: 订单同步 MUST 维护每平台游标，并把平台原码映射为六种订单状态与三种结算状态。仅当已完成、待结算、已归因且用户分成大于 0 时，给下单用户写一条返佣流水。重复同步 MUST NOT 双写。本批订单写入与该平台游标推进 MUST 在同一事务。事务失败则游标 MUST 停在原处。入账事务 MUST 先锁定该用户钱包行。MUST NOT 给上级写第二笔分成。消费者订单响应 MUST NOT 含媒体佣金。分成比例 MUST 读取可热更新的 `commission.user-share-rate`。
-- **FR-011a**: 本功能 MUST 提供返佣余额的提现申请（已登录消费者）和运营审核。实现前 MUST 先把路径、状态和打款通道写入 [`docs/api-app.md`](../../docs/api-app.md) 与 [`docs/api-admin.md`](../../docs/api-admin.md)。本规格不预写这些路径。申请时 MUST 把相应金额从返佣可用余额划入冻结额。拒绝 MUST 把该笔冻结额退回可用余额，且 MUST NOT 写提现流水。审核通过 MUST 在打款到收款账号成功之后，才扣减该笔冻结额并写一条 `wallet_ledger.type=withdraw` 流水。打款失败 MUST 保持该笔冻结额，MUST NOT 记成功流水，也 MUST NOT 把该次审核当作完成；运营 MUST 能再次打款，也 MUST 能改为拒绝并解冻。对话里的提现确认不在本功能。积分 MUST NOT 通过提现离开积分账户。修改可用余额或冻结额的事务 MUST 先 `SELECT ... FOR UPDATE` 锁定该用户钱包行。锁住之后 MUST 在同一事务里重读该笔提现，只有状态仍为 `pending` 才打款或拒绝。可用余额与冻结额 MUST NOT 为负。打款失败的响应 `message` MUST 说明未打出且冻结额未动。
+- **FR-011a**: 本功能 MUST 提供返佣余额的提现申请（已登录消费者）和运营审核。实现前 MUST 先把路径、状态和打款通道写入 [`docs/app-api-catalog.md`](../../docs/app-api-catalog.md) 与 [`docs/api-admin.md`](../../docs/api-admin.md)。本规格不预写这些路径。申请时 MUST 把相应金额从返佣可用余额划入冻结额。拒绝 MUST 把该笔冻结额退回可用余额，且 MUST NOT 写提现流水。审核通过 MUST 在打款到收款账号成功之后，才扣减该笔冻结额并写一条 `wallet_ledger.type=withdraw` 流水。打款失败 MUST 保持该笔冻结额，MUST NOT 记成功流水，也 MUST NOT 把该次审核当作完成；运营 MUST 能再次打款，也 MUST 能改为拒绝并解冻。对话里的提现确认不在本功能。积分 MUST NOT 通过提现离开积分账户。修改可用余额或冻结额的事务 MUST 先 `SELECT ... FOR UPDATE` 锁定该用户钱包行。锁住之后 MUST 在同一事务里重读该笔提现，只有状态仍为 `pending` 才打款或拒绝。可用余额与冻结额 MUST NOT 为负。打款失败的响应 `message` MUST 说明未打出且冻结额未动。
 - **FR-012**: 积分账户与返佣钱包 MUST 分户。购积分渠道只有 `wechat_pay`、`alipay`、`wallet`，三个渠道都必须能下单。`wallet` MUST 在下单当时、于已锁定该用户钱包行的同一事务内扣减返佣可用余额并增加积分。`wechat_pay` 与 `alipay` MUST 在验签通过后才入账；验签失败 MUST NOT 加积分；同一合法回调 MUST NOT 入账第二次。本功能用测试密钥构造合法回调完成验收，MUST NOT 把连上真实商户扣款作为完成条件。MUST NOT 提供积分提现或积分转回钱包。扣费、入账和支付回调只发生在服务端。对话工具 MUST NOT 修改积分或钱包。
 - **FR-013**: 海报 MUST 只保存并下发模板原图与二维码矩形。MUST NOT 在服务端合成成品图。公开邀请查询 MUST NOT 返回邀请人昵称或手机号。
 - **FR-014**: 工单的状态、优先级、证据、回复和改派 MUST 追加处理日志。建单 MUST 在同一事务写创建日志。知识库未命中 MUST 明确返回未命中。
@@ -300,7 +300,7 @@
 ## Assumptions
 
 - 本功能的验收者是仓库研发。购物用户和运营是接口的使用者，但本功能不交付页面。
-- 字段、路径、枚举、事件名和错误码只维护在 `AGENTS.md` §5 与 `docs/data-model.md`、`docs/api-app.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md`。本规格描述行为和验收，不复制列定义。
+- 字段、路径、枚举、事件名和错误码只维护在 `AGENTS.md` §5 与 `docs/data-model.md`、`docs/app-api-catalog.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md`。本规格描述行为和验收，不复制列定义。
 - 管理端登录、回调和登出的具体路径尚未在管理契约中锁定。实现这些路径的同一次变更必须先把路径写入该文档。
 - 返佣提现的申请和运营审核属于本功能。申请冻结可用余额；拒绝解冻；打款成功才扣减冻结额并记提现流水；打款失败保持冻结，可再次打款或拒绝解冻。消费者契约和管理契约目前还没有这些路径和打款通道，实现前的同一次文档变更必须先补上。规格不预写路径。积分提现和积分转回钱包仍然禁止。对话里的提现确认属于后续对话功能。自动化测试必须能分别制造打款成功和打款失败，不把某一次真实商户出款当作唯一验收。
 - 短信与联盟的官方组件按宪章检索后写入技术栈表再引入。本地开发可以用模拟短信。联盟测试不依赖真实联盟账号时，失败仍必须返回契约中的平台失败码。微信和支付宝购积分不要求真实商户扣款：验收使用测试密钥构造验签通过的回调，并且只入账一次。

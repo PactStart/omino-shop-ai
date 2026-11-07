@@ -7,7 +7,7 @@ alwaysApply: true
 
 动手前先读仓库根目录 `AGENTS.md` 与 §4 索引的拆出文档。与权威文档冲突的实现视为缺陷。
 
-- 先改对应权威文档（`AGENTS.md` / `docs/data-model.md` / `docs/api-*.md` / `docs/conversation.md`），再改代码。
+- 先改对应权威文档（`AGENTS.md` / `docs/data-model.md` / `docs/app-api-catalog.md` / `docs/api-*.md` / `docs/conversation.md` / `docs/ui/README.md`），再改代码。
 - `mall-guide` 只读参考，禁止复制代码。
 - 管理后台身份只走 `omino-sso`（OIDC + PKCE S256）。
 - APP 与 Admin 是同一套 Java 的两个产出物，前缀 `/api/app` 与 `/api/admin`。

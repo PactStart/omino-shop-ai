@@ -4,7 +4,7 @@
 
 - 一套 Java，两个进程：`/api/app` 与 `/api/admin`。`/internal/v1` 只挂在 APP 进程，给 Agent 调
 - 对话入口是 Android / iOS / H5 → Java SSE → Agent。Agent 只监听本机，不对 APP 直连
-- 实现细节以 `[AGENTS.md](AGENTS.md)` 为权威。消费者接口见 `[docs/api-app.md](docs/api-app.md)`，运营接口见 `[docs/api-admin.md](docs/api-admin.md)`，Tool 见 `[docs/api-internal.md](docs/api-internal.md)`，表见 `[docs/data-model.md](docs/data-model.md)`，对话与 SSE 见 `[docs/conversation.md](docs/conversation.md)`。页面见 `[docs/app-ui.md](docs/app-ui.md)`、`[docs/admin-ui.md](docs/admin-ui.md)`。阶段划分见 `[docs/speckit-phases.md](docs/speckit-phases.md)`
+- 实现细节以 `[AGENTS.md](AGENTS.md)` 为权威。消费者接口见 `[docs/app-api-catalog.md](docs/app-api-catalog.md)`，运营接口见 `[docs/api-admin.md](docs/api-admin.md)`，Tool 见 `[docs/api-internal.md](docs/api-internal.md)`，表见 `[docs/data-model.md](docs/data-model.md)`，对话与 SSE 见 `[docs/conversation.md](docs/conversation.md)`。页面见 `[docs/ui/README.md](docs/ui/README.md)`、`[docs/admin-ui.md](docs/admin-ui.md)`。阶段划分见 `[docs/speckit-phases.md](docs/speckit-phases.md)`
 
 ## 1. 功能
 
@@ -15,7 +15,7 @@
 | Admin API            | 运营接口；登录走 omino-sso                                      | 可调用                              |
 | 接口文档                 | `/api/app/swagger-ui.html`、`/api/admin/swagger-ui.html` | 不要求登录                            |
 | Agent                | 意图、搜品、授权卡片                                              | 只有 `GET /health`                 |
-| 管理后台 / 官网 / 落地页 / H5 | 按 `admin-ui.md`、`app-ui.md` 的页面                         | Vite 空壳                          |
+| 管理后台 / 官网 / 落地页 / H5 | 按 `admin-ui.md`、`ui/README.md` 的页面                         | Vite 空壳                          |
 | Android / iOS        | 包名 `com.omino.shopai`                                   | 工程能打开，页面未做                       |
 
 

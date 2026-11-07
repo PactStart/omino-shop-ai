@@ -25,7 +25,7 @@
 | phone       | VARCHAR(20)    | 可空，UNIQUE（非空时）         | 绑定手机号，未绑定时为空            |
 | status      | TINYINT        | NOT NULL，`1` 正常 `0` 禁用 | 账号状态                    |
 | locale      | VARCHAR(16)    | NOT NULL，默认 `zh-CN`    | 界面与对话语言                 |
-| invite_code | CHAR(8)        | NOT NULL，UNIQUE        | 邀请码，注册时生成，不可改；字母表见 [`api-app.md`](./api-app.md) §4.7 |
+| invite_code | CHAR(8)        | NOT NULL，UNIQUE        | 邀请码，注册时生成，不可改；字母表见 [`app-api-catalog.md`](./app-api-catalog.md) 邀请码与海报 |
 | inviter_id  | CHAR(26)       | 可空，逻辑关联 → app_user.id   | 邀请人（上级）。注册绑定邀请码时写入，之后不可改；无邀请则为空；禁止等于自身。与 `app_invite.inviter_id` 同时写入、必须一致 |
 | push_enabled | TINYINT       | NOT NULL，默认 `1`        | 站内/系统推送总开关；`1` 开 `0` 关     |
 | created_at  | TIMESTAMPTZ(3) | NOT NULL               | 创建时间（UTC）；「我何时注册」读此列    |
@@ -624,13 +624,13 @@
 | channel | VARCHAR(32) | NOT NULL | 具体渠道或 `*` |
 | version_code_min | INT | 可空 | 含；`yyyyMMdd`；空=不限下 |
 | version_code_max | INT | 可空 | 含；`yyyyMMdd`；空=不限上 |
-| payload | JSONB | NOT NULL，默认 `{}` | 键见 [`api-app.md`](./api-app.md) §4.8 |
+| payload | JSONB | NOT NULL，默认 `{}` | 键见 [`app-api-catalog.md`](./app-api-catalog.md) 客户端头、更新、配置、公告 |
 | priority | INT | NOT NULL，默认 0 | 大者覆盖 |
 | status | VARCHAR(16) | NOT NULL | `active` \| `retired` |
 | updated_at | TIMESTAMPTZ(3) | NOT NULL | |
 
 
-匹配算法见 [`api-app.md`](./api-app.md) §4.8。禁止用本表存密钥。
+匹配算法见 [`app-api-catalog.md`](./app-api-catalog.md) 客户端头、更新、配置、公告。禁止用本表存密钥。
 
 ### 6.26 `announcement` 公告
 

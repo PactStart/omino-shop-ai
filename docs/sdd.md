@@ -6,13 +6,13 @@
 |---|---|
 | [`AGENTS.md`](../AGENTS.md) | 索引 + 技术栈、目录、约束、信封、环境变量 |
 | [`conversation.md`](./conversation.md) | 意图、图、记忆、SSE |
-| [`api-app.md`](./api-app.md) / [`api-admin.md`](./api-admin.md) / [`api-internal.md`](./api-internal.md) | HTTP 契约 |
+| [`app-api-catalog.md`](./app-api-catalog.md) / [`api-admin.md`](./api-admin.md) / [`api-internal.md`](./api-internal.md) | HTTP 契约 |
 | [`data-model.md`](./data-model.md) | 表结构 |
 | 本文 | 怎么用 Superpowers / OpenSpec / Spec Kit，以及何时选哪套 |
 | [`product-input.md`](./product-input.md) | 每次请求的账本（时间 / 原文 / 意图） |
 | [`agent.md`](./agent.md) | Python Agent 运行时说明（契约以 conversation / api-internal / data-model 为准） |
 | [`speckit-phases.md`](./speckit-phases.md) | Spec Kit 分阶段：一次一个功能、粘贴稿、验收；不替代 `AGENTS.md` |
-| [`app-ui.md`](./app-ui.md) | 消费者页面 | 
+| [`ui/README.md`](./ui/README.md) | 消费者页面 | 
 | [`admin-ui.md`](./admin-ui.md) | 管理后台页面 |
 
 实现以 `AGENTS.md` 与 §4 拆出文档为准。下面三套工具负责「怎么想、怎么拆、怎么落地」，不替代契约。

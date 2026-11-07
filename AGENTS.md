@@ -16,7 +16,7 @@
 
 | 项     | 内容                                                                         |
 | ----- | -------------------------------------------------------------------------- |
-| 项目名   | `omino-shop-ai`（包名/Bundle `com.omino.shopai`；**展示名待定**，候选见 `docs/app-ui.md`） |
+| 项目名   | `omino-shop-ai`（包名/Bundle `com.omino.shopai`；展示名 **omino 觅选**，见 [`docs/ui/01-product/consumer-app.md`](docs/ui/01-product/consumer-app.md)） |
 | 一句话描述 | 面向消费者的 AI 购物助手：用文字或语音说出需求，由 Agent 识别意图并跨电商平台推荐商品，支持转链跳转第三方 APP 下单，并回看订单。   |
 | 目标用户  | ① 终端用户（对话选品、看详情、跳转购买、查订单、邀请）② 运营/管理员（配置平台、海报模板、观测对话与同步任务）③ 本仓库研发（按本规范实现各端） |
 
@@ -48,7 +48,7 @@
 | Agent        | AI 对话、意图、记忆、编排搜品                    | Python LangGraph         |
 
 
-APP 页面层级见 [`docs/app-ui.md`](docs/app-ui.md)（视觉与信息架构；Android / iOS / H5 共用同一套页面，不覆盖本文件的字段 / SSE / 接口）。
+APP 页面层级见 [`docs/ui/README.md`](docs/ui/README.md)（视觉与信息架构；Android / iOS / H5 共用同一套页面，不覆盖本文件的字段 / SSE / 接口）。
 
 ---
 
@@ -140,7 +140,7 @@ Agent 对外只提供内网接口（[`docs/api-internal.md`](docs/api-internal.m
 | Android Gradle Plugin  | `8.7.3`                                                |                                  |
 | compileSdk / targetSdk | `35`                                                   |                                  |
 | minSdk                 | `26`                                                   |                                  |
-| UI                     | Jetpack Compose BOM `2024.12.01`                       | Material 3；页面对齐 `docs/app-ui.md` |
+| UI                     | Jetpack Compose BOM `2024.12.01`                       | Material 3；页面对齐 `docs/ui/README.md` |
 | Activity               | `androidx.activity:activity-compose` `1.9.3`           | 空壳把 Compose 挂到 Activity。只用 `setContent` |
 | 网络                     | OkHttp `4.12.0` + Retrofit `2.11.0`                    | SSE 用 OkHttp 事件源；禁止再引一套 HTTP 栈   |
 | JSON                   | kotlinx-serialization-json `1.7.3`                     |                                  |
@@ -158,7 +158,7 @@ Agent 对外只提供内网接口（[`docs/api-internal.md`](docs/api-internal.m
 | 语言    | Swift `6.0`      |                                         |
 | Xcode | `16.2`           |                                         |
 | 最低系统  | iOS `17.0`       |                                         |
-| UI    | SwiftUI（随 Xcode） | 页面对齐 `docs/app-ui.md`                   |
+| UI    | SwiftUI（随 Xcode） | 页面对齐 `docs/ui/README.md`                   |
 | 网络    | `URLSession`     | SSE 用原生 streaming；禁止再引 Alamofire，除非先改本表 |
 | 安全存储  | Keychain         | refresh token                           |
 
@@ -204,12 +204,12 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 
 ### 2.4.2 消费者 H5（`apps/h5`，与原生 APP 同契约）
 
-与 Admin **同族** vue / vite / typescript / vue-router / pinia / axios 锁定版本。**禁止** Element Plus。样式跟 [`docs/app-ui.md`](docs/app-ui.md)：Tailwind CSS `4.1.0`（MIT）与 Vite 插件 `@tailwindcss/vite` `4.1.0`（只把 Tailwind 接进 Vite）+ shadcn/ui 的 Token/组件套路（按需拷贝 Vue 实现，不引入第二套组件库）。页面、路由 ID、SSE 事件与原生一致。
+与 Admin **同族** vue / vite / typescript / vue-router / pinia / axios 锁定版本。**禁止** Element Plus。样式跟 [`docs/ui/README.md`](docs/ui/README.md)：Tailwind CSS `4.1.0`（MIT）与 Vite 插件 `@tailwindcss/vite` `4.1.0`（只把 Tailwind 接进 Vite）+ shadcn/ui 的 Token/组件套路（按需拷贝 Vue 实现，不引入第二套组件库）。页面、路由 ID、SSE 事件与原生一致。
 
 | 项 | 规定 |
 | --- | --- |
 | local 端口 | `5177` |
-| 请求 | 同 APP：`Authorization: Bearer` + 客户端头（[`api-app.md`](docs/api-app.md)） |
+| 请求 | 同 APP：`Authorization: Bearer` + 客户端头（[`app-api-catalog.md`](docs/app-api-catalog.md)） |
 | 海报 | 浏览器 Canvas 贴二维码；多模板左右滑 |
 | 渠道 | 固定 `web` |
 | `clientType` | 固定 `h5` |
@@ -285,7 +285,7 @@ omino-shop-ai/
 │   │   ├── vite.config.ts
 │   │   ├── index.html
 │   │   └── src/
-│   ├── h5/                            # 消费者 H5 APP（同 app-ui）。Vite 读本目录 .env
+│   ├── h5/                            # 消费者 H5 APP（页面见 docs/ui）。Vite 读本目录 .env
 │   │   ├── .env.example
 │   │   ├── package.json
 │   │   ├── vite.config.ts
@@ -564,19 +564,18 @@ JSON、`Content-Type: application/json`、UTF-8。时间 `ISO-8601`（带 `Z` �
 
 鉴权：
 
-- APP / H5：`Authorization: Bearer <access_token>`（登录除外）；业务请求另带客户端头（见 [`api-app.md`](docs/api-app.md) §4.8）。
+- APP / H5：`Authorization: Bearer <access_token>`（登录除外）；业务请求另带客户端头（见 [`app-api-catalog.md`](docs/app-api-catalog.md) 客户端头一节）。
 - Admin：浏览器 Cookie（HttpOnly）；Admin API 作 RP 对接 omino-sso。
 - Agent：仅内网；`X-Internal-Token`。Java `/internal/v1/**` 另需 `X-User-Id`（须为当前对话用户）。**禁止** internal 再调 Agent。
 
 | 文档 | 权威范围 |
 | --- | --- |
 | [`docs/conversation.md`](docs/conversation.md) | 意图枚举、一张图、记忆三分法、SSE 事件、开 run / 取消 / 积分扣费 |
-| [`docs/api-app.md`](docs/api-app.md) | 消费者 HTTP：短信登录、商品、转链、浏览/收藏/合集、积分支付、邀请、版本头、站内信、订单 |
-| [`docs/app-api-catalog.md`](docs/app-api-catalog.md) | APP 接口清单。只列路径，供界面数据绑定。字段以 `api-app.md`、`conversation.md` 为准 |
+| [`docs/app-api-catalog.md`](docs/app-api-catalog.md) | 消费者 HTTP：路径清单，以及登录、商品、转链、订单、积分、邀请、版本头、站内信的字段 |
 | [`docs/api-admin.md`](docs/api-admin.md) | 运营 HTTP：用户档案、套餐、海报模板、版本、配置、公告、私信、用户视角 |
 | [`docs/api-internal.md`](docs/api-internal.md) | `POST /internal/v1/graph/invoke` 与 Tool 白名单 |
 | [`docs/data-model.md`](docs/data-model.md) | PostgreSQL 表 |
-| [`docs/app-ui.md`](docs/app-ui.md) | 消费者页面 |
+| [`docs/ui/README.md`](docs/ui/README.md) | 消费者页面 |
 | [`docs/admin-ui.md`](docs/admin-ui.md) | 管理后台页面 |
 | [`docs/ops-metrics.md`](docs/ops-metrics.md) | 运营指标口径、汇总表、只读接口与后台页面。指标表与字段只写在这一份 |
 | [`docs/admin-access.md`](docs/admin-access.md) | 管理后台角色、权限点、菜单与操作的可见范围。不在本仓库建权限表 |
@@ -887,7 +886,7 @@ Land 拉起 APP 时带 inviteCode；海报由 APP/H5 贴码后分享微信/QQ/�
 
 ## 附录 B. 给 Cursor Agent 的工作方式
 
-1. 改任何行为前先改对应权威文档（本文件或 `docs/conversation.md` / `api-*.md` / `data-model.md` / `app-ui.md` / `admin-ui.md`）。
+1. 改任何行为前先改对应权威文档（本文件或 `docs/conversation.md` / `docs/app-api-catalog.md` / `api-*.md` / `data-model.md` / `docs/ui/README.md` / `admin-ui.md`）。
 2. Java 按层写：`shop-api-common` 的 dto/entity/mapper 测试 → app/admin 的 service 测试 → web；禁止 Controller 里堆业务。
 3. Agent 节点必须可测：意图路由、槽位、指代、Tool 适配器分开；禁止图内直连联盟 SDK。
 4. 发现 mall-guide 有而本规范没有的字段：先提案补 `docs/data-model.md`（及对应 api），再实现。

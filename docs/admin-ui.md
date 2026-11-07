@@ -57,7 +57,7 @@
 
 ## 3. 页面元数据
 
-列与 [`app-ui.md`](./app-ui.md) 相同口径。
+`ID` 是代码命名，`Path` 只给页面。消费者页面见 [`ui/README.md`](./ui/README.md)。
 
 ### 3.1 Page
 

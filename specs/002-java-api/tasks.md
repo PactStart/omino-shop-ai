@@ -22,7 +22,7 @@ description: "Task list for 002-java-api"
 
 - Java：`services/java/shop-api-common`、`shop-api-app`、`shop-api-admin`
 - 包名：`com.omino.shopai`（common）、`com.omino.shopai.app`、`com.omino.shopai.admin`
-- 权威契约：`docs/data-model.md`、`docs/api-app.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md`
+- 权威契约：`docs/data-model.md`、`docs/app-api-catalog.md`、`docs/api-admin.md`、`docs/api-internal.md`、`docs/conversation.md`
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -32,7 +32,7 @@ description: "Task list for 002-java-api"
 - [X] T002 把 T001 的三个坐标写入 `services/java/pom.xml` 的 `dependencyManagement`。生成器只出现在 `services/java/shop-api-common/pom.xml` 的 test 范围。`wechatpay-java` 只出现在 `services/java/shop-api-app/pom.xml`。`alipay-sdk-java` 同时出现在 `shop-api-app`（回调验签）和 `shop-api-admin`（单笔转账）。执行依赖树之后，版本锁定才算完成。确认没有抬高 Boot `3.4.11`、MyBatis-Plus `3.5.9` 或其它已锁定版本；若支付宝坐标抬高版本，改用仍为 Apache-2.0 且不抬版本的最新 `4.40.x`，并改回 `AGENTS.md` 与 `specs/002-java-api/research.md`。微信库不得进入 Admin
 - [X] T003 把 `specs/002-java-api/data-model.md` 的提现规则补进 `docs/data-model.md`：`withdrawal.status` 只允许 `pending`、`paid`、`rejected`；`channel` 本功能只允许 `alipay`；新增可空列 `provider_transfer_id VARCHAR(64)` 与 `paid_at TIMESTAMPTZ(3)`。`provider_transfer_id` 只在打款成功后保存通道单号，失败不写；发给通道的幂等号永远是 `withdrawal.id`，不从该列读取。冻结不写 `wallet_ledger`，打款成功才写 `type=withdraw`。打款或拒绝前先锁钱包行，再在同一事务里重读状态，只有仍为 `pending` 才继续
 - [X] T004 把 `specs/002-java-api/contracts/admin-session.md` 的三条路径写入 `docs/api-admin.md`：`GET /api/admin/v1/auth/login`、`GET /api/admin/v1/auth/callback`、`POST /api/admin/v1/auth/logout`。cookie 名 `sid_admin`。未登录业务接口为 HTTP `401` 且信封 `code` 为 `40100`
-- [X] T005 把 `specs/002-java-api/contracts/withdrawal.md` 写入 `docs/api-app.md` 与 `docs/api-admin.md`：消费者钱包与提现四条路径，运营列表、`/payout`、`/reject`。打款失败时 HTTP 200、`code` 为 `0`、`message` 为「打款未成功，冻结额未动」、`data.payoutResult=failed`，不新增错误码
+- [X] T005 把 `specs/002-java-api/contracts/withdrawal.md` 写入 `docs/app-api-catalog.md` 与 `docs/api-admin.md`：消费者钱包与提现四条路径，运营列表、`/payout`、`/reject`。打款失败时 HTTP 200、`code` 为 `0`、`message` 为「打款未成功，冻结额未动」、`data.payoutResult=failed`，不新增错误码
 
 **Checkpoint**: 权威文档已包含新依赖、提现列和两类新路径。代码还没有这些类
 
@@ -118,7 +118,7 @@ description: "Task list for 002-java-api"
 - [X] T029 [US3] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/goods/GoodsQueryService.java`：详情与快照的未知销量、评价数为 null
 - [X] T030 [US3] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/goods/GoodsConvertLinkService.java`：未授权返回 `40301` / `NEED_AUTH`；成功才写 `click_event`。禁止把 PID 或 relationId 放进响应
 - [X] T031 [US3] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/goods/GoodsLibraryService.java`：浏览来自 `user_event.kind=browse`，收藏幂等，合集移除写 `removed_at`，非本人为 `40300`
-- [X] T032 [US3] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/GoodsController.java` 的详情、转链、浏览、收藏、合集路径，对齐 `docs/api-app.md`
+- [X] T032 [US3] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/GoodsController.java` 的详情、转链、浏览、收藏、合集路径，对齐 `docs/app-api-catalog.md`
 
 **Checkpoint**: 不连接真实联盟，转链门闩和收藏合集已可测
 
@@ -161,7 +161,7 @@ description: "Task list for 002-java-api"
 - [X] T040 [US5] 在 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/order/OrderSyncService.java` 的同一事务里入账：先 `SELECT ... FOR UPDATE` 锁定该用户钱包行，再仅给下单用户写一条 `commission` 流水、回填 `wallet_ledger_id`。已有流水则跳过。已结算后不改历史流水。可用余额不得为负
 - [X] T041 [US5] 实现 `services/java/shop-api-common/src/main/java/com/omino/shopai/support/withdrawal/WithdrawalTransition.java`（纯函数，不打开事务、不依赖 Servlet）和同包的 `PayoutPort.java`。支付宝实现放在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/adapter/pay/AlipayPayoutClient.java`。发给通道的幂等号永远是 `withdrawal.id`，不从 `provider_transfer_id` 读取。测试双写实现同一个 `PayoutPort`，可以返回成功或失败
 - [X] T042 [US5] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/service/wallet/WithdrawalService.java`：只处理申请。先锁定钱包行，金额划入冻结额，不写流水，余额不得为负。打款与拒绝放在 `services/java/shop-api-admin/src/main/java/com/omino/shopai/admin/service/wallet/AdminWithdrawalService.java`，调用 `WithdrawalTransition` 与 `PayoutPort`。锁住钱包行之后，在同一事务里重读该笔提现，只有仍为 `pending` 才打款或拒绝。失败保持冻结且不写通道单号。成功才扣冻结额并记一条 `withdraw`。已 `paid` 不再打款。Admin 不得依赖 APP 模块
-- [X] T043 [US5] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/WalletController.java` 与 `OrderController.java`，路径对齐 `docs/api-app.md` 与 T005。消费者订单不下发媒体佣金、上级标识和流水标识
+- [X] T043 [US5] 实现 `services/java/shop-api-app/src/main/java/com/omino/shopai/app/web/app/WalletController.java` 与 `OrderController.java`，路径对齐 `docs/app-api-catalog.md` 与 T005。消费者订单不下发媒体佣金、上级标识和流水标识
 
 **Checkpoint**: 用样本订单和测试打款端口即可证明入账一次和提现状态机。不要求真实出款
 

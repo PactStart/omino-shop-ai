@@ -1,6 +1,6 @@
 # 出站行为
 
-不新增路径，不改信封。搜品、详情、转链仍走 [`docs/api-app.md`](../../../docs/api-app.md)。内部搜品仍走 [`docs/api-internal.md`](../../../docs/api-internal.md) 的既有工具，和消费者共用平台适配层。
+不新增路径，不改信封。搜品、详情、转链仍走 [`docs/app-api-catalog.md`](../../../docs/app-api-catalog.md)。内部搜品仍走 [`docs/api-internal.md`](../../../docs/api-internal.md) 的既有工具，和消费者共用平台适配层。
 
 ## 调用前
 

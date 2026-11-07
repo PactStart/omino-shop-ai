@@ -322,7 +322,7 @@ CREATE INDEX idx_llm_usage_created ON llm_usage (created_at);
 
 ### 6.1 注册来源
 
-`stats_user_origin` 记每个用户第一次登录时的端和渠道。登录接口今天不强制客户端头（见 [`api-app.md`](./api-app.md) §4.8）。头不齐就跳过，登录照常成功。不要为了指标把缺头改成 `40001`。
+`stats_user_origin` 记每个用户第一次登录时的端和渠道。登录接口今天不强制客户端头（见 [`app-api-catalog.md`](./app-api-catalog.md) 客户端头一节）。头不齐就跳过，登录照常成功。不要为了指标把缺头改成 `40001`。
 
 调用点：APP 登录成功、已经拿到 `userId`、响应返回之前。SQL：
 

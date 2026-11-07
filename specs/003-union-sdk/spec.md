@@ -18,7 +18,7 @@
 不做：页面、LangGraph、新平台码、服务端合成海报、复制 mall-guide 的源码与调用代码、大淘客、把私有仓库口令写进仓库。
 
 验收：五个 jar 在 services/java/sdks。一条命令能装进本地 Maven，一条命令能传到私有仓库，仓库里没有口令。四个平台在测试密钥下，搜品、详情、转链、订单增量都能打到官方；没配密钥时仍是 50010，且不发出站请求。抽查响应无 PID、无密钥。重复同步不双写入账。
-权威：AGENTS.md §2 §7 §9，docs/api-app.md，docs/api-internal.md，docs/data-model.md。"
+权威：AGENTS.md §2 §7 §9，docs/app-api-catalog.md，docs/api-internal.md，docs/data-model.md。"
 
 上面这段是 feat 3 的 Specify 粘贴稿，保留不改。触发本规格的原话是「开始feat3」。
 
@@ -174,4 +174,4 @@
 - 这两条命令在本仓库新写。不复制参考仓库 `sdks` 下的安装脚本和上传脚本。
 - 宪章要求先检索再引入依赖。这五份包不在 Maven Central，粘贴稿已经点名坐标。本功能的检索结论就是使用这五份官方包，并先登记到 `AGENTS.md` §2。这不等于把参考仓库本身当作依赖。
 - 消费者与内部工具的商品查询走同一平台适配层。工具白名单以 [`docs/api-internal.md`](../../docs/api-internal.md) 为准，本功能不增删工具。
-- 转链的授权顺序、未安装 APP 时的链接形态、禁止下发 PID，以 [`docs/api-app.md`](../../docs/api-app.md) 为准。
+- 转链的授权顺序、未安装 APP 时的链接形态、禁止下发 PID，以 [`docs/app-api-catalog.md`](../../docs/app-api-catalog.md) 为准。
