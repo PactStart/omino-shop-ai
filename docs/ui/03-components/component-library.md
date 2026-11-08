@@ -58,8 +58,8 @@ Figma 组件按 `Foundation/`、`Navigation/`、`Input/`、`Feedback/`、`Chat/`
 | `Goods/CollectionCard` | 最多 4 张封面拼贴，显示标题和总件数；点击进合集 |
 | `Goods/Gallery` | 稳定宽高比，支持缺图与页码，不使用装饰性裁切遮住商品 |
 | `Goods/PriceBlock` | 明确最终价、原价/优惠的层级；积分数字不可混入 |
-| `Order/Row` | 订单状态、结算状态、用户返佣和实付分层；有 goodsId 时整卡进入商品详情，否则不可点 |
-| `Order/StatusBadge` | 订单状态与结算状态必须是两套语义，不能合并成一个模糊标签 |
+| `Order/Row` | 平台订单号、商品、订单状态、结算状态、实付和用户返佣分层；有 goodsId 时整卡进入商品详情，否则不可点 |
+| `Order/StatusBadge` | 右上角只表示结算或失效，商品下方另写订单状态，两套语义不能合成一个词 |
 
 ## 5. 资产与账号组件
 

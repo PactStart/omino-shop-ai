@@ -70,7 +70,8 @@ async def stream_events(graph, state: dict, thread_id: str, turn, resume=None):
                     yield event("intent", {"intent": routed.get("intent")})
         except GraphInterrupt:
             pass
-        values = graph.get_state(config).values or {}
+        # AsyncPostgresSaver 禁止在当前事件循环里同步读检查点。
+        values = (await graph.aget_state(config)).values or {}
         for item in values.get("events") or []:
             if sent_intent and item.get("event") == "intent":
                 continue
@@ -118,7 +119,7 @@ async def run_cancellable(graph, state: dict, thread_id: str, cancel: asyncio.Ev
     except asyncio.CancelledError:
         task.cancel()
         raise
-    snapshot = graph.get_state(config)
+    snapshot = await graph.aget_state(config)
     return snapshot.values or {}
 
 

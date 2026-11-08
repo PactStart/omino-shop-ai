@@ -226,6 +226,7 @@
 | user_id                             | CHAR(26)       | 可空       | 未归因时为空                    |
 | platform                            | VARCHAR(16)    | NOT NULL | 下单平台                      |
 | platform_order_id                   | VARCHAR(64)    | NOT NULL | 平台订单号                     |
+| relation_id                         | VARCHAR(64)    | 可空       | 同步带回的推广身份。京东 `subUnionId`、淘宝 `specialId`、唯品会 `openId`、拼多多 `custom_parameters` 的 `uid`。用来对授权表，也随订单下发。再次同步有新值就覆盖，没带回则保留原值 |
 | goods_id                            | CHAR(26)       | 可空       | 本系统商品 id。只有归因到 `goods_snapshot` 后才填。拉单不把平台商品号写进这一列 |
 | platform_goods_id                   | VARCHAR(512)   | 可空       | 平台商品号。淘宝字符串商品号、京东 itemId、拼多多 goods_sign 都会超过 64，这里留 512 |
 | goods_title                         | VARCHAR(512)   | NOT NULL | 同步时标题快照                   |
@@ -249,7 +250,7 @@
 | UNIQUE(platform, platform_order_id) |                |          | 平台订单号幂等                   |
 
 
-归因：转链写入 `click_event`，同步订单时按推广位/click 回填 `user_id`，并同时拷贝 `parent_user_id`。平台商品号只进 `platform_goods_id`。`goods_id` 仍空着，直到能对上 `goods_snapshot.id`。再次同步不得用平台商品号覆盖已经归因的 `goods_id`。禁止把联盟原始 JSON 进业务库。
+归因：转链仍写入 `click_event`。同步订单时适配器不查库，只带回推广身份：京东 `subUnionId`、淘宝 `specialId`、唯品会 `openId`、拼多多 `custom_parameters` 里的 `uid`。入库时用该值查 `platform_authorization.relation_id` 得到 `user_id`。拼多多回传的是京东那条推广身份，所以先对上本平台行，没有再取任意一行。认不出则 `user_id` 留空，订单仍入库；已经归因的订单不会被空结果清掉。首次写入 `user_id` 且 `parent_user_id` 还空时，从 `app_user.inviter_id` 拷贝，之后不改。平台商品号只进 `platform_goods_id`。`goods_id` 仍空着，直到能对上 `goods_snapshot.id`。再次同步不得用平台商品号覆盖已经归因的 `goods_id`。禁止把联盟原始 JSON 进业务库。推广身份写入 `relation_id`，不写入 `extras`。消费者订单列表、详情和管理后台订单都下发 `relationId`，没有则为空。授权状态接口仍不下发推广身份。
 
 原列 `status`、`commission_estimate` 删除，分别由 `order_status` 与 `media_commission` / `user_commission` 代替。`settled` 不再是订单状态。
 

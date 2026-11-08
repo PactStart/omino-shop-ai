@@ -1,6 +1,8 @@
 package com.omino.shopai.app.service.chat;
 
+import com.omino.shopai.app.dto.ConversationViewDto;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
+import com.omino.shopai.dto.PageDto;
 
 /**
  * 受理一轮对话并立刻返回 run。
@@ -26,4 +28,14 @@ public interface IChatTurnService {
      * @return 已受理的 run
      */
     TurnAcceptedDto open(String userId, TurnCommand command);
+
+    /**
+     * 按更新时间倒序列出当前用户的会话。不含消息。
+     *
+     * @param userId 用户主键
+     * @param page 页码，从 1 起
+     * @param size 页大小，最大 20
+     * @return 会话页
+     */
+    PageDto<ConversationViewDto> list(String userId, int page, int size);
 }

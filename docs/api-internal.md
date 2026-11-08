@@ -62,7 +62,7 @@
 | `list_authorizations`       | `GET /internal/v1/me/authorizations`                     | 各平台授权状态                                                                         |
 | `start_authorization`       | `POST /internal/v1/me/authorizations/start`              | body：`platform`；返回 `authUrl`（HITL 卡片用）                                          |
 | `revoke_authorization`      | `POST /internal/v1/me/authorizations/revoke`             | body：`platform`；须已 HITL confirm                                                 |
-| `list_orders` / `get_order` | `GET /internal/v1/orders`、`GET /internal/v1/orders/{id}` | 仅当前用户。含 `orderStatus` `settleStatus` `userCommission` `payAmount`；无物流则 `logistics=null`。禁止返回 `mediaCommission` 与联盟原始 JSON，禁止编造 |
+| `list_orders` / `get_order` | `GET /internal/v1/orders`、`GET /internal/v1/orders/{id}` | 仅当前用户。含 `platformOrderId` `relationId` `orderStatus` `settleStatus` `userCommission` `payAmount`。`relationId` 可空。列表可带 `keyword`，匹配标题或平台订单号。无物流则 `logistics=null`。禁止返回 `mediaCommission` 与联盟原始 JSON，禁止编造 |
 | `get_order_stats`           | `GET /internal/v1/orders/stats`                          | query：`from`/`to`；单量、实付合计                                                       |
 | `get_wallet`                | `GET /internal/v1/wallet`                                | 可用/冻结/本月预估返佣                                                                    |
 | `get_credits`               | `GET /internal/v1/credits`                               | 积分余额（字符串两位）与当前 `tokensPerCredit`；只读，禁止扣费                                        |

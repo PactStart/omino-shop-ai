@@ -43,6 +43,7 @@ watch(id, load)
       <el-descriptions-item label="用户">{{ field(order, 'userId') }}</el-descriptions-item>
       <el-descriptions-item label="平台">{{ label(order.platform) }}</el-descriptions-item>
       <el-descriptions-item label="平台单号">{{ field(order, 'platformOrderId') }}</el-descriptions-item>
+      <el-descriptions-item label="推广身份">{{ field(order, 'relationId') }}</el-descriptions-item>
       <el-descriptions-item label="商品">{{ field(order, 'goodsTitle') }}</el-descriptions-item>
       <el-descriptions-item label="商品编号">{{ field(order, 'goodsId') }}</el-descriptions-item>
       <el-descriptions-item label="实付">{{ money(order.payAmount) }}</el-descriptions-item>

@@ -10,7 +10,9 @@ import com.omino.shopai.app.util.SdkLog;
 import com.omino.shopai.app.util.UnionMaps;
 import com.omino.shopai.dto.order.IncomingOrderDto;
 import com.omino.shopai.entity.AppOrder;
+import com.omino.shopai.entity.AppUser;
 import com.omino.shopai.entity.OrderSyncCursor;
+import com.omino.shopai.entity.PlatformAuthorization;
 import com.omino.shopai.entity.Wallet;
 import com.omino.shopai.entity.WalletLedger;
 import com.omino.shopai.enums.OrderStatus;
@@ -18,7 +20,9 @@ import com.omino.shopai.enums.Platform;
 import com.omino.shopai.enums.SettleStatus;
 import com.omino.shopai.enums.WalletLedgerType;
 import com.omino.shopai.mapper.AppOrderMapper;
+import com.omino.shopai.mapper.AppUserMapper;
 import com.omino.shopai.mapper.OrderSyncCursorMapper;
+import com.omino.shopai.mapper.PlatformAuthorizationMapper;
 import com.omino.shopai.mapper.WalletLedgerMapper;
 import com.omino.shopai.mapper.WalletMapper;
 import com.omino.shopai.support.Ids;
@@ -54,6 +58,8 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
     private final WalletLedgerMapper ledgers;
     private final JdbcTemplate jdbc;
     private final List<IPlatformGoods> clients;
+    private final PlatformAuthorizationMapper authorizations;
+    private final AppUserMapper users;
     private final TransactionOperations tx;
     private final Clock clock;
     private final Executor executor;
@@ -83,7 +89,7 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
             TransactionOperations tx,
             Clock clock,
             String shareRate) {
-        this(orders, cursors, wallets, ledgers, jdbc, clients, tx, clock, shareRate, Runnable::run);
+        this(orders, cursors, wallets, ledgers, jdbc, clients, null, null, tx, clock, shareRate, Runnable::run);
     }
 
     /**
@@ -95,6 +101,8 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
      * @param ledgers 钱包流水表
      * @param jdbc 游标写入和钱包行锁
      * @param clients 各平台适配器
+     * @param authorizations 联盟授权表，用来把推广身份换成用户
+     * @param users 用户表，首次归因时读取邀请人
      * @param tx 事务
      * @param clock 本次请求时间
      * @param shareRate 用户分成比例
@@ -108,6 +116,8 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
             WalletLedgerMapper ledgers,
             JdbcTemplate jdbc,
             List<IPlatformGoods> clients,
+            PlatformAuthorizationMapper authorizations,
+            AppUserMapper users,
             TransactionOperations tx,
             Clock clock,
             @Value("${commission.user-share-rate:0.80}") String shareRate,
@@ -118,6 +128,8 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
         this.ledgers = ledgers;
         this.jdbc = jdbc;
         this.clients = clients;
+        this.authorizations = authorizations;
+        this.users = users;
         this.tx = tx;
         this.clock = clock;
         this.executor = orderSyncExecutor;
@@ -407,8 +419,26 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
         String bookedLedger = order.getWalletLedgerId();
         OffsetDateTime bookedSettledAt = order.getSettledAt();
 
-        order.setUserId(blankToNull(incoming.userId()));
-        order.setParentUserId(blankToNull(incoming.parentUserId()));
+        String userId = blankToNull(incoming.userId());
+        if (userId == null) {
+            userId = blankToNull(userIdByRelation(platform, incoming.relationId()));
+        }
+        // 这次没对上用户时保留已有归因，避免一次空回传把订单从用户名下拿掉。
+        if (userId != null) {
+            order.setUserId(userId);
+        }
+        String relationId = blankToNull(incoming.relationId());
+        if (relationId != null) {
+            order.setRelationId(relationId);
+        }
+        // 上级只在第一次归因时写入。之后平台再同步也不改。
+        if (order.getParentUserId() == null) {
+            String parent = blankToNull(incoming.parentUserId());
+            if (parent == null && order.getUserId() != null) {
+                parent = blankToNull(inviterId(order.getUserId()));
+            }
+            order.setParentUserId(parent);
+        }
         // 平台商品号长于 26。本系统商品 id 只在归因到快照后才有，同步不能把它盖掉。
         order.setPlatformGoodsId(blankToNull(incoming.goodsId()));
         order.setGoodsTitle(incoming.goodsTitle() == null || incoming.goodsTitle().isBlank() ? "商品" : incoming.goodsTitle());
@@ -525,6 +555,51 @@ public class OrderSyncServiceImpl implements IOrderSyncService {
             return SettleStatus.PENDING;
         }
         return SettleStatus.NONE;
+    }
+
+    /**
+     * 用平台带回的推广身份找下单用户。同一身份有多行时先取本平台，没有再取任意一行。
+     * 拼多多订单上的 uid 记在京东授权行上。
+     *
+     * @param platform 本段订单的平台码
+     * @param relationId 平台带回的推广身份
+     * @return 用户号；没有记录则为空
+     */
+    protected String userIdByRelation(String platform, String relationId) {
+        if (authorizations == null || relationId == null || relationId.isBlank()) {
+            return null;
+        }
+        List<PlatformAuthorization> rows = authorizations.selectList(new LambdaQueryWrapper<PlatformAuthorization>()
+                .eq(PlatformAuthorization::getRelationId, relationId));
+        Platform current = Platform.fromCode(platform);
+        String fallback = null;
+        for (PlatformAuthorization row : rows) {
+            String userId = blankToNull(row.getUserId());
+            if (userId == null) {
+                continue;
+            }
+            if (row.getPlatform() == current) {
+                return userId;
+            }
+            if (fallback == null) {
+                fallback = userId;
+            }
+        }
+        return fallback;
+    }
+
+    /**
+     * 读取这个用户的邀请人，作为订单的上级。
+     *
+     * @param userId 下单用户
+     * @return 邀请人；没有则为空
+     */
+    protected String inviterId(String userId) {
+        if (users == null || userId == null || userId.isBlank()) {
+            return null;
+        }
+        AppUser user = users.selectById(userId);
+        return user == null ? null : user.getInviterId();
     }
 
     /**

@@ -40,6 +40,7 @@ public class OrderController {
      * @param platform 平台码，可空
      * @param orderStatus 订单状态，可空
      * @param settleStatus 结算状态，可空
+     * @param keyword 标题或平台订单号，可空
      * @param page 页码，从 1 开始
      * @param size 每页条数
      * @return 订单分页信封
@@ -51,9 +52,10 @@ public class OrderController {
             @RequestParam(required = false) String platform,
             @RequestParam(required = false) String orderStatus,
             @RequestParam(required = false) String settleStatus,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(orders.list(userId, platform, orderStatus, settleStatus, page, size));
+        return ApiResponse.ok(orders.list(userId, platform, orderStatus, settleStatus, keyword, page, size));
     }
     /**
      * 读取当前用户的一笔电商订单。

@@ -116,7 +116,7 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | Agent 图 | `langgraph`                     | `1.2.20`                    | 意图 → 槽位 → 工具 → 回复 的唯一编排。由 `0.2.70` 升到 `1.2.20`（不低于 `1.0.1`）。回归：助手单测、授权暂停后从同一线程恢复。MIT |
 | LLM 抽象  | `langchain-core`                | `1.7.6`                     | 消息协议。由 `0.3.33` 升到 `1.7.6`，对齐 `langchain` `1.4.9` 要求的 `>=1.7.5`，也满足 `langgraph` `1.2.20` 的 `>=1.4.7`。传递依赖里会有 `langsmith`，本仓库不配置、不调用。不另引 DeepSeek SDK。回归：当次注入的模型调用 |
 | 厂商适配    | `langchain-openai`              | `1.7.4`                     | **DeepSeek** OpenAI 兼容协议（`OPENAI_API_BASE`=`https://api.deepseek.com`）。由 `0.3.3` 升到 `1.7.4`（不低于 `1.1.14`）。不另引 DeepSeek SDK。MIT |
-| 观测      | `langfuse`                      | `2.57.0`                    | Trace / Prompt / 评分；**默认**。LangSmith 本阶段不引入 |
+| 观测      | `langfuse`                      | `5.2.0`                     | Trace。由 `2.57.0` 升到 `5.2.0`，对齐服务端 `4.76.0`（SDK 5 要求不低于 `4.59.0`）。本地镜像 `docker.langfuse.com/langfuse/langfuse:4.76.0` 与同标签的 `langfuse-worker`。只用 `start_as_current_observation` 记意图、耗时和工具路径，不写提示词和密钥。回归：`LANGFUSE_ENABLED=false` 时图仍结束；生产未打开则拒绝进入图。LangSmith 本阶段不引入 |
 | 校验      | `pydantic`                      | `2.10.4`                    | 工具入参/出参                                     |
 | HTTP    | `httpx`                         | `0.28.1`                    | 调 Java `/internal/v1/**` 工具                 |
 | 图状态     | `langgraph-checkpoint-postgres` | `3.2.0`                     | 工作记忆 Checkpointer。只用 `PostgresSaver` / `AsyncPostgresSaver`，不用该包的 Store。MIT。`langgraph` `1.2.20` 要求 `langgraph-checkpoint>=4.3.0`，`2.0.25` 配不上。回归：启动时 `setup()` 建检查点表，不进 Flyway |
@@ -210,7 +210,7 @@ Admin 登录：**MUST** 走 omino-sso OIDC Authorization Code + PKCE S256。禁�
 | --- | --- |
 | local 端口 | `5177` |
 | 请求 | 同 APP：`Authorization: Bearer` + 客户端头（[`app-api-catalog.md`](docs/app-api-catalog.md)） |
-| 海报 | 浏览器 Canvas 贴二维码；多模板左右滑 |
+| 海报 | 浏览器 Canvas 贴二维码；多模板左右滑。二维码用已锁定的 `qrcode` `1.5.4`，不另引第二个库 |
 | 渠道 | 固定 `web` |
 | `clientType` | 固定 `h5` |
 | 上帝视角 | 仅 Admin 签发短时 JWT（`gv=1`）；H5 顶栏常驻「上帝视角」条。`prod` 默认关闭 |
@@ -710,7 +710,7 @@ make stop-land && make restart-land
 Makefile 实际执行的命令：
 
 ```bash
-docker compose -f deploy/docker-compose.local.yml --env-file deploy/env/local.infra.env up -d postgres redis nacos langfuse-web langfuse-db
+docker compose -f deploy/docker-compose.local.yml --env-file deploy/env/local.infra.env up -d postgres redis nacos langfuse-web langfuse-worker langfuse-db langfuse-clickhouse langfuse-minio langfuse-redis
 
 # 先 set -a && . deploy/env/local.infra.env && . deploy/env/local.app.env && set +a
 cd services/java && mvn -pl shop-api-app -am spring-boot:run -Dspring-boot.run.profiles=local
@@ -833,14 +833,17 @@ docker compose -f deploy/docker-compose.prod.yml --env-file deploy/env/prod.env 
 | 变量                      | 说明                                                                  |
 | ----------------------- | ------------------------------------------------------------------- |
 | `AGENT_INTERNAL_TOKEN`  | 与 Java 相同                                                           |
-| `JAVA_APP_INTERNAL_URL` | `shop-api-app` 根，如 `http://127.0.0.1:8181`，Tool 打 `/internal/v1/**` |
+| `JAVA_APP_INTERNAL_URL` | `shop-api-app` 的 context-path 根，如 `http://127.0.0.1:8181/api/app`。Tool 在这后面接 `/internal/v1/**` |
 | `OPENAI_API_BASE`       | 仅 `local` 且 `llm_model` 没有任何可分流行时的兜底基址，默认 `https://api.deepseek.com` |
 | `OPENAI_API_KEY`        | 同上，兜底 Key。有可分流模型后由 Java 按次注入，本变量不参与分流                         |
 | `OPENAI_MODEL`          | 兜底模型名，默认 `deepseek-chat`                                           |
-| `LANGFUSE_HOST`         | 如 `http://127.0.0.1:3100`                                           |
-| `LANGFUSE_PUBLIC_KEY`   |                                                                     |
-| `LANGFUSE_SECRET_KEY`   | 密钥                                                                  |
-| `LANGFUSE_ENABLED`      | `true`/`false`，`prod` 必须 `true`                                     |
+| `LANGFUSE_HOST`         | 如 `http://127.0.0.1:3100`。SDK 5 仍读这个旧名；与 `LANGFUSE_BASE_URL` 写同一个地址 |
+| `LANGFUSE_BASE_URL`     | SDK 5 使用的地址，本地 `http://127.0.0.1:3100` |
+| `LANGFUSE_PUBLIC_KEY`   | 项目公钥，须与 `LANGFUSE_INIT_PROJECT_PUBLIC_KEY` 相同 |
+| `LANGFUSE_SECRET_KEY`   | 项目密钥，须与 `LANGFUSE_INIT_PROJECT_SECRET_KEY` 相同 |
+| `LANGFUSE_ENABLED`      | `true`/`false`。本地为了能看追踪设 `true`，`prod` 必须 `true` |
+
+本地页面是 `http://127.0.0.1:3100`。`LANGFUSE_INIT_USER_EMAIL`、`LANGFUSE_INIT_USER_PASSWORD` 和 `LANGFUSE_INIT_PROJECT_*` 只给 Compose 第一次建组织和项目，写在 `local.infra.env`。项目公钥、密钥与上面两把 Key 相同。`LANGFUSE_REDIS_AUTH`、`LANGFUSE_CLICKHOUSE_PASSWORD`、`LANGFUSE_MINIO_USER`、`LANGFUSE_MINIO_PASSWORD` 只给 Langfuse 自己的 Redis、ClickHouse 和 MinIO，不复用业务库的 `REDIS_*` / `PG_*`。
 
 
 ### 9.5 前端 / APP

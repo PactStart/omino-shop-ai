@@ -31,6 +31,7 @@
 | 方法 | 路径 | 作用 | 登录 | 客户端头 | 页面 |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/app/v1/chat/suggestions` | 空对话的推荐问题。`data[]`：`id` `text` | 要 | 要 | `chat` |
+| GET | `/api/app/v1/chat/conversations` | 本人会话分页，按更新时间倒序。行：`id` `title` `updatedAt` | 要 | 要 | `chat` `chatHistory` |
 | POST | `/api/app/v1/chat/turns` | 开一轮。立刻返回 `conversationId` `runId` `clientMsgId` | 要 | 要 | `chat` |
 | GET | `/api/app/v1/chat/runs/{runId}/events` | SSE 拉事件。断线用 `Last-Event-ID` 续传 | 要 | 要 | `chat` |
 | POST | `/api/app/v1/chat/runs/{runId}/cancel` | 用户点停止 | 要 | 要 | `chat` |
@@ -38,7 +39,9 @@
 
 工单在对话里由 Tool 建单，没有单独的消费者工单列表接口。
 
-推荐问题只返回 `active`，按 `sort`、`id` 升序。无配置则 `data` 为 `[]`。点击把 `text` 当作普通用户消息调用开 run。图片先走上传接口拿到 `imageObjectKey`，再以 `inputType=image` 开 run。
+推荐问题只返回 `active`，按 `sort`、`id` 升序。无配置则 `data` 为 `[]`。点击把 `text` 当作普通用户消息调用开 run。图片先走上传接口拿到 `imageObjectKey`，再以 `inputType=image` 开 run。上传是 multipart，字段名 `file`，只接受 jpeg、png、webp、gif，最大 8MB。`data` 只有 `imageObjectKey`。
+
+会话列表只含当前用户。`page` 从 1，`size` 默认 20、最大 20。`title` 是首轮文本截到 32 字；空标题客户端显示「对话」。不下发 `userId`、`lastIntent` 和消息正文。别人的会话不出现。
 
 ## 商城与商品
 
@@ -93,12 +96,12 @@
 
 | 方法 | 路径 | 作用 | 登录 | 客户端头 | 页面 |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/app/v1/orders` | 本人电商订单分页。可筛平台、订单状态、结算状态 | 要 | 要 | `orders` |
+| GET | `/api/app/v1/orders` | 本人电商订单分页。可筛平台、订单状态、结算状态，也可按标题或平台订单号搜索 | 要 | 要 | `orders` |
 | GET | `/api/app/v1/orders/{id}` | 一笔订单。无物流则 `logistics` 为 `null`。消费者页面不打开 | 要 | 要 | |
 
-query：`platform`、`orderStatus`、`settleStatus` 都可空，空表示全部。平台四码；订单状态 `pending_pay` `pending_ship` `shipped` `completed` `cancelled` `unknown`；结算状态 `none` `pending` `settled`。
+query：`platform`、`orderStatus`、`settleStatus`、`keyword` 都可空。前三个空表示全部。`keyword` 最长 64，匹配商品标题或平台订单号，空表示不搜。平台四码；订单状态 `pending_pay` `pending_ship` `shipped` `completed` `cancelled` `unknown`；结算状态 `none` `pending` `settled`。
 
-列表和详情给消费者的字段：`id` `platform` `goodsId` `goodsTitle` `goodsImageUrl` `payAmount` `userCommission` `orderStatus` `settleStatus` `orderedAt` `shippedAt`。金额为字符串两位或 `null`。不下发 `mediaCommission`、`parentUserId`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`userCommission` 在待结算时是当前分成预估，已结算后是入账金额。
+列表和详情给消费者的字段：`id` `platform` `platformOrderId` `relationId` `goodsId` `goodsTitle` `goodsImageUrl` `payAmount` `userCommission` `orderStatus` `settleStatus` `orderedAt` `shippedAt`。金额为字符串两位或 `null`。`relationId` 是这笔订单带回的推广身份，没有则为 `null`。不下发 `mediaCommission`、`parentUserId`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`userCommission` 在待结算时是当前分成预估，已结算后是入账金额。
 
 有 `goodsId` 时整张订单卡片进入商品详情。禁止在订单行直接转链。无 `goodsId` 时卡片不可点。消费者不打开订单详情页。无物流时 `logistics` 为 `null`。
 
@@ -126,6 +129,8 @@ query：`platform`、`orderStatus`、`settleStatus` 都可空，空表示全部�
 | POST | `/api/app/v1/me/authorizations/status` | 查一个平台要不要授权、是否已授权、授权链接 | 要 | 要 | `authorizations` |
 | POST | `/api/app/v1/me/authorizations/revoke` | 取消一个平台的授权。京东拒绝 | 要 | 要 | `authorizations` |
 
+资料 `data`：`id`、`nickname`、`avatarUrl`、脱敏后的 `phone`、`inviteCode`、`locale`、`pushEnabled`、`createdAt`。`pushEnabled` 是布尔。推送开关的 body 只有 `enabled`。注销的 `confirm` 必须是 `DELETE`，写入 `deleted_at` 并把账号标为禁用，这张 access token 随后不再通过。`gv=1` 时注销返回 `40300`。当前登录只签发 access token，没有单独的 refresh 表。
+
 显示风格和字号只存在端上，没有接口。风格是 V1 晴空绿、V2 科技黑、V3 简约白、V4 咸鱼黄、V5 京东红。字号是 `sm` `md` `lg`。协议打开 `legal` 返回的 URL，禁止把正文写死在客户端。
 
 积分支付密钥和回调验签只在 Java。`credit_order` 不是电商订单。渠道 `wechat_pay` `alipay` `wallet`。Demo 不做 Apple IAP。余额接口的 `available`、`tokensPerCredit` 为字符串两位。流水分页的 `amount`、`balanceAfter` 同样。在售套餐只含 `active`。下单 body：`packageId` `channel` `clientOrderId`。`wallet` 当时扣返佣余额并入账积分。支付成功同一事务把订单标为已支付、写积分流水并增加积分；`wallet` 渠道同时写钱包流水 `credit_buy`。失败或关单不加积分。
@@ -152,7 +157,7 @@ Java 只下发生效中的模板原图和二维码矩形。端上把 `inviteUrl`
 
 淘宝回调不校验登录和客户端头。query：`code` `state`。`state` 无效或过期为 `40001`。同一授权码十分钟内重复打开，沿用第一次的结果。查询、换票或备案失败为 `50010`，文案固定「平台查询失败」。
 
-站内信分页字段：`title` `body` `format` `readAt` `createdAt`。`format` 为 `plain` 或 `html`。未读数是 `{ "count": n }`。标已读幂等。资料含 `pushEnabled`。注销 body 的 `confirm` 必须是 `DELETE`，软删并作废 refresh。
+站内信分页字段：`title` `body` `format` `readAt` `createdAt`。`format` 为 `plain` 或 `html`。未读数是 `{ "count": n }`。标已读幂等。
 
 ## 壳、协议与埋点
 

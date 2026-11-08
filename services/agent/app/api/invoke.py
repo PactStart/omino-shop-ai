@@ -67,7 +67,7 @@ async def invoke(request: Request) -> StreamingResponse:
     safe = redact(body)
     model = model_from_request(body.get("llm"))
     java = JavaClient(
-        os.environ.get("JAVA_APP_INTERNAL_URL", "http://127.0.0.1:8181"),
+        os.environ.get("JAVA_APP_INTERNAL_URL", "http://127.0.0.1:8181/api/app"),
         expected,
         str(body.get("userId") or ""),
     )
@@ -86,7 +86,7 @@ async def invoke(request: Request) -> StreamingResponse:
     }
     thread_id = str(body.get("conversationId") or body.get("clientMsgId") or "run")
     # 没有授权恢复载荷时不读检查点。大多数句子都不是从卡片上继续的。
-    resume = body.get("hitl") if body.get("hitl") and _paused(graph, thread_id) else None
+    resume = body.get("hitl") if body.get("hitl") and await _paused(graph, thread_id) else None
     turn = Turn(
         java=java,
         model=model,
@@ -122,10 +122,15 @@ async def _stop_when_disconnected(request: Request, task: asyncio.Task) -> None:
         await asyncio.sleep(0.05)
 
 
-def _paused(graph, thread_id: str) -> bool:
-    """这一线程是否还停在授权节点。读不到检查点就当没有暂停。"""
+async def _paused(graph, thread_id: str) -> bool:
+    """这一线程是否还停在授权节点。读不到检查点就当没有暂停。
+
+    @param graph 已编译的图
+    @param thread_id 会话线程
+    @return 检查点还停在下一个节点时为真
+    """
     try:
-        snapshot = graph.get_state({"configurable": {"thread_id": thread_id}})
+        snapshot = await graph.aget_state({"configurable": {"thread_id": thread_id}})
     except Exception:
         return False
     return bool(getattr(snapshot, "next", None))

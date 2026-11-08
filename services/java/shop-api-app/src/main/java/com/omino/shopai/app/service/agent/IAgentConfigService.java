@@ -1,6 +1,9 @@
 package com.omino.shopai.app.service.agent;
 
+import com.omino.shopai.app.dto.SuggestionViewDto;
 import com.omino.shopai.entity.ChatSuggestion;
+
+import java.util.List;
 
 /**
  * 维护对话入口的生效推荐。
@@ -14,4 +17,11 @@ public interface IAgentConfigService {
      * @return 已写入的建议
      */
     ChatSuggestion addActive(String text);
+
+    /**
+     * 列出空对话要展示的推荐。只含生效行，按排序和主键升序。
+     *
+     * @return 推荐问题，没有则空列表
+     */
+    List<SuggestionViewDto> active();
 }

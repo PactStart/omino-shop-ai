@@ -111,6 +111,7 @@ public class InternalAccountController {
      * @param platform 平台码，可空
      * @param orderStatus 订单状态，可空
      * @param settleStatus 结算状态，可空
+     * @param keyword 标题或平台订单号，可空
      * @param page 页码
      * @param size 每页条数
      * @return 订单分页信封
@@ -122,9 +123,10 @@ public class InternalAccountController {
             @RequestParam(value = "platform", required = false) String platform,
             @RequestParam(value = "orderStatus", required = false) String orderStatus,
             @RequestParam(value = "settleStatus", required = false) String settleStatus,
+            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
-        return ApiResponse.ok(orders.list(userId, platform, orderStatus, settleStatus, page, size));
+        return ApiResponse.ok(orders.list(userId, platform, orderStatus, settleStatus, keyword, page, size));
     }
     /**
      * 统计当前用户一段时间的订单。

@@ -12,6 +12,7 @@ import com.omino.shopai.entity.WalletLedger;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用内存订单替换同步里的表访问，追赶和入账仍走真实实现。
@@ -20,6 +21,8 @@ final class MemoryOrderSync extends OrderSyncServiceImpl {
 
     private final MemoryOrders orders;
     private final Pull pull;
+    private Map<String, String> relations = Map.of();
+    private Map<String, String> inviters = Map.of();
 
     /**
      * 绑定同一份内存订单，按给出的适配器拉单。追赶在调用线程里做完。
@@ -58,6 +61,49 @@ final class MemoryOrderSync extends OrderSyncServiceImpl {
         super(null, null, null, null, null, clients, orders, clock, shareRate);
         this.orders = orders;
         this.pull = pull;
+    }
+
+    /**
+     * 测试里用推广身份对上用户。键是 relationId。
+     *
+     * @param relations 推广身份到用户号
+     * @return 无
+     */
+    void relations(Map<String, String> relations) {
+        this.relations = relations;
+    }
+
+    /**
+     * 测试里用用户号对上邀请人。
+     *
+     * @param inviters 用户号到邀请人
+     * @return 无
+     */
+    void inviters(Map<String, String> inviters) {
+        this.inviters = inviters;
+    }
+
+    /**
+     * 内存里按推广身份找用户，不查授权表。
+     *
+     * @param platform 平台码
+     * @param relationId 推广身份
+     * @return 用户号；没有则为空
+     */
+    @Override
+    protected String userIdByRelation(String platform, String relationId) {
+        return relationId == null ? null : relations.get(relationId);
+    }
+
+    /**
+     * 内存里按用户找邀请人，不查用户表。
+     *
+     * @param userId 下单用户
+     * @return 邀请人；没有则为空
+     */
+    @Override
+    protected String inviterId(String userId) {
+        return userId == null ? null : inviters.get(userId);
     }
 
     /**

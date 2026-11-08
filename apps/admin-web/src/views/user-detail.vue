@@ -262,6 +262,7 @@ onMounted(() => {
               <template #default="{ row }">{{ label(row.platform) }}</template>
             </el-table-column>
             <el-table-column prop="platformOrderId" label="平台单号" min-width="180" />
+            <el-table-column prop="relationId" label="推广身份" min-width="160" />
             <el-table-column label="商品" min-width="280">
               <template #default="{ row }">
                 <div class="goods">

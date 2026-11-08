@@ -13,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.function.Predicate;
 /**
  * 校验 APP 访问令牌。文档路径放行。
  */
@@ -21,13 +22,29 @@ public class AppJwtFilter extends OncePerRequestFilter {
 
     private final AppJwtIssuer tokens;
     private final ObjectMapper objectMapper;
-/**
- * 注入签发器。无令牌时写 401 信封。
- */
+    private final Predicate<String> active;
 
+    /**
+     * 注入签发器。测试里不查库，默认把任何已验签用户当作仍有效。
+     *
+     * @param tokens 访问令牌
+     * @param objectMapper 写 401 信封
+     */
     public AppJwtFilter(AppJwtIssuer tokens, ObjectMapper objectMapper) {
+        this(tokens, objectMapper, userId -> true);
+    }
+
+    /**
+     * 注入签发器和账号是否仍可登录的判断。注销后的用户在这里被挡下。
+     *
+     * @param tokens 访问令牌
+     * @param objectMapper 写 401 信封
+     * @param active 用户主键仍对应未注销账号时为真
+     */
+    public AppJwtFilter(AppJwtIssuer tokens, ObjectMapper objectMapper, Predicate<String> active) {
         this.tokens = tokens;
         this.objectMapper = objectMapper;
+        this.active = active;
     }
 /**
  * 登录、回调、文档和健康检查不要求 access token。
@@ -61,12 +78,14 @@ public class AppJwtFilter extends OncePerRequestFilter {
             reject(request, response);
             return;
         }
-        Optional<String> userId = tokens.subject(header.substring("Bearer ".length()).trim());
-        if (userId.isEmpty()) {
+        String token = header.substring("Bearer ".length()).trim();
+        Optional<String> userId = tokens.subject(token);
+        if (userId.isEmpty() || !active.test(userId.get())) {
             reject(request, response);
             return;
         }
         request.setAttribute("userId", userId.get());
+        request.setAttribute("godView", tokens.godView(token));
         filterChain.doFilter(request, response);
     }
     /**

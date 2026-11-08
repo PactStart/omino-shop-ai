@@ -61,6 +61,25 @@ public class AppJwtIssuer {
  * 从令牌取出用户主键。签错或过期则当未登录。
  */
 
+    /**
+     * 判断这张访问令牌是不是上帝视角。签错或没有 gv 都当作普通用户。
+     *
+     * @param token 访问令牌
+     * @return 带 gv=1 时为真
+     */
+    public boolean godView(String token) {
+        try {
+            SignedJWT jwt = SignedJWT.parse(token);
+            if (!jwt.verify(new MACVerifier(secret))) {
+                return false;
+            }
+            Object claim = jwt.getJWTClaimsSet().getClaim("gv");
+            return claim instanceof Number number && number.intValue() == 1;
+        } catch (ParseException | JOSEException ex) {
+            return false;
+        }
+    }
+
     public Optional<String> subject(String token) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);

@@ -45,22 +45,24 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @param page 页码，从 1 起
      * @param size 页大小，最大 50
      * @return 订单页
      */
     @Override
-    public PageDto<OrderViewDto> list(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
+    public PageDto<OrderViewDto> list(String userId, String platform, String orderStatus, String settleStatus, String keyword, int page, int size) {
         String platformFilter = platformFilter(platform);
         String statusFilter = orderStatusFilter(orderStatus);
         String settleFilter = settleFilter(settleStatus);
+        String keywordFilter = keywordFilter(keyword);
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 50);
-        List<OrderViewDto> rows = listOrders(userId, platformFilter, statusFilter, settleFilter, safePage, safeSize)
+        List<OrderViewDto> rows = listOrders(userId, platformFilter, statusFilter, settleFilter, keywordFilter, safePage, safeSize)
                 .stream()
                 .map(OrderQueryServiceImpl::view)
                 .toList();
-        return new PageDto<OrderViewDto>(rows, safePage, safeSize, countOrders(userId, platformFilter, statusFilter, settleFilter));
+        return new PageDto<OrderViewDto>(rows, safePage, safeSize, countOrders(userId, platformFilter, statusFilter, settleFilter, keywordFilter));
     }
 
     /**
@@ -73,7 +75,7 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
      */
     @Override
     public Map<String, Object> stats(String userId, OffsetDateTime from, OffsetDateTime to) {
-        List<AppOrder> rows = listOrders(userId, null, null, null, 1, 500);
+        List<AppOrder> rows = listOrders(userId, null, null, null, null, 1, 500);
         BigDecimal pay = BigDecimal.ZERO;
         int count = 0;
         for (AppOrder row : rows) {
@@ -110,6 +112,8 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
         return new OrderDetailDto(
                 order.getId(),
                 order.getPlatform() == null ? null : order.getPlatform().code(),
+                order.getPlatformOrderId(),
+                order.getRelationId(),
                 order.getGoodsId(),
                 order.getGoodsTitle(),
                 order.getGoodsImageUrl(),
@@ -129,12 +133,13 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @param page 页码，从 1 起
      * @param size 页大小
      * @return 当前页
      */
-    protected List<AppOrder> listOrders(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
-        return orders.selectList(filter(userId, platform, orderStatus, settleStatus)
+    protected List<AppOrder> listOrders(String userId, String platform, String orderStatus, String settleStatus, String keyword, int page, int size) {
+        return orders.selectList(filter(userId, platform, orderStatus, settleStatus, keyword)
                 .orderByDesc(AppOrder::getCreatedAt)
                 .last("LIMIT " + size + " OFFSET " + ((long) (page - 1) * size)));
     }
@@ -146,10 +151,11 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @return 行数
      */
-    protected long countOrders(String userId, String platform, String orderStatus, String settleStatus) {
-        Long count = orders.selectCount(filter(userId, platform, orderStatus, settleStatus));
+    protected long countOrders(String userId, String platform, String orderStatus, String settleStatus, String keyword) {
+        Long count = orders.selectCount(filter(userId, platform, orderStatus, settleStatus, keyword));
         return count == null ? 0 : count;
     }
 
@@ -173,6 +179,8 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
         return new OrderViewDto(
                 order.getId(),
                 order.getPlatform() == null ? null : order.getPlatform().code(),
+                order.getPlatformOrderId(),
+                order.getRelationId(),
                 order.getGoodsId(),
                 order.getGoodsTitle(),
                 order.getGoodsImageUrl(),
@@ -245,6 +253,23 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
     }
 
     /**
+     * 空串表示不搜索。过长的词拒绝，避免把整段文本送进模糊查询。
+     *
+     * @param value 请求里的搜索词
+     * @return 去掉首尾空白的词；不搜索则为空
+     */
+    private static String keywordFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String word = value.trim();
+        if (word.length() > 64) {
+            throw new ApiBusinessException(ErrorCodes.VALIDATION, "搜索词过长");
+        }
+        return word;
+    }
+
+    /**
      * 金额写成两位小数字符串。没有金额时保持空。
      *
      * @param value 金额，可空
@@ -271,9 +296,10 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @return 查询条件
      */
-    private static LambdaQueryWrapper<AppOrder> filter(String userId, String platform, String orderStatus, String settleStatus) {
+    private static LambdaQueryWrapper<AppOrder> filter(String userId, String platform, String orderStatus, String settleStatus, String keyword) {
         LambdaQueryWrapper<AppOrder> wrapper = new LambdaQueryWrapper<AppOrder>().eq(AppOrder::getUserId, userId);
         if (platform != null) {
             wrapper.eq(AppOrder::getPlatform, platform);
@@ -283,6 +309,10 @@ public class OrderQueryServiceImpl implements IOrderQueryService {
         }
         if (settleStatus != null) {
             wrapper.eq(AppOrder::getSettleStatus, settleStatus);
+        }
+        if (keyword != null) {
+            // 包在 and 里，避免 or 把用户条件拆掉。
+            wrapper.and(nested -> nested.like(AppOrder::getGoodsTitle, keyword).or().like(AppOrder::getPlatformOrderId, keyword));
         }
         return wrapper;
     }

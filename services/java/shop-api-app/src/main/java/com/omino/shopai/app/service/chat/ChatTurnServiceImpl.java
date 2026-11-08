@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.api.ErrorCodes;
+import com.omino.shopai.app.dto.ConversationViewDto;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.entity.Conversation;
 import com.omino.shopai.entity.ConversationMessage;
 import com.omino.shopai.exception.ApiBusinessException;
@@ -113,6 +115,24 @@ public class ChatTurnServiceImpl implements IChatTurnService {
     }
 
     /**
+     * 按更新时间倒序列出当前用户的会话。页码和页大小先收进合法范围。
+     *
+     * @param userId 用户主键
+     * @param page 页码，从 1 起
+     * @param size 页大小
+     * @return 会话页
+     */
+    @Override
+    public PageDto<ConversationViewDto> list(String userId, int page, int size) {
+        int safePage = Math.max(page, 1);
+        int safeSize = Math.min(Math.max(size, 1), 20);
+        List<ConversationViewDto> rows = listConversations(userId, safePage, safeSize).stream()
+                .map(row -> new ConversationViewDto(row.getId(), row.getTitle(), row.getUpdatedAt()))
+                .toList();
+        return new PageDto<>(rows, safePage, safeSize, countConversations(userId));
+    }
+
+    /**
      * 按输入类型校验后受理。已受理则返回原来的 runId。
      *
      * @param userId 用户主键
@@ -204,6 +224,33 @@ public class ChatTurnServiceImpl implements IChatTurnService {
     }
 
     /**
+     * 取出该用户的一页会话，最近更新的在前。
+     *
+     * @param userId 用户主键
+     * @param page 已校正的页码
+     * @param size 已校正的页大小
+     * @return 当前页
+     */
+    protected List<Conversation> listConversations(String userId, int page, int size) {
+        return conversations.selectList(new LambdaQueryWrapper<Conversation>()
+                .eq(Conversation::getUserId, userId)
+                .orderByDesc(Conversation::getUpdatedAt)
+                .orderByDesc(Conversation::getId)
+                .last("LIMIT " + size + " OFFSET " + ((long) (page - 1) * size)));
+    }
+
+    /**
+     * 数该用户的会话，供分页总数。
+     *
+     * @param userId 用户主键
+     * @return 行数
+     */
+    protected long countConversations(String userId) {
+        Long count = conversations.selectCount(new LambdaQueryWrapper<Conversation>().eq(Conversation::getUserId, userId));
+        return count == null ? 0 : count;
+    }
+
+    /**
      * 新建一条会话。
      *
      * @param userId 用户主键
@@ -254,7 +301,8 @@ public class ChatTurnServiceImpl implements IChatTurnService {
         message.setContent(text);
         message.setPayload("{\"runId\":\"" + runId + "\"}");
         message.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        messages.insert(message);
+        // payload 是 jsonb。BaseMapper.insert 会按字符串绑定，开一轮就会变成 50000。
+        messages.insertMessage(message);
     }
 
     /**

@@ -407,7 +407,7 @@ Langfuse：每个 invoke 一个 trace，`traceId` 与 Java 相同；每个节点
 - `tests/test_intent.py`：`route_intent` 纯函数、低置信走 clarify、白名单外 intent 拒绝。
 - 工具节点用 httpx mock，不断真联盟。
 - `handoff` / 无订单：断言话术不含编造物流。
-- Langfuse 关闭时（`LANGFUSE_ENABLED=false`，仅非 prod）图仍能跑。
+- Langfuse 关闭时（`LANGFUSE_ENABLED=false`，仅非 prod）图仍能跑。打开时每轮结束把意图、耗时和工具路径送到 `LANGFUSE_BASE_URL`，不写提示词和密钥。本地页面是 `http://127.0.0.1:3100`。
 
 ---
 

@@ -15,7 +15,7 @@ ADMIN_ENV := $(ENV_DIR)/local.admin.env
 AGENT_ENV := $(ENV_DIR)/local.agent.env
 COMPOSE := docker compose -f $(ROOT)/deploy/docker-compose.local.yml --env-file $(INFRA_ENV)
 MVN ?= mvn
-INFRA := postgres redis nacos langfuse-web langfuse-db
+INFRA := postgres redis nacos langfuse-web langfuse-worker langfuse-db langfuse-clickhouse langfuse-minio langfuse-redis
 
 .PHONY: help env require-infra require-app require-admin require-agent up down logs \
 	app admin agent test java-test agent-test accept admin-web www land h5 android ios \

@@ -14,6 +14,8 @@ import com.omino.shopai.app.dto.GoodsHitPage;
 import com.omino.shopai.app.dto.GoodsSearchRequestDto;
 import com.omino.shopai.app.dto.PromotionLinkDto;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omino.shopai.exception.PlatformCallException;
 
 import com.omino.shopai.dto.order.IncomingOrderDto;
@@ -52,6 +54,8 @@ public class PddGoodsImpl implements IPlatformGoods {
 
     private final String clientId;
     private final String clientSecret;
+    /** 广告位ID，不从环境变量读。 */
+    private static final String PID = "9845485_144459674";
 
     public PddGoodsImpl(
             @Value("${UNION_PDD_CLIENT_ID:}") String clientId,
@@ -79,7 +83,7 @@ public class PddGoodsImpl implements IPlatformGoods {
         try {
             PddDdkGoodsDetailRequest request = new PddDdkGoodsDetailRequest();
             request.setGoodsSign(platformGoodsId);
-            bind(request, promotionId, userId);
+            bind(request, promotionId);
             PddDdkGoodsDetailResponse response = SdkLog.exchange(
                     "pdd", "goods.detail", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null) {
@@ -115,7 +119,7 @@ public class PddGoodsImpl implements IPlatformGoods {
             request.setPageSize(clamp(query.size() == null ? 20 : query.size()));
             applySort(request, query.sort());
             applyFilters(request, query);
-            bind(request, promotionId, userId);
+            bind(request, promotionId);
             PddDdkGoodsSearchResponse response = SdkLog.exchange(
                     "pdd", "goods.search", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null || response.getGoodsSearchResponse() == null) {
@@ -174,7 +178,7 @@ public class PddGoodsImpl implements IPlatformGoods {
             PddDdkGoodsPromotionUrlGenerateRequest request = new PddDdkGoodsPromotionUrlGenerateRequest();
             request.setGoodsSignList(List.of(sign));
             request.setGenerateSchemaUrl(openInApp);
-            bind(request, promotionId, userId);
+            bind(request, promotionId);
             PddDdkGoodsPromotionUrlGenerateResponse response = SdkLog.exchange(
                     "pdd", "promotion.url", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null || response.getGoodsPromotionUrlGenerateResponse() == null) {
@@ -326,35 +330,49 @@ public class PddGoodsImpl implements IPlatformGoods {
     }
 
     /** 拼多多搜品、详情、转链都要带上已备案的 pid 和用户号。 */
-    public static void bind(PddDdkGoodsSearchRequest request, String pid, String userId) {
-        request.setPid(UnionMaps.promotion(pid));
-        request.setCustomParameters(custom(userId));
+    public static void bind(PddDdkGoodsSearchRequest request, String promotionId) {
+        request.setPid(PID);
+        request.setCustomParameters(custom(promotionId));
     }
 
     /** 详情与搜品使用同一对备案参数。 */
-    public static void bind(PddDdkGoodsDetailRequest request, String pid, String userId) {
-        request.setPid(UnionMaps.promotion(pid));
-        request.setCustomParameters(custom(userId));
+    public static void bind(PddDdkGoodsDetailRequest request, String promotionId) {
+        request.setPid(PID);
+        request.setCustomParameters(custom(promotionId));
     }
 
     /** 推荐和搜品使用同一对备案参数。 */
-    public static void bind(PddDdkGoodsRecommendGetRequest request, String pid, String userId) {
-        request.setPid(UnionMaps.promotion(pid));
-        request.setCustomParameters(custom(userId));
+    public static void bind(PddDdkGoodsRecommendGetRequest request, String promotionId) {
+        request.setPid(PID);
+        request.setCustomParameters(custom(promotionId));
     }
 
     /** 转链请求的推广位方法名是 setPId。 */
-    public static void bind(PddDdkGoodsPromotionUrlGenerateRequest request, String pid, String userId) {
-        request.setPId(UnionMaps.promotion(pid));
-        request.setCustomParameters(custom(userId));
+    public static void bind(PddDdkGoodsPromotionUrlGenerateRequest request, String promotionId) {
+        request.setPId(PID);
+        request.setCustomParameters(custom(promotionId));
     }
 
-    private static String custom(String userId) {
-        String buyer = UnionMaps.userId(userId);
-        if (buyer == null) {
-            throw new PlatformCallException();
+    private static String custom(String promotionId) {
+        return "{\"uid\":\"" + promotionId + "\"}";
+    }
+
+    /**
+     * 从订单上的备案参数取出推广身份。官方字段是 JSON 字符串，键为 uid。
+     *
+     * @param customParameters 订单上的 custom_parameters
+     * @return uid；没有或不是 JSON 则为空
+     */
+    private static String relationId(String customParameters) {
+        if (customParameters == null || customParameters.isBlank()) {
+            return null;
         }
-        return "{\"uid\":\"" + buyer + "\"}";
+        try {
+            String uid = new ObjectMapper().readTree(customParameters).path("uid").asText("");
+            return uid.isBlank() ? null : uid;
+        } catch (JsonProcessingException ex) {
+            return null;
+        }
     }
 
     private GoodsHitPage recommend(String platformGoodsId, int page, int size, String userId, String promotionId) {
@@ -367,7 +385,7 @@ public class PddGoodsImpl implements IPlatformGoods {
             if (platformGoodsId != null && !platformGoodsId.isBlank()) {
                 request.setGoodsSignList(List.of(platformGoodsId));
             }
-            bind(request, promotionId, userId);
+            bind(request, promotionId);
             PddDdkGoodsRecommendGetResponse response = SdkLog.exchange(
                     "pdd", "goods.recommend", request, () -> client().syncInvoke(request));
             if (response == null || response.getErrorResponse() != null || response.getGoodsBasicDetailResponse() == null) {
@@ -530,7 +548,7 @@ public class PddGoodsImpl implements IPlatformGoods {
         }
         return new IncomingOrderDto(
                 id,
-                UnionMaps.userId(row.getCustomParameters()),
+                null,
                 null,
                 goodsId,
                 row.getGoodsName(),
@@ -542,6 +560,7 @@ public class PddGoodsImpl implements IPlatformGoods {
                 status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getOrderPayTime()) : null,
                 UnionMaps.fromEpoch(row.getOrderPayTime()),
                 UnionMaps.fromEpoch(row.getOrderReceiveTime()),
-                null);
+                null,
+                relationId(row.getCustomParameters()));
     }
 }

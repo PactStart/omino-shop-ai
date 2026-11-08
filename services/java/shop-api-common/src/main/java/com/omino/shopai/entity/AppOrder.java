@@ -25,6 +25,7 @@ public class AppOrder {
     private String userId;
     private Platform platform;
     private String platformOrderId;
+    private String relationId;
     private String goodsId;
     private String platformGoodsId;
     private String goodsTitle;

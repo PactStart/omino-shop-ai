@@ -22,6 +22,7 @@ import java.time.OffsetDateTime;
  * @param paidAt 付款时间，平台没有则为空
  * @param completedAt 完成时间，平台没有则为空
  * @param extras 不常用补充字段的 JSON 对象字符串，没有则为空
+ * @param relationId 平台带回的推广身份。同步时用来查授权表，并写入订单的 relation_id
  */
 public record IncomingOrderDto(
         String platformOrderId,
@@ -37,7 +38,8 @@ public record IncomingOrderDto(
         OffsetDateTime shippedAt,
         OffsetDateTime paidAt,
         OffsetDateTime completedAt,
-        String extras) {
+        String extras,
+        String relationId) {
 
     /**
      * 没有付款时间、完成时间和补充字段的订单。
@@ -68,6 +70,6 @@ public record IncomingOrderDto(
             OffsetDateTime orderedAt,
             OffsetDateTime shippedAt) {
         this(platformOrderId, userId, parentUserId, goodsId, goodsTitle, goodsImageUrl,
-                payAmount, mediaCommission, orderStatus, orderedAt, shippedAt, null, null, null);
+                payAmount, mediaCommission, orderStatus, orderedAt, shippedAt, null, null, null, null);
     }
 }

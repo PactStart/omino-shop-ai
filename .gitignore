@@ -15,6 +15,7 @@ dist/
 build/
 
 target/
+var/
 *.class
 *.jar
 !services/java/sdks/**/*.jar

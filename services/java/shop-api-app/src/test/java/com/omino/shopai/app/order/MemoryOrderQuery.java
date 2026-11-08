@@ -29,13 +29,14 @@ final class MemoryOrderQuery extends OrderQueryServiceImpl {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @param page 页码，从 1 起
      * @param size 页大小
      * @return 当前页
      */
     @Override
-    protected List<AppOrder> listOrders(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
-        return orders.list(userId, platform, orderStatus, settleStatus, page, size);
+    protected List<AppOrder> listOrders(String userId, String platform, String orderStatus, String settleStatus, String keyword, int page, int size) {
+        return orders.list(userId, platform, orderStatus, settleStatus, keyword, page, size);
     }
 
     /**
@@ -45,11 +46,12 @@ final class MemoryOrderQuery extends OrderQueryServiceImpl {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @return 行数
      */
     @Override
-    protected long countOrders(String userId, String platform, String orderStatus, String settleStatus) {
-        return orders.count(userId, platform, orderStatus, settleStatus);
+    protected long countOrders(String userId, String platform, String orderStatus, String settleStatus, String keyword) {
+        return orders.count(userId, platform, orderStatus, settleStatus, keyword);
     }
 
     /**

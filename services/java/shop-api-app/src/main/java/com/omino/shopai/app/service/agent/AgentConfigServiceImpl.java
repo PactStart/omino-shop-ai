@@ -2,6 +2,7 @@ package com.omino.shopai.app.service.agent;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.omino.shopai.api.ErrorCodes;
+import com.omino.shopai.app.dto.SuggestionViewDto;
 import com.omino.shopai.entity.ChatSuggestion;
 import com.omino.shopai.enums.ActiveStatus;
 import com.omino.shopai.exception.ApiBusinessException;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * 添加生效推荐。条数上限在写入前检查。
@@ -66,6 +69,31 @@ public class AgentConfigServiceImpl implements IAgentConfigService {
     protected int activeSuggestionCount() {
         Long count = suggestions.selectCount(new LambdaQueryWrapper<ChatSuggestion>().eq(ChatSuggestion::getStatus, ActiveStatus.ACTIVE));
         return count == null ? 0 : count.intValue();
+    }
+
+    /**
+     * 列出空对话要展示的推荐。下架的不出现，没有配置则空列表。
+     *
+     * @return 推荐问题
+     */
+    @Override
+    public List<SuggestionViewDto> active() {
+        return loadAll().stream()
+                .filter(row -> row.getStatus() == ActiveStatus.ACTIVE)
+                .sorted(Comparator.comparing(ChatSuggestion::getSort, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(ChatSuggestion::getId, Comparator.nullsLast(String::compareTo)))
+                .map(row -> new SuggestionViewDto(row.getId(), row.getText()))
+                .toList();
+    }
+
+    /**
+     * 读出全部推荐，含已下架。筛选放在调用方。
+     *
+     * @return 全部推荐
+     */
+    protected List<ChatSuggestion> loadAll() {
+        List<ChatSuggestion> rows = suggestions.selectList(null);
+        return rows == null ? List.of() : rows;
     }
 
     /**

@@ -132,7 +132,8 @@ class OrderSyncCatchUpTest {
                 null,
                 paidAt,
                 completedAt,
-                " {\"payMonth\":\"202611\"} ");
+                " {\"payMonth\":\"202611\"} ",
+                null);
         MemoryOrderSync.Pull source = (platform, cursor, create, update) -> List.of(incoming);
         MemoryOrderSync sync = new MemoryOrderSync(orders, source, clock, "0.80");
         sync.sync("taobao");
@@ -150,5 +151,42 @@ class OrderSyncCatchUpTest {
         assertEquals(paidAt, again.getPaidAt());
         assertEquals(completedAt, again.getCompletedAt());
         assertEquals("{\"payMonth\":\"202611\"}", again.getExtras());
+    }
+
+    @Test
+    void relationIdFillsUserAndInviterOnce() {
+        Clock clock = Clock.fixed(Instant.parse("2026-11-04T14:00:00Z"), ZoneOffset.UTC);
+        MemoryOrders orders = new MemoryOrders();
+        IncomingOrderDto incoming = new IncomingOrderDto(
+                "PDD1",
+                null,
+                null,
+                "goods-1",
+                "商品",
+                null,
+                new BigDecimal("10.00"),
+                new BigDecimal("1.00"),
+                OrderStatus.PENDING_SHIP,
+                OffsetDateTime.now(clock),
+                null,
+                null,
+                null,
+                null,
+                "jd-pid-1");
+        MemoryOrderSync sync = new MemoryOrderSync(orders, (platform, cursor, create, update) -> List.of(incoming), clock, "0.80");
+        sync.relations(java.util.Map.of("jd-pid-1", "user-1"));
+        sync.inviters(java.util.Map.of("user-1", "parent-1"));
+        sync.sync("pdd");
+        AppOrder saved = orders.findByPlatformOrder("pdd", "PDD1");
+        assertEquals("user-1", saved.getUserId());
+        assertEquals("parent-1", saved.getParentUserId());
+        assertEquals("jd-pid-1", saved.getRelationId());
+
+        orders.seedCursor("pdd", OffsetDateTime.now(clock).minusHours(1), OffsetDateTime.now(clock).minusHours(1));
+        sync.inviters(java.util.Map.of("user-1", "parent-2"));
+        sync.sync("pdd");
+        AppOrder again = orders.findByPlatformOrder("pdd", "PDD1");
+        assertEquals("user-1", again.getUserId());
+        assertEquals("parent-1", again.getParentUserId());
     }
 }

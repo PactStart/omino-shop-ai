@@ -92,6 +92,7 @@ class OrderSettleOnceTest {
         MvcResult list = mvc.perform(get("/v1/orders").requestAttr("userId", BUYER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.list[0].platformOrderId").value("JD100"))
                 .andExpect(jsonPath("$.data.list[0].userCommission").value("80.00"))
                 .andExpect(jsonPath("$.data.list[0].settleStatus").value("settled"))
                 .andExpect(jsonPath("$.data.list[0].mediaCommission").doesNotExist())
@@ -99,6 +100,12 @@ class OrderSettleOnceTest {
                 .andExpect(jsonPath("$.data.list[0].walletLedgerId").doesNotExist())
                 .andReturn();
         assertHidden(list.getResponse().getContentAsString());
+        mvc.perform(get("/v1/orders").param("keyword", "耳机").requestAttr("userId", BUYER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1));
+        mvc.perform(get("/v1/orders").param("keyword", "不存在的商品").requestAttr("userId", BUYER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(0));
         MvcResult detail = mvc.perform(get("/v1/orders/" + stored.getId()).requestAttr("userId", BUYER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.userCommission").value("80.00"))

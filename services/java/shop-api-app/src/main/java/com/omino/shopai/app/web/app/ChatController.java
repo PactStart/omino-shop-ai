@@ -8,7 +8,9 @@ import com.omino.shopai.app.service.chat.ChatEvents;
 import com.omino.shopai.app.service.chat.IChatCancelService;
 import com.omino.shopai.app.service.chat.IChatTurnService;
 import com.omino.shopai.app.service.chat.TurnCommand;
+import com.omino.shopai.app.dto.ConversationViewDto;
 import com.omino.shopai.app.dto.TurnAcceptedDto;
+import com.omino.shopai.dto.PageDto;
 import com.omino.shopai.app.web.app.dto.TurnRequestDto;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -49,6 +52,23 @@ public class ChatController {
         this.pump = pump;
         this.cancels = cancels;
     }
+    /**
+     * 按更新时间倒序列出当前用户的会话。
+     *
+     * @param userId 当前用户
+     * @param page 页码，从 1 开始
+     * @param size 每页条数
+     * @return 会话分页信封
+     */
+    @Operation(summary = "列出我的会话")
+    @GetMapping("/conversations")
+    public ApiResponse<PageDto<ConversationViewDto>> conversations(
+            @RequestAttribute("userId") String userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(turns.list(userId, page, size));
+    }
+
     /**
      * 受理一轮对话并立刻返回 run。
      *

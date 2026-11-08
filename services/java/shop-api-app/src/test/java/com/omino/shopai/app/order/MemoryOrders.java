@@ -177,8 +177,8 @@ final class MemoryOrders implements TransactionOperations {
                 .count();
     }
 
-    public List<AppOrder> list(String userId, String platform, String orderStatus, String settleStatus, int page, int size) {
-        List<AppOrder> rows = filtered(userId, platform, orderStatus, settleStatus);
+    public List<AppOrder> list(String userId, String platform, String orderStatus, String settleStatus, String keyword, int page, int size) {
+        List<AppOrder> rows = filtered(userId, platform, orderStatus, settleStatus, keyword);
         int from = Math.min((page - 1) * size, rows.size());
         int to = Math.min(from + size, rows.size());
         List<AppOrder> pageRows = new ArrayList<>();
@@ -188,8 +188,8 @@ final class MemoryOrders implements TransactionOperations {
         return pageRows;
     }
 
-    public long count(String userId, String platform, String orderStatus, String settleStatus) {
-        return filtered(userId, platform, orderStatus, settleStatus).size();
+    public long count(String userId, String platform, String orderStatus, String settleStatus, String keyword) {
+        return filtered(userId, platform, orderStatus, settleStatus, keyword).size();
     }
 
     public AppOrder findById(String id) {
@@ -197,7 +197,7 @@ final class MemoryOrders implements TransactionOperations {
         return stored == null ? null : copy(stored);
     }
 
-    private List<AppOrder> filtered(String userId, String platform, String orderStatus, String settleStatus) {
+    private List<AppOrder> filtered(String userId, String platform, String orderStatus, String settleStatus, String keyword) {
         List<AppOrder> rows = new ArrayList<>();
         for (AppOrder order : orders().values()) {
             if (!userId.equals(order.getUserId())) {
@@ -211,6 +211,14 @@ final class MemoryOrders implements TransactionOperations {
             }
             if (settleStatus != null && !settleStatus.equals(order.getSettleStatus() == null ? null : order.getSettleStatus().code())) {
                 continue;
+            }
+            if (keyword != null) {
+                String title = order.getGoodsTitle() == null ? "" : order.getGoodsTitle();
+                String number = order.getPlatformOrderId() == null ? "" : order.getPlatformOrderId();
+                String word = keyword.toLowerCase();
+                if (!title.toLowerCase().contains(word) && !number.toLowerCase().contains(word)) {
+                    continue;
+                }
             }
             rows.add(order);
         }
@@ -272,6 +280,7 @@ final class MemoryOrders implements TransactionOperations {
         copy.setUserId(source.getUserId());
         copy.setPlatform(source.getPlatform());
         copy.setPlatformOrderId(source.getPlatformOrderId());
+        copy.setRelationId(source.getRelationId());
         copy.setGoodsId(source.getGoodsId());
         copy.setPlatformGoodsId(source.getPlatformGoodsId());
         copy.setGoodsTitle(source.getGoodsTitle());

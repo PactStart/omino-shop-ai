@@ -157,7 +157,7 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
             TbkDgMaterialOptionalUpgradeRequest request = new TbkDgMaterialOptionalUpgradeRequest();
             request.setQ(query.keyword());
             request.setAdzoneId(ADZONE_ID);
-            request.setRelationId(UnionMaps.promotion(promotionId));
+            request.setSpecialId(UnionMaps.promotion(promotionId));
             request.setMaterialId(MATERIAL_ID);
             request.setPageNo((long) Math.max(query.page() == null ? 1 : query.page(), 1));
             request.setPageSize((long) clamp(query.size() == null ? 20 : query.size()));
@@ -670,7 +670,8 @@ public class TaobaoGoodsImpl implements IPlatformGoods {
                 shippedAt,
                 paidAt,
                 null,
-                null);
+                null,
+                row.getSpecialId() == null ? null : row.getSpecialId().toString());
     }
 
     /**

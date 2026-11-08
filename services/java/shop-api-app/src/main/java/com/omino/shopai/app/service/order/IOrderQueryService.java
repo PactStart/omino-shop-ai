@@ -19,11 +19,12 @@ public interface IOrderQueryService {
      * @param platform 平台码，空表示不筛选
      * @param orderStatus 订单状态，空表示不筛选
      * @param settleStatus 结算状态，空表示不筛选
+     * @param keyword 标题或平台订单号，空表示不搜
      * @param page 页码，从 1 起
      * @param size 页大小，最大 50
      * @return 订单页
      */
-    PageDto<OrderViewDto> list(String userId, String platform, String orderStatus, String settleStatus, int page, int size);
+    PageDto<OrderViewDto> list(String userId, String platform, String orderStatus, String settleStatus, String keyword, int page, int size);
 
     /**
      * 汇总该用户一段时间的订单笔数和支付金额。

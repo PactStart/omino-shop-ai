@@ -146,7 +146,7 @@ Java **只存模板原图与二维码矩形、生效时间**。禁止服务端�
 
 ## 电商订单
 
-只读。金额为字符串两位或 `null`。含 `mediaCommission`（平台付给媒体）、`userCommission`（分给下单用户）、`parentUserId`、`orderStatus`、`settleStatus`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`paidAt` 与 `completedAt` 可空。`extras` 是 JSON 对象字符串或 `null`。无联盟原始 JSON，无物流编造。
+只读。金额为字符串两位或 `null`。含 `relationId`（这笔订单的推广身份，可空）、`mediaCommission`（平台付给媒体）、`userCommission`（分给下单用户）、`parentUserId`、`orderStatus`、`settleStatus`、`walletLedgerId`、`paidAt`、`completedAt`、`extras`。`paidAt` 与 `completedAt` 可空。`extras` 是 JSON 对象字符串或 `null`。无联盟原始 JSON，无物流编造。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |

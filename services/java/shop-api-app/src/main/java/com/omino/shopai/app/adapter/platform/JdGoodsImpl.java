@@ -196,11 +196,8 @@ public class JdGoodsImpl implements IPlatformGoods {
             req.setEliteId(1);
             req.setPageIndex(Math.max(page, 1));
             req.setPageSize(clamp(size));
-            req.setPid(UnionMaps.promotion(promotionId));
-            String buyer = UnionMaps.userId(userId);
-            if (buyer != null) {
-                req.setSubUnionId(buyer);
-            }
+            req.setSubUnionId(UnionMaps.promotion(promotionId));
+
             UnionOpenGoodsMaterialQueryRequest request = new UnionOpenGoodsMaterialQueryRequest();
             request.setGoodsReq(req);
             UnionOpenGoodsMaterialQueryResponse response = SdkLog.exchange(
@@ -311,10 +308,7 @@ public class JdGoodsImpl implements IPlatformGoods {
         req.setMaterialId(material);
         req.setSceneId(1);
         req.setPid(UnionMaps.promotion(promotionId));
-        String buyer = UnionMaps.userId(userId);
-        if (buyer != null) {
-            req.setSubUnionId(buyer);
-        }
+        req.setSubUnionId(UnionMaps.promotion(promotionId));
         return req;
     }
 
@@ -473,7 +467,7 @@ public class JdGoodsImpl implements IPlatformGoods {
         }
         return new IncomingOrderDto(
                 row.getId() == null || row.getId().isBlank() ? row.getOrderId().toString() : row.getId(),
-                UnionMaps.userId(row.getSubUnionId()),
+                null,
                 null,
                 goodsId,
                 row.getSkuName(),
@@ -485,6 +479,7 @@ public class JdGoodsImpl implements IPlatformGoods {
                 status == OrderStatus.COMPLETED ? UnionMaps.parseTime(row.getFinishTime()) : null,
                 null,
                 UnionMaps.parseTime(row.getFinishTime()),
-                null);
+                null,
+                row.getSubUnionId() == null || row.getSubUnionId().isBlank() ? null : row.getSubUnionId());
     }
 }

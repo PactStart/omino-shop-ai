@@ -51,10 +51,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 唯品会联盟。商品查询、详情、转链、订单、授权和备案。另接相似、猜你喜欢、链接解析，口令取转链里的 onlyCommand。
@@ -123,6 +120,10 @@ public class VipGoodsImpl implements IPlatformGoods {
             request.setKeyword(query.keyword());
             request.setPage(Math.max(query.page() == null ? 1 : query.page(), 1));
             request.setPageSize(clamp(query.size() == null ? 20 : query.size()));
+            request.setRequestId(UUID.randomUUID().toString());
+            request.setOpenId(promotionId);
+            request.setRealCall(Boolean.TRUE);
+            request.setChanTag("default_pid");
             applySort(request, query.sort());
             if (query.priceMin() != null) {
                 request.setPriceStart(query.priceMin());
@@ -156,14 +157,13 @@ public class VipGoodsImpl implements IPlatformGoods {
             throw new PlatformCallException();
         }
         try {
-            String buyer = UnionMaps.userId(userId);
             UrlGenByGoodsIdRequest request = new UrlGenByGoodsIdRequest();
             bind(request, promotionId);
             var response = SdkLog.exchange("vip", "url.command", goodsId, () -> urlClient().genByGoodsId(
                     List.of(goodsId),
                     "default_pid",
                     Ids.ulid(),
-                    buyer == null ? "" : buyer,
+                    userId,
                     Boolean.FALSE,
                     Boolean.FALSE,
                     Boolean.TRUE,
@@ -272,14 +272,13 @@ public class VipGoodsImpl implements IPlatformGoods {
             throw new PlatformCallException();
         }
         try {
-            String buyer = UnionMaps.userId(userId);
             UrlGenByGoodsIdRequest request = new UrlGenByGoodsIdRequest();
             bind(request, promotionId);
             var response = SdkLog.exchange("vip", "url.byGoodsId", goodsId, () -> urlClient().genByGoodsId(
                     List.of(goodsId),
                     "default_pid",
                     "req",
-                    buyer == null ? "" : buyer,
+                    userId,
                     Boolean.FALSE,
                     Boolean.FALSE,
                     Boolean.TRUE,
@@ -371,10 +370,7 @@ public class VipGoodsImpl implements IPlatformGoods {
             request.setOpenId(UnionMaps.promotion(openId));
             request.setRequestId(Ids.ulid());
             request.setRealCall(true);
-            String buyer = UnionMaps.userId(userId);
-            if (buyer != null) {
-                request.setStatParam(buyer);
-            }
+            request.setStatParam(userId);
             UnionUrlV2ServiceHelper.UnionUrlV2ServiceClient http = urlClient();
             GetChannelUrlByTypeResponse response = SdkLog.exchange(
                     "vip", "channel.url", request, () -> http.getChannelUrlByType(request));
@@ -602,7 +598,7 @@ public class VipGoodsImpl implements IPlatformGoods {
         }
         return new IncomingOrderDto(
                 row.getOrderSn(),
-                UnionMaps.userId(row.getStatParam()),
+                null,
                 null,
                 goodsId,
                 title,
@@ -614,6 +610,7 @@ public class VipGoodsImpl implements IPlatformGoods {
                 status == OrderStatus.SHIPPED || status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
                 null,
                 status == OrderStatus.COMPLETED ? UnionMaps.fromEpoch(row.getSignTime()) : null,
-                null);
+                null,
+                row.getOpenId() == null || row.getOpenId().isBlank() ? null : row.getOpenId());
     }
 }

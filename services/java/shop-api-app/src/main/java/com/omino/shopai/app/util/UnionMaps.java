@@ -25,9 +25,6 @@ public final class UnionMaps {
     public static final int MAX_ORDER_PAGES = 40;
     public static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter OFFICIAL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final Pattern USER_ID = Pattern.compile("[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}");
-    private static final Pattern USER_JSON = Pattern.compile(
-            "\\{\"uid\":\"([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})\"\\}");
 
     private UnionMaps() {
     }
@@ -91,24 +88,6 @@ public final class UnionMaps {
             throw new PlatformCallException();
         }
         return raw;
-    }
-
-    /**
-     * 只接受本系统用户号，或拼多多那种只含用户号的 JSON。其它字符串不写入订单。
-     */
-    public static String userId(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String trimmed = raw.trim();
-        if (USER_ID.matcher(trimmed).matches()) {
-            return trimmed;
-        }
-        var json = USER_JSON.matcher(trimmed);
-        if (json.matches()) {
-            return json.group(1);
-        }
-        return null;
     }
 
     /**

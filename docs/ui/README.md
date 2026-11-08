@@ -41,6 +41,6 @@
 
 以下差异不能由设计工具自行裁决，相关页面必须标注 `Decision pending`：
 
-1. `chatHistory`、`profile` 编辑、工单列表/详情、钱包流水等页面已有 UI 诉求，但 APP API 清单没有完整接口。可以做结构稿，数据区域必须标 `API pending`，不能虚构字段。
+1. 会话列表已有 `GET /chat/conversations`。消息回放、`profile` 编辑、工单列表/详情、钱包流水仍没有完整接口。可以做结构稿，数据区域必须标 `API pending`，不能虚构字段。
 2. 商城本期不做。页面结构在 [`mall.md`](./05-screens/mall.md)，不生成商城画板。
 

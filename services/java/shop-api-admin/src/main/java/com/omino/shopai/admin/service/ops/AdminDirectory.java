@@ -465,6 +465,7 @@ public class AdminDirectory {
         row.put("userId", order.getUserId());
         row.put("platform", order.getPlatform() == null ? null : order.getPlatform().code());
         row.put("platformOrderId", order.getPlatformOrderId());
+        row.put("relationId", order.getRelationId());
         row.put("goodsId", order.getGoodsId());
         row.put("platformGoodsId", order.getPlatformGoodsId());
         row.put("goodsTitle", order.getGoodsTitle());

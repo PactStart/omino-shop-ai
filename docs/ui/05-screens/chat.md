@@ -42,7 +42,8 @@ chatHistory (left drawer, over this page)
 
 | State | 可见内容 | 主动作 | 禁止误解 |
 | --- | --- | --- | --- |
-| empty | 推荐问题、空 Composer | 选问题或输入 | 推荐问题点击会直接开 run |
+| empty | 还没有会话时显示推荐问题、空 Composer | 选问题或输入 | 推荐问题点击会直接开 run |
+| resumed | 已选历史会话但本地没有气泡，只显示标题 | 继续输入 | 不回放历史，也不当成新对话 |
 | idle | 已完成消息 | 发新消息 | 商品卡无购买按钮 |
 | generating | 流式光标；底部主按钮变为停止 | 停止 | 停止不在顶栏；返回/断线不是停止 |
 | reconnecting | 保留已有内容、轻量重连状态 | 等待或重试连接 | 不调用 cancel |
@@ -55,7 +56,8 @@ chatHistory (left drawer, over this page)
 
 ### 数据与动作
 
-- 空会话：`GET /chat/suggestions`。
+- 空会话：还没有 `conversationId` 时 `GET /chat/suggestions`。
+- 历史会话：`GET /chat/conversations`。切到已有会话后，本地没有气泡时不显示推荐问题，只显示该会话标题；下一句仍发到这个会话。
 - 发送：`POST /chat/turns`，先立即得到 runId。
 - 流式读取：`GET /chat/runs/{runId}/events`；断线用 `Last-Event-ID`。
 - 图片：先 `POST /files/image`，再以 image 输入开 run。
@@ -74,9 +76,9 @@ chatHistory (left drawer, over this page)
 抽屉自上而下只有两块：
 
 1. **新对话。** 图标加「新对话」。点后关闭抽屉，清空会话 id，回到空的 `chat`。
-2. **最近。** 会话列表。每一行是彩色对话图标和标题，点一行切到该会话并关闭抽屉。
+2. **最近。** 会话列表来自 `GET /chat/conversations`。每一行是彩色对话图标和标题，点一行切到该会话并关闭抽屉。切换只更换当前 `conversationId`。这个接口没有消息，端上不回放历史气泡；下一句仍发到这个会话。
 
-当前 APP API 没有会话列表接口和字段。列表区域标 `API pending`。可以出结构稿，不能标 `Ready for dev`，也不要画搜索、置顶、删除、任务或技能入口。
+不要画搜索、置顶、删除、任务或技能入口。
 
 ## Overlay
 

@@ -8,6 +8,14 @@ spring:
     name: shop-api-app
   profiles:
     active: ${APP_ENV:local}
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
+
+app:
+  files:
+    dir: ${APP_UPLOAD_DIR:var/uploads}
 
 management:
   endpoints:
