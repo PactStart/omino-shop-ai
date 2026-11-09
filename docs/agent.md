@@ -302,6 +302,7 @@ shop.compare --> 对 referents 调 goods_detail（不海搜）
 | 读 | 每轮图启动时框架自动加载；`memory_load` 只把槽位/pending/本轮卡片投影进 prompt |
 | 写 | 每轮节点结束后框架自动 checkpoint；`memory_write` 负责把 `slots`、`pending_intents`、`goods_cards[].goodsId`、`interrupt_id` 放进 state |
 | 谁维护表结构 | LangGraph 迁移/官方表，**不要**为 working 再建 `memory_item` |
+| 连接 | `psycopg-pool` 的异步池。每次取出前探活，断了换一条。库短暂不可用时这一轮失败，下一轮再连，不必重启 Agent |
 
 Java **不要**每轮把全量向量塞进 invoke body。
 

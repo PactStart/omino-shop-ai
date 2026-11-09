@@ -125,19 +125,34 @@ def _route(state: dict) -> str:
 
 
 async def open_saver(database_url: str):
-    """启动时建一次检查点表。连接必须自动提交，行按字典读。
+    """启动时建一次检查点表，并打开一个会换连接的池。
 
-    表由检查点库自己建，不进 Flyway。连不上时调用方把检查点留空，
-    进程仍能回答健康检查；没有共享检查点时，授权恢复只在单测的同一张图里有效。
+    表由检查点库自己建，不进 Flyway。池里的连接自动提交，行按字典读。
+    每次取出前探活，断了就丢掉并另开一条，所以库重启后下一轮还能接着用。
+    连不上时调用方把检查点留空，进程仍能回答健康检查；
+    没有共享检查点时，授权恢复只在单测的同一张图里有效。
 
     @param database_url 主库连接串
     @return 已建表的异步检查点
     """
-    import psycopg
     from psycopg.rows import dict_row
+    from psycopg_pool import AsyncConnectionPool
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-    connection = await psycopg.AsyncConnection.connect(database_url, autocommit=True, row_factory=dict_row)
-    saver = AsyncPostgresSaver(connection)
-    await saver.setup()
+    pool = AsyncConnectionPool(
+        database_url,
+        min_size=1,
+        max_size=4,
+        timeout=10,
+        open=False,
+        kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+        check=AsyncConnectionPool.check_connection,
+    )
+    try:
+        await pool.open(wait=True, timeout=10)
+        saver = AsyncPostgresSaver(pool)
+        await saver.setup()
+    except Exception:
+        await pool.close()
+        raise
     return saver

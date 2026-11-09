@@ -493,6 +493,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
     { name = "pydantic" },
     { name = "uvicorn" },
 ]
@@ -512,6 +513,7 @@ requires-dist = [
     { name = "langgraph", specifier = "==1.2.20" },
     { name = "langgraph-checkpoint-postgres", specifier = "==3.2.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.8" },
+    { name = "psycopg-pool", specifier = "==3.3.3" },
     { name = "pydantic", specifier = "==2.14.3" },
     { name = "uvicorn", specifier = "==0.54.0" },
 ]

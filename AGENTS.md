@@ -121,6 +121,7 @@ Maven 模块：`shop-api`（parent）→ `shop-api-common`、`shop-api-app`、`s
 | HTTP    | `httpx`                         | `0.28.1`                    | 调 Java `/internal/v1/**` 工具                 |
 | 图状态     | `langgraph-checkpoint-postgres` | `3.2.0`                     | 工作记忆 Checkpointer。只用 `PostgresSaver` / `AsyncPostgresSaver`，不用该包的 Store。MIT。`langgraph` `1.2.20` 要求 `langgraph-checkpoint>=4.3.0`，`2.0.25` 配不上。回归：启动时 `setup()` 建检查点表，不进 Flyway |
 | PG      | `psycopg[binary]`               | `3.2.4`                     | Checkpointer + 语义表                          |
+| 连接池    | `psycopg-pool`                  | `3.3.3`                     | 只给检查点的 `AsyncConnectionPool`。每次取出前探活，断了换一条。不用同步池。LGPL-3.0，已随 `langgraph-checkpoint-postgres` 进入锁文件。回归：库断开后下一轮对话再连，不必重启 Agent |
 | 测试      | `pytest`                        | `8.3.4`                     |                                             |
 
 
